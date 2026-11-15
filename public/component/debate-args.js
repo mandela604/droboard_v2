@@ -208,6 +208,10 @@
       sides: opts.sides || { for: 'For', against: 'Against' },
       currentUser: opts.currentUser || { name: 'You', avatar: null, verified: false },
       debateId: opts.debateId || null,
+      postId: opts.postId || null, // Post-based debate (same as debateId for backward compat)
+      bookId: opts.bookId || null, // Book/chapter debate context
+      chapterId: opts.chapterId || null,
+      debateType: opts.debateType || 'post', // 'post' or 'book' or 'chapter'
       requireSide: opts.requireSide !== false,
       /* closed debate: read the arguments, but nothing more can be added */
       readOnly: !!opts.readOnly,
@@ -987,12 +991,26 @@
       render();
       scrollToArg(tempId);
       
+      // Determine correct API endpoint based on debate type
+      var url, body;
+      if (O.debateType === 'post') {
+        // Post-based debate
+        url = '/api/posts/' + encodeURIComponent(O.debateId) + '/debate/args';
+        body = JSON.stringify({ text: text, parentId: parentId });
+      } else {
+        // Book or chapter-level debate
+        url = '/api/debates/' + encodeURIComponent(O.debateId) + '/args';
+        if (O.bookId) url += '?book=' + encodeURIComponent(O.bookId);
+        if (O.chapterId) url += (O.bookId ? '&' : '?') + 'ch=' + encodeURIComponent(O.chapterId);
+        body = JSON.stringify({ text: text, parentId: parentId });
+      }
+      
       // Send to backend
-      fetch('/api/posts/' + encodeURIComponent(O.debateId) + '/debate/args', {
+      fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text, parentId: parentId })
+        body: body
       })
       .then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1050,12 +1068,26 @@
       render();
       scrollToArg(tempId);
       
+      // Determine correct API endpoint based on debate type
+      var url, body;
+      if (O.debateType === 'post') {
+        // Post-based debate
+        url = '/api/posts/' + encodeURIComponent(O.debateId) + '/debate/args';
+        body = JSON.stringify({ text: text, side: O.userSide });
+      } else {
+        // Book or chapter-level debate
+        url = '/api/debates/' + encodeURIComponent(O.debateId) + '/args';
+        if (O.bookId) url += '?book=' + encodeURIComponent(O.bookId);
+        if (O.chapterId) url += (O.bookId ? '&' : '?') + 'ch=' + encodeURIComponent(O.chapterId);
+        body = JSON.stringify({ text: text, side: O.userSide });
+      }
+      
       // Send to backend
-      fetch('/api/posts/' + encodeURIComponent(O.debateId) + '/debate/args', {
+      fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text, side: O.userSide })
+        body: body
       })
       .then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);

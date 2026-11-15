@@ -275,6 +275,7 @@
 
     // attach debate args component
     if (window.DroboardDebateArgs) {
+      var debateType = DEBATE.type || 'post'; // 'post', 'book', or 'chapter'
       ARGS = DroboardDebateArgs.attach('#argsMount', {
         sides: { for: DEBATE.forText, against: DEBATE.againstText },
         currentUser: { name: 'You', avatar: 'https://i.pravatar.cc/100?img=5', verified: false },
@@ -283,6 +284,9 @@
         userSide: S.side,
         ads: true,
         debateId: DEBATE_ID,
+        debateType: debateType,
+        bookId: DEBATE.bookId || null,
+        chapterId: DEBATE.chapterId || null,
         args: seedArgs(),
         onSidePick: function (side) {
           S.side = side;

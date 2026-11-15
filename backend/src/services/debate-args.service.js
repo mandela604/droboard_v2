@@ -209,4 +209,57 @@ async function loadOr404(id) {
   return arg;
 }
 
-module.exports = { listArgs, createArg, voteArg, editArg, deleteArg, loadOr404, shapeCards };
+// ── Book/Chapter debate arguments (same DebateArg model, different query) ──
+async function listArgsByDebateId({ debateId, bookId, chapterId, side, sort, viewerId }) {
+  // For book/chapter debates, use debateId as the postId in the model
+  // (we reuse the DebateArg.postId field to store debate ID for simplicity)
+  const filter = { postId: String(debateId), parentId: null };
+  if (side === 'for' || side === 'against') filter.side = side;
+  const order = sort === 'new' ? { createdAt: -1 } : { up: -1, createdAt: -1 };
+  const tops = await DebateArg.find(filter).sort(order).limit(200).lean();
+  const topIds = tops.map(t => String(t.id));
+  let byParent = {};
+  if (topIds.length) {
+    const kids = await DebateArg.find({ parentId: { $in: topIds } }).sort({ createdAt: 1 }).lean();
+    kids.forEach(k => { const p = String(k.parentId); (byParent[p] = byParent[p] || []).push(k); });
+  }
+  const allRows = tops.concat(topIds.reduce((acc, p) => acc.concat(byParent[p] || []), []));
+  const shaped = await shapeCards(allRows, viewerId);
+  const byId = {};
+  shaped.forEach(c => { byId[c.id] = c; });
+  const items = tops.map(t => {
+    const card = byId[String(t.id)];
+    card.replies = (byParent[String(t.id)] || []).map(k => byId[String(k.id)]).filter(Boolean);
+    return card;
+  });
+  return { items, total: items.length };
+}
+
+async function createArgByDebateId({ debateId, bookId, chapterId, userId, text, side, parentId }) {
+  // No vote-side enforcement for book/chapter debates (no vote system, just arguments)
+  // User can pick either side
+  let parent = null;
+  if (parentId) {
+    parent = await DebateArg.findOne({ id: String(parentId), postId: String(debateId) }).lean();
+    if (!parent) err('no_parent', 404);
+    // Replies inherit the parent's side
+    side = parent.side;
+  }
+  if (side !== 'for' && side !== 'against') {
+    side = 'for'; // Default to 'for' if not specified
+  }
+  const body = String(text || '').trim();
+  if (!body) err('text_required', 400);
+  if (body.length > 2000) err('text_too_long', 400);
+  const arg = await DebateArg.create({
+    postId: String(debateId), // Reuse postId field to store debate ID
+    authorId: String(userId),
+    parentId: parent ? String(parent.id) : null,
+    side, text: body,
+  });
+  if (parent) await DebateArg.updateOne({ id: parent.id }, { $inc: { repliesCount: 1 } });
+  const [card] = await shapeCards([arg.toObject()], userId);
+  return card;
+}
+
+module.exports = { listArgs, createArg, voteArg, editArg, deleteArg, loadOr404, shapeCards, listArgsByDebateId, createArgByDebateId };

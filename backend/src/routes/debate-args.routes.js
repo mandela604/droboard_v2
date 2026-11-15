@@ -81,4 +81,53 @@ router.delete('/debate/args/:id', requireAuth, writeLimiter, audit('debate.args.
     id: req.valid.params.id, user: req.user,
   })));
 
+// ── Book/Chapter-level debate arguments (same pattern as posts) ──
+// GET  /api/debates/:debateId/args?book=:bookId&ch=:chapterId&side=for|against|all&sort=top|new
+router.get('/debates/:debateId/args', generalLimiter, optionalAuth,
+  validate(z.object({
+    params: z.object({ debateId: id }),
+    query: z.object({
+      book: id.optional(),
+      ch: id.optional(),
+      side: z.enum(['for', 'against', 'all']).optional(),
+      sort: z.enum(['top', 'new']).optional(),
+    }).strict(),
+  })),
+  async (req, res) => base.wrap(res, async () => svc.listArgsByDebateId({
+    debateId: req.valid.params.debateId,
+    bookId: req.valid.query.book,
+    chapterId: req.valid.query.ch,
+    side: req.valid.query.side,
+    sort: req.valid.query.sort,
+    viewerId: req.user && req.user.id,
+  })));
+
+// POST /api/debates/:debateId/args {text, side, parentId?}
+router.post('/debates/:debateId/args', requireAuth, writeLimiter, audit('debate.args.create'),
+  validate(z.object({
+    params: z.object({ debateId: id }),
+    query: z.object({
+      book: id.optional(),
+      ch: id.optional(),
+    }).strict(),
+    body: z.object({
+      text: z.string().min(1).max(2000),
+      side: z.enum(['for', 'against']).optional(),
+      parentId: z.string().max(120).optional(),
+    }).strict(),
+  })),
+  async (req, res) => base.wrap(res, async () => {
+    const card = await svc.createArgByDebateId({
+      debateId: req.valid.params.debateId,
+      bookId: req.valid.query.book,
+      chapterId: req.valid.query.ch,
+      userId: req.user.id,
+      text: req.valid.body.text,
+      side: req.valid.body.side,
+      parentId: req.valid.body.parentId,
+    });
+    res.status(201);
+    return card;
+  }));
+
 module.exports = router;
