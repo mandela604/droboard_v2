@@ -194,17 +194,17 @@ a{color:inherit;text-decoration:none}
 
 <!-- BOOK HEADER -->
 <div class="book-head">
-  <div class="bh-cover"><img src="https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop" alt="Bound By Obsession"/></div>
+  <div class="bh-cover"><img src="../assets/droboard-icon.png" alt="Book cover" onerror="this.onerror=null;this.src='../assets/droboard-icon.png'"/></div>
   <div class="bh-info">
-    <div class="bh-title">Bound By Obsession</div>
-    <div class="bh-genre">Romance · Drama</div>
-    <span class="status-badge published">Published</span>
+    <div class="bh-title">Loading…</div>
+    <div class="bh-genre"></div>
+    <span class="status-badge draft">Draft</span>
     <div class="bh-stats">
-      <div class="bh-stat"><i class="far fa-eye"></i> 2.3M</div>
-      <div class="bh-stat"><i class="far fa-heart"></i> 189K</div>
-      <div class="bh-stat"><i class="fas fa-list-ul"></i> <span id="bhChapterCount">56</span> Chapters</div>
+      <div class="bh-stat"><i class="far fa-eye"></i> <span id="bhReads">0</span></div>
+      <div class="bh-stat"><i class="far fa-heart"></i> <span id="bhLikes">0</span></div>
+      <div class="bh-stat"><i class="fas fa-list-ul"></i> <span id="bhChapterCount">0</span> Chapters</div>
     </div>
-    <div class="bh-updated">Updated 2 hours ago</div>
+    <div class="bh-updated" id="bhUpdated"></div>
   </div>
 </div>
 
@@ -246,7 +246,7 @@ a{color:inherit;text-decoration:none}
 
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js?v=2"></script>
-<script src="services/book-workspace-service.js"></script>
+<script src="services/book-workspace-service.js?v=3"></script>
 
 <div id="bookLockModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:90%;max-width:420px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative">

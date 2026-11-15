@@ -14,6 +14,19 @@
     catch (e) { clearTimeout(t); throw e; }
   }
 
+  // 1240 -> 1.2K, 2300000 -> 2.3M. Real counts only; never a stand-in.
+  function compact(n) {
+    n = Number(n) || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    return String(n);
+  }
+  function fmtDate(v) {
+    var d = new Date(v);
+    if (!v || isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   var BOOK_ID = null;
   var CHAPTERS = [];
   var PAGE_SIZE = 12;
@@ -45,7 +58,7 @@
   }
 
   function editChapter(num) {
-    window.location.href = 'edit-chapter.html?book=b1&chapter=' + num;
+    window.location.href = 'edit-chapter.html?book=' + encodeURIComponent(BOOK_ID) + '&chapter=' + num;
   }
 
   function renderPagination() {
@@ -170,11 +183,26 @@
       ]);
       var book = res[0]; var chRes = res[1];
       document.querySelector('.bh-title').textContent = book.title;
-      document.querySelector('.bh-genre').textContent = book.genre;
-      document.querySelector('.bh-cover img').src = book.cover;
+      document.querySelector('.bh-genre').textContent = book.genre || '';
+      var coverImg = document.querySelector('.bh-cover img');
+      coverImg.src = book.cover || '../assets/droboard-icon.png';
+      coverImg.alt = book.title || 'Book cover';
+      document.getElementById('bhReads').textContent = compact(book.reads);
+      document.getElementById('bhLikes').textContent = compact(book.likes);
+      var upd = document.getElementById('bhUpdated');
+      var when = book.updatedAt || book.createdAt;
+      upd.textContent = when ? 'Updated ' + fmtDate(when) : '';
       applyBookState(book);
-      CHAPTERS = (chRes.items || []);
-      if (!CHAPTERS.length && chRes.total) CHAPTERS = chRes.items || [];
+      CHAPTERS = (chRes.items || []).map(function (c) {
+        return {
+          num: c.num != null ? c.num : c.n,
+          title: c.title || 'Untitled',
+          status: c.status,
+          words: Number(c.words) || 0,
+          views: c.views == null ? '–' : compact(c.views),
+          date: fmtDate(c.createdAt || c.updatedAt),
+        };
+      });
       totalPages = Math.max(1, Math.ceil(CHAPTERS.length / PAGE_SIZE));
       document.getElementById('bhChapterCount').textContent = CHAPTERS.length;
       document.getElementById('chaptersTitleCount').textContent = CHAPTERS.length;
@@ -182,8 +210,20 @@
     } catch (e) { document.getElementById('pgInfo').textContent = 'Failed to load chapters'; }
   }
 
-  function init() {
-    BOOK_ID = new URLSearchParams(location.search).get('book') || 'b1';
+  async function init() {
+    BOOK_ID = new URLSearchParams(location.search).get('book') || '';
+    if (!BOOK_ID || BOOK_ID === 'b1') {
+      try {
+        var list = await api.getBooks();
+        BOOK_ID = (list && list[0] && list[0].id) || '';
+      } catch (e) { BOOK_ID = ''; }
+    }
+    if (!BOOK_ID) {
+      var pg = document.getElementById('pgInfo');
+      if (pg) pg.textContent = 'No book found for this account.';
+      if (window.AuthorFinance) window.AuthorFinance.pageError('Could not open a book. Your account has no books yet.', function () { location.reload(); });
+      return;
+    }
     PAGE_SIZE = (window.BookWorkspaceService && window.BookWorkspaceService.PAGE_SIZE) || 12;
     initWorkspace();
     if (window.AuthorDrawer) { window.AuthorDrawer.render('book-workspace.html'); window.AuthorDrawer.bind(); }
@@ -202,6 +242,7 @@
   var api = window.BookWorkspaceService || {};
   api.PAGE_SIZE = 12;
   api.getBook = api.getBook || async function (bookId) { return await callBackend('/books/' + bookId); };
+  api.getBooks = api.getBooks || async function () { return await callBackend('/books'); };
   api.getChapters = api.getChapters || async function (bookId, page, pageSize) {
     return await callBackend('/books/' + bookId + '/chapters?page=' + page + '&limit=' + pageSize);
   };

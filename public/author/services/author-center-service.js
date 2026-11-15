@@ -25,11 +25,19 @@
       return;
     }
     document.getElementById('statGrid').innerHTML = STATS.map(function (s) {
+      var growth;
+      if (s.growth != null) {
+        growth = '<i class="fas fa-arrow-' + (s.growth < 0 ? 'down' : 'up') + '"></i> ' + s.growth + '% <span class="dim">vs last 30d</span>';
+      } else if (s.note) {
+        growth = '<span class="dim">' + s.note + '</span>';
+      } else {
+        growth = '';
+      }
       return '<div class="stat-card"' + (s.href ? ' onclick="location.href=\'' + s.href + '\'" style="cursor:pointer"' : '') + '>'
         + '<div class="stat-icon" style="background:' + s.bg + ';color:' + s.color + '"><i class="fas ' + s.icon + '"></i></div>'
         + '<div class="stat-label">' + s.label + '</div>'
         + '<div class="stat-num">' + s.num + '</div>'
-        + '<div class="stat-growth"><i class="fas fa-arrow-up"></i> ' + s.growth + ' <span class="dim">vs last 30d</span></div>'
+        + '<div class="stat-growth">' + growth + '</div>'
         + '</div>';
     }).join('');
   }
@@ -84,34 +92,51 @@
     try {
       // Get current user from session
       var userSession = window.AuthSession && window.AuthSession.getSync ? window.AuthSession.getSync() : {};
-      var currentUser = userSession.fullName || userSession.name || 'User';
-      
+      var currentUser = userSession.name || userSession.fullName || 'User';
+
       // Update welcome message with real user name - use correct selector
       var welcomeEl = document.querySelector('.welcome-greet');
       if (welcomeEl) {
         welcomeEl.textContent = 'Welcome back, ' + currentUser + ' 👋';
       }
-      
-      // Fetch stats from API
-      var statsRes = await api.getStats();
-      console.log('Stats response:', statsRes);
-      
-      // Handle different response formats
-      var statsArray = Array.isArray(statsRes) ? statsRes : (statsRes && statsRes.stats) ? statsRes.stats : [];
-      
-      if (statsArray && statsArray.length > 0) {
-        STATS.length = 0;
-        statsArray.forEach(function (s) {
+
+      // Topbar avatar = the signed-in user's own image, never a demo face.
+      var avatarImg = document.getElementById('userAvatarImg');
+      if (avatarImg) {
+        avatarImg.onerror = function () { this.onerror = null; this.src = '../assets/droboard-icon.png'; };
+        avatarImg.src = userSession.avatar || '../assets/droboard-icon.png';
+        avatarImg.alt = currentUser + ' avatar';
+      }
+
+      // Fetch stats from API. The author dashboard returns
+      // { stats: {books, contracts, reads, followers, earnings, completionRate,
+      // pendingReviews}, growth: {reads, followers, earnings, completionRate} }.
+      // An array is still accepted for older deployments.
+      var statsRes = await api.getStats() || {};
+      STATS.length = 0;
+      if (Array.isArray(statsRes)) {
+        statsRes.forEach(function (s) {
           STATS.push({
             label: s.label || s.name || 'Unknown',
-            num: s.value || s.num || '0',
-            growth: s.growth || '0%',
+            num: String(s.value != null ? s.value : (s.num != null ? s.num : 0)),
+            growth: s.growth == null ? null : s.growth,
             icon: s.icon || 'fa-chart-simple',
             bg: s.bg || 'rgba(200,200,200,.08)',
             color: s.color || '#666',
             href: s.href || ''
           });
         });
+      } else if (statsRes.stats) {
+        var s = statsRes.stats || {};
+        var g = statsRes.growth || {};
+        STATS.push(
+          { label: 'Books', num: fmtNum(s.books), growth: g.books, note: 'all time', icon: 'fa-book-open', bg: 'rgba(99,102,241,.12)', color: '#6366f1' },
+          { label: 'Reads', num: fmtNum(s.reads), growth: g.reads, icon: 'fa-eye', bg: 'rgba(16,185,129,.12)', color: '#10b981' },
+          { label: 'Followers', num: fmtNum(s.followers), growth: g.followers, icon: 'fa-users', bg: 'rgba(59,130,246,.12)', color: '#3b82f6' },
+          { label: 'Earnings', num: fmtNum(s.earnings), growth: g.earnings, icon: 'fa-sack-dollar', bg: 'rgba(245,158,11,.12)', color: '#f59e0b', href: 'earnings.html' },
+          { label: 'Contracts', num: fmtNum(s.contracts), growth: g.contracts, note: 'all time', icon: 'fa-file-signature', bg: 'rgba(168,85,247,.12)', color: '#a855f7', href: 'apply-contract.html' },
+          { label: 'Completion rate', num: fmtNum(s.completionRate) + '%', growth: g.completionRate, note: 'published ÷ total', icon: 'fa-circle-check', bg: 'rgba(20,184,166,.12)', color: '#14b8a6' }
+        );
       }
     } catch (e) {
       console.error('Failed to load stats:', e);

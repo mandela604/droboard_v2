@@ -189,10 +189,7 @@ function go(p){currentPage=p;render();}
 function toast(m){var t=document.getElementById('toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2400);}
 
 /* ── Payment Methods ── */
-var paymentMethods=[
-  {id:'1',type:'bank',name:'GTBank Savings',detail:'GTBank · · · · 4821',active:true},
-  {id:'2',type:'paypal',name:'PayPal',detail:'wren@email.com',active:false},
-];
+var paymentMethods=[];
 function findPM(id){return paymentMethods.find(function(m){return String(m.id)===String(id);});}
 function renderPM(){
   var grid=document.getElementById('pmGrid');
@@ -256,7 +253,9 @@ async function reloadMethods(){
 
 function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'editor-bill-review',title:'My Earnings',subtitle:'Track your earnings, withdrawals, and payment methods',user:{name:'Wren Okonkwo',role:'Editor',avatar:'https://i.pravatar.cc/100?img=15'},notifCount:2,searchPlaceholder:'Search…'});
+  var userSession=window.AuthSession&&window.AuthSession.getSync?window.AuthSession.getSync():{};
+  var userName=userSession.name||userSession.handle||'Editor';
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'editor-bill-review',title:'My Earnings',subtitle:'Track your earnings, withdrawals, and payment methods',user:{name:userName,role:'Editor',avatar:userSession.avatar||'https://i.pravatar.cc/100?img=15'},notifCount:2,searchPlaceholder:'Search…'});
 }
 
 function bindWindowActions(){
@@ -345,8 +344,9 @@ function bindWindowActions(){
     closeDeleteModal();renderPM();toast('Payment method deleted');
   };
   window.openWithdraw=function(){
+    if(!LIVE){toast('Loading earnings data... Please wait');return;}
     if(!paymentMethods.length){toast('Add a payment method first');openAddPM();return;}
-    var s=SUMMARY||DEMO_SUMMARY;
+    var s=SUMMARY;
     document.getElementById('withdrawModal').classList.add('show');
     applySummary(s);
     document.getElementById('withdrawAmount').value='';
@@ -356,34 +356,20 @@ function bindWindowActions(){
   window.submitWithdraw=async function(){
     var raw=document.getElementById('withdrawAmount').value;
     var amt=parseFloat(raw);
-    var s=SUMMARY||DEMO_SUMMARY;
+    var s=SUMMARY;
+    if(!LIVE){toast('Backend not connected');return;}
     if(!amt||amt<=0){toast('Enter a valid amount');return;}
     if(s.minWithdrawal&&amt<s.minWithdrawal){toast('Minimum withdrawal is '+money(s.minWithdrawal));return;}
     if(amt>s.available){toast('Amount exceeds your available balance');return;}
     var methodId=document.getElementById('withdrawMethod').value;
     if(!methodId){toast('Choose a payment method');return;}
-    if(LIVE){
-      var errs={below_minimum:'Amount is below the minimum withdrawal',no_method:'That payment method no longer exists',insufficient:'Amount exceeds your available balance'};
-      try{
-        await api(API_BASE,'/earnings/withdrawals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:amt,methodId:String(methodId)})});
-        toast('Withdrawal request submitted');
-        closeWithdraw();
-        await refreshLive();
-      }catch(e){toast(errs[e.message]||e.message||'Withdrawal failed');}
-      return;
-    }
-    DEMO_SUMMARY.available=round2(DEMO_SUMMARY.available-amt);
-    DEMO_SUMMARY.pendingPayout=round2(DEMO_SUMMARY.pendingPayout+amt);
-    var m=findPM(methodId);
-    txns.unshift({
-      id:'WD-'+Date.now(),type:'withdrawal',book:'',
-      title:'Withdrawal'+(m?' · '+m.name:''),
-      amount:'- '+money(amt),num:-amt,
-      date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-      status:'pending',
-      desc:'Requested. Awaiting finance approval.',
-    });
-    applySummary(DEMO_SUMMARY);render();closeWithdraw();toast('Withdrawal request submitted');
+    var errs={below_minimum:'Amount is below the minimum withdrawal',no_method:'That payment method no longer exists',insufficient:'Amount exceeds your available balance'};
+    try{
+      await api(API_BASE,'/earnings/withdrawals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:amt,methodId:String(methodId)})});
+      toast('Withdrawal request submitted');
+      closeWithdraw();
+      await refreshLive();
+    }catch(e){toast(errs[e.message]||e.message||'Withdrawal failed');}
   };
 }
 
@@ -403,10 +389,16 @@ function init(){
   attachShell();
   bindWindowActions();
   bindEvents();
-  applySummary(DEMO_SUMMARY);
-  renderPM();
-  render();
-  setLedgerLabel('Demo data — backend not connected');
+  // Do NOT display demo data - wait for live data to load
+  // Show loading state
+  document.getElementById('balanceAmount').textContent='...';
+  document.getElementById('statEarned').textContent='...';
+  document.getElementById('statWithdrawn').textContent='...';
+  document.getElementById('statPending').textContent='...';
+  document.getElementById('statMonth').textContent='...';
+  document.getElementById('tableBody').innerHTML='<div style="padding:40px 16px;text-align:center;color:var(--text-faint)"><i class="fas fa-spinner fa-spin" style="font-size:24px;display:block;margin-bottom:8px"></i><div>Loading earnings data...</div></div>';
+  setLedgerLabel('Loading...');
+  // Load live data - don't fall back to demo
   tryLive();
 }
 

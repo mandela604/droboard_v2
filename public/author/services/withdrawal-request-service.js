@@ -75,11 +75,21 @@
     }
   }
 
+  function load(){
+    render().then(function () {
+      if (window.AuthorFinance) window.AuthorFinance.clearPageError();
+    }).catch(function (e) {
+      if (window.AuthorFinance) window.AuthorFinance.pageError(window.AuthorFinance.failText('your balance', e), load);
+      else console.error(e);
+    });
+  }
+
   function init(){
     if (window.AuthorDrawer) {
       try { window.AuthorDrawer.render('withdrawal-request.html'); } catch (e) {}
       try { window.AuthorDrawer.bind(); } catch (e) {}
     }
+    if (window.AuthorFinance) window.AuthorFinance.mountIdentity();
     document.getElementById('amountInput').addEventListener('input', validate);
     document.getElementById('withdrawAll').addEventListener('click', function(){
       document.getElementById('amountInput').value = balance;
@@ -102,7 +112,7 @@
         });
       } catch (e) { toast(e.message); }
     });
-    render();
+    load();
   }
 
   Svc.init = init;

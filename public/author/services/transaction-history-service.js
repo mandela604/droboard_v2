@@ -111,9 +111,22 @@
     var reason = document.getElementById('disputeReason').value.trim();
     if (!reason) { toast('Please describe the issue'); return; }
     if (!currentTxn) return;
-    await window.AuthorFinance.fileDispute(currentTxn.id, reason);
-    closeDispute();
-    toast('Dispute filed — we\'ll review it within 48 hours');
+    try {
+      await window.AuthorFinance.fileDispute(currentTxn.id, reason, { amount: Math.abs(currentTxn.amount), item: currentTxn.desc });
+      closeDispute();
+      toast('Dispute filed — we\'ll review it within 48 hours');
+    } catch (e) {
+      toast(e.message || 'Could not file the dispute');
+    }
+  }
+
+  function load(){
+    render().then(function () {
+      if (window.AuthorFinance) window.AuthorFinance.clearPageError();
+    }).catch(function (e) {
+      if (window.AuthorFinance) window.AuthorFinance.pageError(window.AuthorFinance.failText('transactions', e), load);
+      else console.error(e);
+    });
   }
 
   function init(){
@@ -121,6 +134,7 @@
       try { window.AuthorDrawer.render('transaction-history.html'); } catch (e) {}
       try { window.AuthorDrawer.bind(); } catch (e) {}
     }
+    if (window.AuthorFinance) window.AuthorFinance.mountIdentity();
     document.querySelectorAll('.tab').forEach(function(tab){
       tab.addEventListener('click', function(){
         document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
@@ -132,7 +146,7 @@
     document.getElementById('searchInput').addEventListener('input', applyFilter);
     document.getElementById('detailModal').addEventListener('click', function(e){ if (e.target === document.getElementById('detailModal')) closeDetail(); });
     document.getElementById('disputeForm').addEventListener('click', function(e){ if (e.target === document.getElementById('disputeForm')) closeDispute(); });
-    render();
+    load();
   }
 
   Svc.init = init;

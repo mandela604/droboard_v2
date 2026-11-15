@@ -22,15 +22,31 @@
     { label: 'Schedule', icon: 'fa-calendar-days', bg: 'var(--warning-soft)', color: 'var(--warning)', href: '#' }
   ];
 
+  // 1240 -> 1.2K. Real counts only; never a stand-in.
+  function compact(n) {
+    n = Number(n) || 0;
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    return String(n);
+  }
+  function fmtDate(v) {
+    var d = new Date(v);
+    if (!v || isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   function renderStats() {
     if (!STATS || STATS.length === 0) {
       document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load statistics</div>';
       return;
     }
     document.getElementById('statGrid').innerHTML = STATS.map(function (s) {
+      var growth = s.growth == null
+        ? '<span class="dim">all time</span>'
+        : '<i class="fas fa-arrow-' + (s.growth < 0 ? 'down' : 'up') + '"></i> ' + s.growth + '% <span class="dim">vs last 30d</span>';
       return '<div class="stat-card fade"><div class="stat-icon" style="background:' + s.bg + ';color:' + s.color + '"><i class="fas ' + s.icon + '"></i></div>'
         + '<div class="stat-label">' + s.label + '</div><div class="stat-num">' + s.num + '</div>'
-        + '<div class="stat-growth"><i class="fas fa-arrow-up"></i> ' + s.growth + ' <span class="dim">vs last 30d</span></div></div>';
+        + '<div class="stat-growth">' + growth + '</div></div>';
     }).join('');
   }
 
@@ -43,33 +59,56 @@
   function openDrawer() { document.getElementById('drawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('open'); }
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
 
+  // Header + performance cards come from the book itself, never from markup
+  // placeholder numbers: the same page serves every author's every book.
+  async function hydrate(bookId) {
+    if (!bookId) {
+      document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> No book selected</div>';
+      return;
+    }
+    try {
+      var res = await Promise.all([api.getBook(bookId), api.getOverview(bookId)]);
+      var book = res[0] || {};
+      var data = res[1] || {};
+
+      if (book.title) {
+        document.querySelector('.bh-title').textContent = book.title;
+        document.querySelector('.bh-genre').textContent = book.genre || '';
+        var coverImg = document.querySelector('.bh-cover img');
+        coverImg.src = book.cover || '../assets/droboard-icon.png';
+        coverImg.alt = book.title;
+        var labels = { published: 'Published', ongoing: 'Ongoing', draft: 'Draft',
+          under_review: 'Under Review', completed: 'Completed', paused: 'Paused', flagged: 'Flagged' };
+        var badge = document.querySelector('.bh-info .status-badge');
+        if (badge) {
+          badge.textContent = labels[book.status] || book.status || 'Draft';
+          badge.className = 'status-badge ' + (book.status === 'under_review' ? 'ongoing' : (book.status || 'draft'));
+        }
+        document.getElementById('bhReads').textContent = compact(book.reads);
+        document.getElementById('bhLikes').textContent = compact(book.likes);
+        document.getElementById('bhChapters').textContent = book.chapterCount || 0;
+        var when = book.updatedAt || book.createdAt;
+        document.getElementById('bhUpdated').textContent = when ? 'Updated ' + fmtDate(when) : '';
+      }
+
+      var st = data.stats || {};
+      STATS.length = 0;
+      STATS.push(
+        { label: 'Reads', num: compact(st.reads), growth: null, icon: 'fa-eye', bg: 'var(--primary-soft)', color: 'var(--primary)' },
+        { label: 'Likes', num: compact(st.likes), growth: null, icon: 'fa-heart', bg: 'var(--red-soft, rgba(224,56,77,.1))', color: 'var(--red, #e0384d)' },
+        { label: 'Chapters', num: compact(st.chapters), growth: null, icon: 'fa-list-ul', bg: 'var(--blue-soft)', color: 'var(--blue)' }
+      );
+      renderStats();
+    } catch (e) {
+      console.error('Failed to load overview:', e);
+      document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load book statistics. Please refresh the page.</div>';
+    }
+  }
+
   function init() {
     renderQA();
     var params = new URLSearchParams(location.search);
-    var bookId = params.get('book') || '';
-    
-    // Fetch overview stats from API
-    api.getOverview(bookId)
-      .then(function(data) {
-        if (data && data.stats && Array.isArray(data.stats)) {
-          STATS.length = 0;
-          data.stats.forEach(function(s) {
-            STATS.push({
-              label: s.label || s.name || 'Unknown',
-              num: s.value || '0',
-              growth: s.growth || '0%',
-              icon: s.icon || 'fa-chart-simple',
-              bg: s.bg || 'rgba(200,200,200,.08)',
-              color: s.color || '#666'
-            });
-          });
-        }
-        renderStats();
-      })
-      .catch(function(e) {
-        console.error('Failed to load overview:', e);
-        document.getElementById('statGrid').innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load book statistics. Please refresh the page.</div>';
-      });
+    hydrate(params.get('book') || '');
     
     if (window.AuthorDrawer) { window.AuthorDrawer.render('book-overview.html'); window.AuthorDrawer.bind(); }
     else {
@@ -82,8 +121,11 @@
   }
 
   var api = window.BookOverviewService || {};
+  api.getBook = api.getBook || async function (bookId) {
+    return await callBackend('/books/' + encodeURIComponent(bookId));
+  };
   api.getOverview = api.getOverview || async function (bookId) {
-    return await callBackend('/books/' + (bookId || '') + '/overview');
+    return await callBackend('/books/' + encodeURIComponent(bookId) + '/overview');
   };
   api.init = init;
   window.BookOverviewService = api;

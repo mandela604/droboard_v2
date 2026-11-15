@@ -65,19 +65,26 @@
     document.getElementById('addForm').classList.add('show');
   }
 
-  function editMethod(id){
+  async function editMethod(id){
     var m = methods.find(function (x) { return String(x.id) === String(id); });
     if (!m) return;
-    EDIT_ID = m.id;
-    document.getElementById('fType').value = m.type || 'bank';
+    var full = m;
+    try {
+      full = await window.AuthorFinance.getPaymentMethod(id);
+    } catch (e) {
+      toast('Could not load this method: ' + (e.message || 'unknown error'));
+      return;
+    }
+    EDIT_ID = full.id;
+    document.getElementById('fType').value = full.type || 'bank';
     toggleTypeFields();
-    document.getElementById('fBankName').value = m.bankName || '';
-    document.getElementById('fAccountNum').value = m.accountNumber || '';
-    document.getElementById('fRouting').value = m.routingCode || '';
-    document.getElementById('fPaypalEmail').value = m.email || '';
-    document.getElementById('fProvider').value = m.provider || '';
-    document.getElementById('fPhone').value = m.phoneNumber || '';
-    document.getElementById('fAccountName').value = m.accountName || '';
+    document.getElementById('fBankName').value = full.bankName || '';
+    document.getElementById('fAccountNum').value = full.accountNumber || '';
+    document.getElementById('fRouting').value = full.routingCode || '';
+    document.getElementById('fPaypalEmail').value = full.email || '';
+    document.getElementById('fProvider').value = full.provider || '';
+    document.getElementById('fPhone').value = full.phoneNumber || '';
+    document.getElementById('fAccountName').value = full.accountName || '';
     document.getElementById('formTitle').textContent = 'Edit Payment Method';
     document.querySelector('.form-submit').innerHTML = '<i class="fas fa-check"></i> Save Changes';
     openForm();
@@ -115,16 +122,29 @@
   }
 
   async function setDefault(id){
-    await window.AuthorFinance.setDefaultMethod(id);
-    toast('Default method updated');
-    render();
+    try {
+      await window.AuthorFinance.setDefaultMethod(id);
+      toast('Default method updated');
+      render();
+    } catch (e) { toast(e.message || 'Could not update default'); }
   }
 
   async function deleteMethod(id){
     if (!confirm('Remove this payment method?')) return;
-    await window.AuthorFinance.deletePaymentMethod(id);
-    toast('Method removed');
-    render();
+    try {
+      await window.AuthorFinance.deletePaymentMethod(id);
+      toast('Method removed');
+      render();
+    } catch (e) { toast(e.message || 'Could not remove method'); }
+  }
+
+  function load(){
+    render().then(function () {
+      if (window.AuthorFinance) window.AuthorFinance.clearPageError();
+    }).catch(function (e) {
+      if (window.AuthorFinance) window.AuthorFinance.pageError(window.AuthorFinance.failText('payment methods', e), load);
+      else console.error(e);
+    });
   }
 
   function init(){
@@ -132,10 +152,11 @@
       try { window.AuthorDrawer.render('payment-details.html'); } catch (e) {}
       try { window.AuthorDrawer.bind(); } catch (e) {}
     }
+    if (window.AuthorFinance) window.AuthorFinance.mountIdentity();
     document.getElementById('addCard').addEventListener('click', function(){
       document.getElementById('addForm').classList.add('show');
     });
-    render();
+    load();
   }
 
   Svc.init = init;

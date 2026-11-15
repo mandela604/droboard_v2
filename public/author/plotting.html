@@ -182,14 +182,14 @@ a{color:inherit;text-decoration:none}
 
 <!-- BOOK HEADER -->
 <div class="book-head">
-  <div class="bh-cover"><img src="https://images.unsplash.com/photo-1481277542470-605612bd2d61?w=300&h=400&fit=crop" alt="Bound By Obsession"/></div>
+  <div class="bh-cover"><img src="../assets/droboard-icon.png" alt="Book cover"/></div>
   <div class="bh-info">
-    <div class="bh-title">Bound By Obsession</div>
-    <div class="bh-genre">Romance · Drama</div>
-    <span class="status-badge published">Under Review</span>
+    <div class="bh-title">—</div>
+    <div class="bh-genre"></div>
+    <span class="status-badge draft">—</span>
     <div class="progress-row">
-      <div class="progress-track"><div class="progress-fill" style="width:9%"></div></div>
-      <div class="progress-label"><b>5</b> / 56 written &middot; full outline planned</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+      <div class="progress-label"></div>
     </div>
   </div>
 </div>
@@ -199,52 +199,24 @@ a{color:inherit;text-decoration:none}
 <div class="wrap">
 
   <section class="section">
-    <div class="section-head"><h2 class="section-title"><i class="fas fa-quote-left"></i>Logline</h2></div>
-    <div class="logline-card">
-      <div class="logline-text">A ruthless hotel heir vows to ruin the family that destroyed his … until he's forced into a marriage of convenience with the one woman standing in his way, and finds that revenge and obsession look a lot alike.</div>
-      <div class="logline-tags">
-        <span class="tag-chip">Enemies to Lovers</span>
-        <span class="tag-chip">Marriage of Convenience</span>
-        <span class="tag-chip">Revenge Plot</span>
-        <span class="tag-chip">56 Chapters Planned</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
     <div class="section-head">
       <h2 class="section-title"><i class="fas fa-layer-group"></i>Full Story Arc</h2>
-      <span class="section-note">3 Acts</span>
+      <span class="section-note" id="actNote"></span>
     </div>
     <div class="act-list" id="actList"></div>
   </section>
 
-  <section class="section" style="display:none">
+  <section class="section">
     <div class="section-head">
       <h2 class="section-title"><i class="fas fa-road"></i>Chapter Roadmap</h2>
-      <span class="section-note">Written vs Planned</span>
+      <span class="section-note" id="roadmapNote"></span>
     </div>
     <div class="roadmap-list" id="roadmapList"></div>
   </section>
 
-  <section class="section" style="display:none">
-    <div class="section-head"><h2 class="section-title"><i class="fas fa-bolt"></i>Key Turning Points</h2></div>
-    <div class="logline-card">
-      <div class="timeline" id="timelineList"></div>
-    </div>
-  </section>
-
-  <section class="section" style="display:none">
+  <section class="section">
     <div class="section-head"><h2 class="section-title"><i class="fas fa-user-group"></i>Character Arcs</h2></div>
     <div class="char-list" id="charList"></div>
-  </section>
-
-  <section class="section" style="margin-bottom:6px">
-    <div class="section-head"><h2 class="section-title"><i class="fas fa-flag-checkered"></i>Planned Ending</h2></div>
-    <div class="ending-card">
-      <div class="ending-label"><i class="fas fa-triangle-exclamation"></i>Spoiler … editor eyes only</div>
-      <div class="ending-text">Their engagement, begun as a weapon on both sides, becomes real. The rival family's fraud is exposed publicly in Ch. 54, clearing his father's name. The final chapter closes on their wedding, reframing the marriage of convenience that opened the book … full-circle structure, no dangling threads planned.</div>
-    </div>
   </section>
 
 </div>
@@ -262,11 +234,12 @@ a{color:inherit;text-decoration:none}
 
   <script src="../component/workspace-tabs.js"></script>
 
+<script src="../services/auth-session.js?v=4"></script>
+<script src="../services/author-earnings-service.js?v=9"></script>
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js?v=2"></script>
-<script src="services/plotting-service.js"></script>
+<script src="services/plotting-service.js?v=2"></script>
 <script>PlottingService.init();</script>
-</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

@@ -25,6 +25,11 @@
   }
 
   function renderBookPage() {
+    if (!allBooks.length) {
+      document.getElementById('bookEarnings').innerHTML = '<div class="empty" style="padding:28px 16px;text-align:center;color:var(--muted)"><i class="fas fa-book" style="font-size:22px;display:block;margin-bottom:8px"></i>No book earnings yet. Publishing chapters will start the ledger.</div>';
+      document.getElementById('bookPagination').innerHTML = '';
+      return;
+    }
     var start = (bookPage - 1) * BOOKS_PER_PAGE;
     var page = allBooks.slice(start, start + BOOKS_PER_PAGE);
     document.getElementById('bookEarnings').innerHTML = page.map(function (b) {
@@ -70,16 +75,24 @@
 
   function init() {
     if (window.AuthorDrawer) { window.AuthorDrawer.render('earnings.html'); window.AuthorDrawer.bind(); }
+    if (window.AuthorFinance) window.AuthorFinance.mountIdentity();
     window.goBookPage = goBookPage;
-    render();
+    load();
+  }
+
+  function load() {
+    render().then(function () {
+      if (window.AuthorFinance) window.AuthorFinance.clearPageError();
+    }).catch(function (e) {
+      if (window.AuthorFinance) window.AuthorFinance.pageError(window.AuthorFinance.failText('earnings', e), load);
+      else console.error(e);
+    });
   }
 
   var api = window.AuthorEarningsService || {};
-  // Backend-ready: uses /api/wallet/author/:userId or falls back to AuthorFinance
-  api.getEarnings = api.getEarnings || async function () {
-    var r = await fetch(CFG.API_BASE + '/earnings', { credentials: 'include' });
-    if (!r.ok) throw new Error('Earnings API failed: ' + r.status);
-    return await r.json();
+  api.getEarnings = async function () {
+    if (!window.AuthorFinance) throw new Error('Finance module failed to load');
+    return await window.AuthorFinance.getEarnings();
   };
   api.fmtCurrency = api.fmtCurrency || function (n) { return window.AuthorFinance ? window.AuthorFinance.fmtCurrency(n) : '$' + n; };
   api.init = init;

@@ -23,6 +23,27 @@ function pctChange(cur, prev) {
   return Math.round(((cur - prev) / prev) * 1000) / 10;
 }
 
+// Ownership scope for author-owned rows. A user row exposes our uuidv7 `id`,
+// but rows written before that convention stored the legacy 24-hex `_id` in
+// foreign keys such as Book.authorId. Matching only the new id made an author
+// with a real book see "No books found" and a 0-book dashboard. Resolve BOTH
+// identities of the same account — never anyone else's.
+const HEX24 = /^[0-9a-fA-F]{24}$/;
+async function authorIds(userId) {
+  const key = String(userId || '');
+  const q = HEX24.test(key) ? { $or: [{ id: key }, { _id: key }] } : { id: key };
+  const u = await User.findOne(q).select('id _id').lean();
+  const ids = new Set([key]);
+  if (u) {
+    if (u.id) ids.add(String(u.id));
+    if (u._id) ids.add(String(u._id));
+  }
+  return Array.from(ids).filter(Boolean);
+}
+async function authorScope(userId) {
+  return { authorId: { $in: await authorIds(userId) } };
+}
+
 async function dashboard({ userId }) {
   const DAY = 864e5;
   const now = Date.now();
@@ -30,11 +51,13 @@ async function dashboard({ userId }) {
   // BookDailyStat.day is a YYYY-MM-DD string, so window filtering is lexical.
   const sinceDay = (days) => since(days).toISOString().slice(0, 10);
 
+  const ids = await authorIds(userId);
+  const scope = { authorId: { $in: ids } };
   const [bookRows, contracts, user, wallet] = await Promise.all([
-    Book.find({ authorId: userId }).select('id status reads').lean(),
-    Contract.countDocuments({ authorId: userId }),
-    User.findOne({ id: userId }).select('followerCount').lean(),
-    Wallet.findOne({ userId, kind: 'author' }).select('lifetimeEarned').lean(),
+    Book.find(scope).select('id status reads').lean(),
+    Contract.countDocuments(scope),
+    User.findOne(require('./user-ref').userRefFilter(ids)).select('followerCount').lean(),
+    Wallet.findOne({ userId: { $in: ids }, kind: 'author' }).select('lifetimeEarned').lean(),
   ]);
 
   const bookIds = bookRows.map(b => String(b.id));
@@ -55,13 +78,13 @@ async function dashboard({ userId }) {
       { $match: { bookId: { $in: bookIds }, day: { $gte: sinceDay(60) } } },
       { $group: { _id: null, t: { $sum: '$reads' } } },
     ]) : Promise.resolve([]),
-    Follow.countDocuments({ followingId: userId, createdAt: { $gte: since(30) } }),
+    Follow.countDocuments({ followingId: { $in: ids }, createdAt: { $gte: since(30) } }),
     LedgerEntry.aggregate([
-      { $match: { creditAcct: 'wallet:author:' + userId, createdAt: { $gte: since(30) } } },
+      { $match: { creditAcct: { $in: ids.map(id => 'wallet:author:' + id) }, createdAt: { $gte: since(30) } } },
       { $group: { _id: null, t: { $sum: '$amount' } } },
     ]),
     LedgerEntry.aggregate([
-      { $match: { creditAcct: 'wallet:author:' + userId, createdAt: { $gte: since(60), $lt: since(30) } } },
+      { $match: { creditAcct: { $in: ids.map(id => 'wallet:author:' + id) }, createdAt: { $gte: since(60), $lt: since(30) } } },
       { $group: { _id: null, t: { $sum: '$amount' } } },
     ]),
     // ChapterReviewRequest has no authorId column — a review belongs to the
@@ -102,7 +125,7 @@ async function dashboard({ userId }) {
 // this: every Book field plus lastChapter (highest chapter n) and the category
 // label, so the frontend never has to join books -> chapters -> categories.
 async function books({ userId }) {
-  const rows = await Book.find({ authorId: userId }).sort({ updatedAt: -1 }).lean();
+  const rows = await Book.find(await authorScope(userId)).sort({ updatedAt: -1 }).lean();
   if (!rows.length) return [];
   const bookIds = rows.map(b => String(b.id));
   const [lastOf, cats] = await Promise.all([
@@ -125,7 +148,7 @@ async function books({ userId }) {
 
 /* single own book + own chapter list/save (book-workspace, edit-chapter) */
 async function getBook({ userId, bookId }) {
-  const book = await Book.findOne({ id: bookId, authorId: userId }).lean();
+  const book = await Book.findOne(Object.assign({ id: bookId }, await authorScope(userId))).lean();
   if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
   return book;
 }
@@ -193,7 +216,7 @@ async function requestBookChange({ userId, bookId, changes, details, order }) {
 }
 
 async function overview({ userId, bookId }) {
-  const book = await Book.findOne({ id: bookId, authorId: userId }).lean();
+  const book = await Book.findOne(Object.assign({ id: bookId }, await authorScope(userId))).lean();
   if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
   const chapters = await Chapter.countDocuments({ bookId: book.id });
   return {
@@ -204,7 +227,7 @@ async function overview({ userId, bookId }) {
 }
 
 async function ownBook({ userId, bookId }) {
-  const book = await Book.findOne({ id: bookId, authorId: userId });
+  const book = await Book.findOne(Object.assign({ id: bookId }, await authorScope(userId)));
   if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
   return book;
 }
@@ -252,13 +275,15 @@ async function savePlot({ book, data }) {
 // Book rows carry the contract state — the author page lists every book,
 // not just the ones that already applied.
 async function listContracts({ userId }) {
+  const ids = await authorIds(userId);
+  const scope = { authorId: { $in: ids } };
   const [books, apps, verification, contracts] = await Promise.all([
-    Book.find({ authorId: userId }).sort({ updatedAt: -1 })
+    Book.find(scope).sort({ updatedAt: -1 })
       .select('id title genre cover chapterCount contractStatus').lean(),
-    ContractApplication.find({ authorId: userId })
+    ContractApplication.find(scope)
       .sort({ createdAt: -1 }).select('bookId submittedAt verificationId').lean(),
-    AuthorVerification.findOne({ userId }).select('status kyc.type').lean(),
-    Contract.find({ authorId: userId, status: { $in: ['sent', 'approved', 'signed', 'active'] } })
+    AuthorVerification.findOne({ userId: { $in: ids } }).select('status kyc.type').lean(),
+    Contract.find(Object.assign({ status: { $in: ['sent', 'approved', 'signed', 'active'] } }, scope))
       .sort({ createdAt: -1 }).select('id bookId type status sentAt termMonths revenueSplit').lean(),
   ]);
   const latest = new Map();
@@ -291,17 +316,18 @@ async function listContracts({ userId }) {
 // is approved. Books stay live without a contract, so this is the only step
 // that turns an offer into a binding deal.
 async function signContract({ userId, contractId }) {
-  const contract = await Contract.findOne({ id: contractId, authorId: userId });
+  const ids = await authorIds(userId);
+  const contract = await Contract.findOne({ id: contractId, authorId: { $in: ids } });
   if (!contract) { const e = new Error('not_found'); e.status = 404; throw e; }
 
-  const verification = await AuthorVerification.findOne({ userId }).select('status').lean();
+  const verification = await AuthorVerification.findOne({ userId: { $in: ids } }).select('status').lean();
   if (!verification || verification.status !== 'approved') {
     const e = new Error('identity_not_verified'); e.status = 409; throw e;
   }
 
   const now = new Date();
   const signed = await Contract.findOneAndUpdate(
-    { id: contractId, authorId: userId, status: 'sent' },
+    { id: contractId, authorId: { $in: ids }, status: 'sent' },
     {
       $set: { status: 'approved', signedAt: now },
       $push: { signatures: { by: userId, role: 'author', at: now, hash: '' } },
@@ -312,10 +338,10 @@ async function signContract({ userId, contractId }) {
   if (!signed) { const e = new Error('contract_not_open'); e.status = 409; throw e; }
 
   await ContractApplication.updateOne(
-    { authorId: userId, contractId, status: 'review' },
+    { authorId: { $in: ids }, contractId, status: 'review' },
     { $set: { status: 'contracted', decidedAt: now } }
   );
-  await Book.updateOne({ id: signed.bookId, authorId: userId }, { contractStatus: 'contracted' });
+  await Book.updateOne(Object.assign({ id: signed.bookId }, await authorScope(userId)), { contractStatus: 'contracted' });
 
   try {
     if (signed.editorId) {
@@ -333,8 +359,9 @@ async function signContract({ userId, contractId }) {
 
 async function declineContract({ userId, contractId, reason }) {
   const now = new Date();
+  const ids = await authorIds(userId);
   const declined = await Contract.findOneAndUpdate(
-    { id: contractId, authorId: userId, status: 'sent' },
+    { id: contractId, authorId: { $in: ids }, status: 'sent' },
     {
       $set: { status: 'rejected' },
       $push: { replies: { from: 'author', message: (reason || 'Offer declined by the author.').trim(), at: now } },
@@ -344,10 +371,10 @@ async function declineContract({ userId, contractId, reason }) {
   if (!declined) { const e = new Error('contract_not_open'); e.status = 409; throw e; }
 
   await ContractApplication.updateOne(
-    { authorId: userId, contractId, status: 'review' },
+    { authorId: { $in: ids }, contractId, status: 'review' },
     { $set: { status: 'rejected', reviewNote: (reason || '').trim(), decidedAt: now } }
   );
-  await Book.updateOne({ id: declined.bookId, authorId: userId }, { contractStatus: 'none' });
+  await Book.updateOne(Object.assign({ id: declined.bookId }, await authorScope(userId)), { contractStatus: 'none' });
 
   try {
     if (declined.editorId) {
@@ -404,14 +431,14 @@ async function saveIdentity({ userId, kyc, idFiles }) {
     idPhotos: { front: frontUrl, back: backUrl },
   };
 
-  const u = await User.findOne({ id: userId }).select('fullName email avatar').lean();
+  const u = await User.findOne(require('./user-ref').userRefFilter([userId])).select('fullName email avatar').lean();
   const profile = {
     name: (u && u.fullName) || '',
     email: (u && u.email) || '',
     avatar: (u && u.avatar) || '',
   };
   return AuthorVerification.findOneAndUpdate(
-    { userId },
+    { userId: { $in: await authorIds(userId) } },
     {
       $set: {
         ...profile,
@@ -429,7 +456,7 @@ async function saveIdentity({ userId, kyc, idFiles }) {
 }
 
 async function getVerification({ userId }) {
-  const v = await AuthorVerification.findOne({ userId }).lean();
+  const v = await AuthorVerification.findOne({ userId: { $in: await authorIds(userId) } }).lean();
   if (!v) return { status: 'none', kycType: null, submittedAt: null, hasPhotos: false };
   const photos = v.kyc && v.kyc.idPhotos;
   return {
@@ -442,7 +469,7 @@ async function getVerification({ userId }) {
 
 // Profile badge path: a writer can verify before ever applying for a contract.
 async function submitVerification({ userId, kyc, idFiles }) {
-  const existing = await AuthorVerification.findOne({ userId });
+  const existing = await AuthorVerification.findOne({ userId: { $in: await authorIds(userId) } });
   if (existing && existing.status === 'approved') {
     return { status: 'approved', kycType: existing.kyc ? existing.kyc.type : null };
   }
@@ -455,7 +482,8 @@ async function submitVerification({ userId, kyc, idFiles }) {
 async function applyContract({ userId, bookId, kyc, idFiles }) {
   const book = await ownBook({ userId, bookId });
 
-  let verification = await AuthorVerification.findOne({ userId });
+  const ids = await authorIds(userId);
+  let verification = await AuthorVerification.findOne({ userId: { $in: ids } });
   if (!verification || verification.status !== 'approved') {
     if (!kyc) { const e = new Error('kyc_required'); e.status = 400; throw e; }
     verification = await saveIdentity({ userId, kyc, idFiles });
@@ -463,7 +491,7 @@ async function applyContract({ userId, bookId, kyc, idFiles }) {
 
   // Resubmitting replaces the open application instead of stacking duplicates.
   const open = await ContractApplication.findOne({
-    bookId: book.id, authorId: userId, status: { $in: ['applied', 'review'] },
+    bookId: book.id, authorId: { $in: ids }, status: { $in: ['applied', 'review'] },
   });
   let c;
   if (open) {
@@ -477,7 +505,7 @@ async function applyContract({ userId, bookId, kyc, idFiles }) {
       bookId: book.id, authorId: userId, verificationId: verification.id, status: 'applied',
     });
   }
-  await Book.updateOne({ id: book.id, authorId: userId }, { contractStatus: 'applied' });
+  await Book.updateOne(Object.assign({ id: book.id }, await authorScope(userId)), { contractStatus: 'applied' });
   return Object.assign(c.toJSON(), { verificationStatus: verification.status });
 }
 
@@ -500,23 +528,23 @@ async function submitChapterReview({ userId, bookId, data }) {
 async function listChapterEdits({ userId, bookId }) {
   await ownBook({ userId, bookId });
   const { ChapterEdit } = require('../models/application.model');
-  return ChapterEdit.find({ bookId, authorId: userId }).sort({ createdAt: -1 }).lean();
+  return ChapterEdit.find({ bookId, authorId: { $in: await authorIds(userId) } }).sort({ createdAt: -1 }).lean();
 }
 
 async function listBookEdits({ userId, bookId }) {
   await ownBook({ userId, bookId });
   const { BookEdit } = require('../models/application.model');
-  return BookEdit.find({ bookId, authorId: userId }).sort({ createdAt: -1 }).lean();
+  return BookEdit.find({ bookId, authorId: { $in: await authorIds(userId) } }).sort({ createdAt: -1 }).lean();
 }
 
 async function launchKit({ userId }) {
-  const list = await LaunchCampaign.find({ writerId: userId }).sort({ createdAt: -1 }).lean();
+  const list = await LaunchCampaign.find({ writerId: { $in: await authorIds(userId) } }).sort({ createdAt: -1 }).lean();
   return list;
 }
 
 async function saveLaunchKit({ userId, data, id }) {
   if (id) {
-    const c = await LaunchCampaign.findOne({ id, writerId: userId });
+    const c = await LaunchCampaign.findOne({ id, writerId: { $in: await authorIds(userId) } });
     if (!c) { const e = new Error('not_found'); e.status = 404; throw e; }
     Object.assign(c, data);
     await c.save();

@@ -101,10 +101,22 @@ async function transactions(req, res) {
   });
 }
 
+// The list never carries a full account number — only the last four digits.
+// The edit form reads GET /payment-methods/:id, which is owner-scoped and does
+// return the stored value.
+function maskAccount(n) {
+  const s = String(n || '');
+  return s ? '•••• ' + s.slice(-4) : '';
+}
+
 async function methods(req, res) {
   return base.wrap(res, async () => {
     const authorId = mine(req);
-    return PaymentMethod.find({ authorId }).lean();
+    const rows = await PaymentMethod.find({ authorId }).select('+accountNumber').lean();
+    return rows.map(m => Object.assign({}, m, {
+      accountNumber: maskAccount(m.accountNumber),
+      accountNumberMasked: maskAccount(m.accountNumber),
+    }));
   });
 }
 

@@ -262,21 +262,18 @@ button{font-family:inherit;cursor:pointer}
     <div class="modal-body">
       <div class="contract-book" id="contractBook"></div>
       <div class="contract-terms">
-        <h4>Terms & Conditions</h4>
-        <p>1. The Author grants Droboard Publishing exclusive rights to distribute, promote, and sell the Work across all digital platforms for a period of 24 months from the date of signing.</p>
-        <p>2. Royalty split: 70% to the Author, 30% to Droboard Publishing, calculated on net revenue after platform fees.</p>
-        <p>3. The Author retains moral rights and may request takedown with 30 days written notice after the exclusivity period.</p>
-        <p>4. Droboard agrees to provide marketing support, editorial review, and placement in featured collections.</p>
-        <p>5. Either party may terminate with 60 days written notice. Upon termination, existing sales obligations remain in effect.</p>
-        <p>6. The Author warrants the Work is original and does not infringe any third-party rights.</p>
+        <h4>How contracting works</h4>
+        <p>Applying puts your book forward for a publishing contract. The editorial team reviews the book, then sends you the actual contract (term length, royalty split and other terms) as an offer.</p>
+        <p>Nothing is binding until you review that offer and sign it. You can keep writing and publishing while an application is under review.</p>
+        <p id="contractIdentityNote" style="font-size:12px;color:var(--tx-muted)"></p>
       </div>
       <div class="contract-sign-row">
-        <p style="font-size:12px;color:var(--tx-muted);line-height:1.6">By clicking Accept you agree to the contract terms.</p>
+        <p style="font-size:12px;color:var(--tx-muted);line-height:1.6">Continue to submit your application for this book.</p>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="modal-btn reject" id="rejectBtn" onclick="handleReject()"><i class="fas fa-xmark"></i> Reject</button>
-      <button class="modal-btn accept" id="acceptBtn" onclick="handleAccept()"><i class="fas fa-check"></i> Accept</button>
+      <button class="modal-btn reject" id="rejectBtn" onclick="handleReject()"><i class="fas fa-xmark"></i> Cancel</button>
+      <button class="modal-btn accept" id="acceptBtn" onclick="handleAccept()"><i class="fas fa-arrow-right"></i> Continue</button>
     </div>
   </div>
 </div>
@@ -295,7 +292,7 @@ button{font-family:inherit;cursor:pointer}
 <script src="services/drawer-service.js?v=2"></script>
 <script src="../services/notification-store.js?v=8"></script>
 <script src="../component/kyc-form.js?v=1"></script>
-<script src="services/apply-contract-service.js?v=7"></script>
+<script src="services/apply-contract-service.js?v=8"></script>
 <script>ApplyContractService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
   <script src="../component/auth-wall.js?v=1"></script>
