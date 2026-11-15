@@ -33,7 +33,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .stat-delta i{font-size:9px}
 .stat-num{font-size:28px;font-weight:800;line-height:1;margin-bottom:2px}
 .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
-.inbox-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:grid;grid-template-columns:320px 1fr;height:620px}
+.inbox-card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(20,10,50,.04),0 8px 24px -12px rgba(20,10,50,.08);overflow:hidden;display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 100px);margin:20px}
 .inbox-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
 .inbox-list-head{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
 .inbox-search{display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:10px;padding:9px 12px}
@@ -154,21 +154,6 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 </head>
 <body>
 <div id="dashRoot">
-  <div class="page-hdr-row">
-    <div class="top-tabs">
-      <div class="top-tab active" data-view="all">All Messages <span class="tab-count" id="countAll">0</span></div>
-      <div class="top-tab" data-view="unread">Unread <span class="tab-count" id="countUnread">0</span></div>
-      <div class="top-tab" data-view="flagged">Flagged <span class="tab-count" id="countFlagged">0</span></div>
-    </div>
-    <button class="btn-add" id="markAllBtn"><i class="fas fa-check-double"></i> Mark All as Read</button>
-  </div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-comments"></i></div><div class="stat-content"><div class="stat-delta"><i class="fas fa-arrow-trend-up"></i> +18 this week</div><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Total Conversations</div></div></div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-envelope"></i></div><div class="stat-content"><div class="stat-delta"><i class="fas fa-arrow-trend-up"></i> +5 today</div><div class="stat-num" id="statUnread">0</div><div class="stat-lbl">Unread Messages</div></div></div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-clock"></i></div><div class="stat-content"><div class="stat-delta">-12% faster</div><div class="stat-num">4.2h</div><div class="stat-lbl">Avg Response Time</div></div></div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><div class="stat-content"><div class="stat-delta" style="color:var(--red)"><i class="fas fa-equals"></i> Same</div><div class="stat-num" id="statFlagged">0</div><div class="stat-lbl">Flagged Conversations</div></div></div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-users"></i></div><div class="stat-content"><div class="stat-delta"><i class="fas fa-arrow-trend-up"></i> +9 this week</div><div class="stat-num" id="statActive">189</div><div class="stat-lbl">Active Authors</div></div></div></div>
-  </div>
   <div class="inbox-card" id="inboxCard">
     <div class="inbox-list">
       <div class="inbox-list-head"><div class="inbox-search"><i class="fas fa-magnifying-glass"></i><input id="convSearch" placeholder="Search conversations..."/></div></div>
