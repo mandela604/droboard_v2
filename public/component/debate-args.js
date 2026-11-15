@@ -170,15 +170,6 @@
     [data-theme="dark"] .da-edit-ta{background:#0e0f13;border-color:rgba(255,255,255,.08);color:#e0e0e0}
     [data-theme="dark"] .da-edit-cancel{border-color:rgba(255,255,255,.12);color:#999}
     [data-theme="dark"] .da-composer{background:#08090c;border-color:rgba(255,255,255,.08)}
-
-    /* Status display (like comment-section.js) */
-    .da-statuses{display:flex;flex-direction:column;gap:8px;margin-top:8px;margin-bottom:8px}
-    .da-status{position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background-size:cover;background-position:center;border:1px solid var(--bd,rgba(0,0,0,.1))}
-    .da-status-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.6) 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:12px;color:#fff;font-family:inherit}
-    .da-status-quote{margin:0;font-size:13px;font-weight:600;line-height:1.4;margin-bottom:4px}
-    .da-status-caption{margin:0;font-size:11px;color:rgba(255,255,255,.8);margin-bottom:2px}
-    .da-status-time{margin:0;font-size:10px;color:rgba(255,255,255,.6)}
-    [data-theme="dark"] .da-status{border-color:rgba(255,255,255,.08)}
   `;
 
   function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -355,21 +346,6 @@
       var totalR = countReplies(a);
       
       // Build statuses HTML if available
-      var statusesHTML = '';
-      if (a.statuses && a.statuses.length > 0) {
-        statusesHTML = '<div class="da-statuses">';
-        a.statuses.forEach(function (s) {
-          statusesHTML += '<div class="da-status" data-status-bg="' + esc(s.bg) + '" style="background-image:url(' + esc(s.bg) + ')">' +
-            '<div class="da-status-overlay">' +
-              '<p class="da-status-quote">' + esc(s.quote) + '</p>' +
-              '<p class="da-status-caption">' + esc(s.caption) + '</p>' +
-              '<p class="da-status-time">' + esc(s.time) + '</p>' +
-            '</div>' +
-          '</div>';
-        });
-        statusesHTML += '</div>';
-      }
-      
       var h = '<div class="da-item' + (isReply ? ' is-reply' : '') + '" data-arg-id="' + esc(a.id) + '">' +
         '<div class="da-inner">' +
           avHTML(a) +
@@ -380,7 +356,6 @@
               '<span class="da-time">' + esc(a.time) + (a.edited ? ' \u00B7 edited' : '') + '</span>' +
               '<button class="da-dots" data-dots="' + esc(a.id) + '" aria-label="More options"><i class="fas fa-ellipsis-vertical"></i></button>' +
             '</div>' +
-            statusesHTML +
             (a.id === _editingId
               ? editFormHTML(a)
               : '<div class="da-text">' + mentions(a.text) + '</div>') +
