@@ -196,45 +196,42 @@ async function activity(query) {
 }
 
 // ── Invite-authors page ────────────────────────────────────────────────────
-// The editor's own authors (EditorAssignment.authorIds), annotated with the
-// code they can share + how they got here: 'invite' (signed up with this
-// editor's code/link) vs 'assigned' (chief placed them here).
+// Show ONLY authors THIS editor directly invited (signed up with their code).
+// NOT all assigned authors (which includes those the Chief placed here).
 async function myAuthors(user, query) {
-  const ids = await scopeAuthorIds(user); // null ⇒ chief/admin ⇒ platform-wide
+  const me = await User.findOne({ id: String(user.id) }).select('_id editorInviteCode').lean();
+  if (!me) return { items: [], total: 0, page: 1, limit: 50, code: '' };
   
-  // Get this editor's _id for referral matching
-  const me = ids === null ? null : await User.findOne({ id: String(user.id) }).select('_id').lean();
-  const myOid = me ? String(me._id) : null;
+  const myOid = String(me._id);
+  const code = me.editorInviteCode || '';
   
-  console.log('[myAuthors] user.id:', user.id, '| myOid:', myOid);
+  console.log('[myAuthors] user.id:', user.id, '| myOid:', myOid, '| code:', code);
   
-  // Filter: only writers referred by this editor
+  // ONLY filter to authors who:
+  // 1. Are writers
+  // 2. Have referredByUserId = this editor's _id (signed up with their invite code)
+  // This excludes authors the Chief assigned (they don't have referredByUserId set to us)
   const filter = { roles: 'writer', referredByUserId: myOid };
-  if (ids !== null && !myOid) filter.id = { $in: ids }; // Fallback if no _id found
   if (query && query.q) Object.assign(filter, searchFilter(query.q, ['fullName', 'username', 'email']));
 
   console.log('[myAuthors] filter:', JSON.stringify(filter));
 
   const { page, limit } = pg(query);
-  const [docs, total, meCode] = await Promise.all([
+  const [docs, total] = await Promise.all([
     User.find(filter).select('id fullName username email avatar status createdAt referredByUserId roles').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     User.countDocuments(filter),
-    // Get this editor's invite code
-    ids === null ? null : User.findOne({ id: String(user.id) }).select('editorInviteCode').lean(),
   ]);
 
-  console.log('[myAuthors] found', docs.length, 'authors matching filter, total:', total);
+  console.log('[myAuthors] found', docs.length, 'invited authors (referredByUserId match), total:', total);
   docs.forEach((d, i) => {
     console.log(`  [${i}] ${d.username} - referredByUserId: ${d.referredByUserId}`);
   });
-
-  const code = (meCode && meCode.editorInviteCode) || '';
   
   const items = docs.map(u => ({
     id: u.id, name: u.fullName || u.username || '', username: u.username || '',
     email: u.email || '', avatar: u.avatar || '',
     code: code,
-    via: 'invite', // All returned authors are invited (by definition of the filter)
+    via: 'invite', // All returned authors are directly invited (by definition of the filter)
     signedUp: u.createdAt || null,
     status: u.status || 'active',
   }));
