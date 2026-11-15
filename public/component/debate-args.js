@@ -813,20 +813,72 @@
         btn.addEventListener('click', function () {
           var a = findArg(btn.getAttribute('data-vote-up'));
           if (!a) return;
-          if (a.myVote === 1) { a.up--; a.myVote = null; }
-          else { if (a.myVote === -1) a.down--; a.up++; a.myVote = 1; }
+          
+          // Calculate what vote value to send
+          var vote = null;
+          if (a.myVote === 1) { 
+            a.up--; a.myVote = null; vote = null;
+          } else { 
+            if (a.myVote === -1) a.down--; 
+            a.up++; a.myVote = 1; 
+            vote = 1;
+          }
+          
           if (O.onVote) O.onVote(a, a.myVote);
           refreshVoteBtns(a);
+          persistTree(O.debateId, _args);
+          
+          // Send vote to backend
+          fetch('/api/debate/args/' + encodeURIComponent(a.id) + '/vote', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vote: vote })
+          })
+          .catch(function(e) {
+            console.error('Vote save failed:', e);
+            // Revert the UI change on failure
+            if (vote === null) { a.up++; a.myVote = 1; }
+            else { if (vote === 1) { a.up--; a.myVote = null; } }
+            refreshVoteBtns(a);
+            toast('✗ Vote failed');
+          });
         });
       });
       rootEl.querySelectorAll('[data-vote-down]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var a = findArg(btn.getAttribute('data-vote-down'));
           if (!a) return;
-          if (a.myVote === -1) { a.down--; a.myVote = null; }
-          else { if (a.myVote === 1) a.up--; a.down++; a.myVote = -1; }
+          
+          // Calculate what vote value to send
+          var vote = null;
+          if (a.myVote === -1) { 
+            a.down--; a.myVote = null; vote = null;
+          } else { 
+            if (a.myVote === 1) a.up--; 
+            a.down++; a.myVote = -1; 
+            vote = -1;
+          }
+          
           if (O.onVote) O.onVote(a, a.myVote);
           refreshVoteBtns(a);
+          persistTree(O.debateId, _args);
+          
+          // Send vote to backend
+          fetch('/api/debate/args/' + encodeURIComponent(a.id) + '/vote', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vote: vote })
+          })
+          .catch(function(e) {
+            console.error('Vote save failed:', e);
+            // Revert the UI change on failure
+            if (vote === null) { a.down++; a.myVote = -1; }
+            else { if (vote === -1) { a.down--; a.myVote = null; } }
+            refreshVoteBtns(a);
+            toast('✗ Vote failed');
+          });
         });
       });
       // avatar → status viewer
@@ -914,14 +966,57 @@
       if (!text) return;
       if (O.readOnly) { toast('This debate has closed — no new arguments.'); return; }
       if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
+      var parent = findArg(parentId);
       if (!parent) return;
-      var full = text.charAt(0) === '@' ? text : '@' + parent.name + ' ' + text;
-      var reply = makeReply(full, parent.side);
+      
+      var tempId = 'r' + Date.now();
+      var reply = {
+        id: tempId,
+        name: O.currentUser.name || 'You',
+        avatar: O.currentUser.avatar,
+        verified: O.currentUser.verified,
+        side: parent.side,
+        statusRing: 'none',
+        time: 'Just now',
+        text: text,
+        up: 0, down: 0, myVote: null,
+        replies: [],
+      };
       parent.replies = parent.replies || [];
       parent.replies.push(reply);
-      if (O.onReply) O.onReply(parentId, reply);
       render();
-      toast('Reply posted!');
+      scrollToArg(tempId);
+      
+      // Send to backend
+      fetch('/api/posts/' + encodeURIComponent(O.debateId) + '/debate/args', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, parentId: parentId })
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(card) {
+        // Replace temp ID with server-issued ID
+        var idx = parent.replies.findIndex(function(r) { return r.id === tempId; });
+        if (idx >= 0) {
+          parent.replies[idx] = card;
+          persistTree(O.debateId, _args);
+          render();
+          if (O.onReply) O.onReply(parentId, card);
+          toast('✓ Reply saved');
+        }
+      })
+      .catch(function(e) {
+        console.error('Failed to post reply:', e);
+        // Remove the temp reply on failure
+        var idx = parent.replies.findIndex(function(r) { return r.id === tempId; });
+        if (idx >= 0) parent.replies.splice(idx, 1);
+        render();
+        toast('✗ Failed to reply. Try again.');
+      });
     }
 
     function scrollToArg(id) {
@@ -935,8 +1030,11 @@
       if (!text) return;
       if (O.readOnly) { toast('This debate has closed — no new arguments.'); return; }
       if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
+      
+      // Show optimistic UI with temp ID while backend processes
+      var tempId = 'a' + Date.now();
       var arg = {
-        id: 'a' + Date.now(),
+        id: tempId,
         name: O.currentUser.name || 'You',
         avatar: O.currentUser.avatar,
         verified: O.currentUser.verified,
@@ -948,11 +1046,40 @@
         replies: [],
       };
       _args.push(arg);
-      if (O.onPost) O.onPost(arg);
       if (ci) ci.value = '';
       render();
-      scrollToArg(arg.id);
-      toast('Argument posted!');
+      scrollToArg(tempId);
+      
+      // Send to backend
+      fetch('/api/posts/' + encodeURIComponent(O.debateId) + '/debate/args', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, side: O.userSide })
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(card) {
+        // Replace temp ID with server-issued ID
+        var idx = _args.findIndex(function(a) { return a.id === tempId; });
+        if (idx >= 0) {
+          _args[idx] = card;
+          persistTree(O.debateId, _args);
+          render();
+          if (O.onPost) O.onPost(card);
+          toast('✓ Saved');
+        }
+      })
+      .catch(function(e) {
+        console.error('Failed to post argument:', e);
+        // Remove the temp argument on failure
+        var idx = _args.findIndex(function(a) { return a.id === tempId; });
+        if (idx >= 0) _args.splice(idx, 1);
+        render();
+        toast('✗ Failed to post. Try again.');
+      });
     }
 
     function toast(m) {
