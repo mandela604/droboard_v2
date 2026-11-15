@@ -131,12 +131,12 @@ function isActive(c) { return String(c.id) === String(activeConvId); }
 function renderStats(){
   var total=CONVERSATIONS.length,unread=0,flagged=0;
   CONVERSATIONS.forEach(function(c){unread+=c.unread;if(c.flagged)flagged++});
-  document.getElementById('countAll').textContent=total;
-  document.getElementById('countUnread').textContent=unread;
-  document.getElementById('countFlagged').textContent=flagged;
-  document.getElementById('statTotal').textContent=total;
-  document.getElementById('statUnread').textContent=unread;
-  document.getElementById('statFlagged').textContent=flagged;
+  var el; if((el=document.getElementById('countAll'))) el.textContent=total;
+  if((el=document.getElementById('countUnread'))) el.textContent=unread;
+  if((el=document.getElementById('countFlagged'))) el.textContent=flagged;
+  if((el=document.getElementById('statTotal'))) el.textContent=total;
+  if((el=document.getElementById('statUnread'))) el.textContent=unread;
+  if((el=document.getElementById('statFlagged'))) el.textContent=flagged;
 }
 
 function renderConvList(){
@@ -382,12 +382,15 @@ function bindEvents(){
   document.getElementById('ctxEdit').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)startEdit(mid,cid);});
   document.getElementById('ctxDelete').addEventListener('click',function(e){e.stopPropagation();var mid=ctxMsgId,cid=ctxConvId;closeCtx();if(mid!==null)doDelete(mid,cid);});
   document.querySelectorAll('.top-tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.top-tab').forEach(function(t){t.classList.remove('active')});tab.classList.add('active');currentView=tab.dataset.view;renderConvList();});});
-  document.getElementById('markAllBtn').addEventListener('click',function(){
-    callBackend('/author-messages/read-all',{method:'POST'}).then(function(){
-      CONVERSATIONS.forEach(function(c){c.unread=0});
-      renderStats();renderConvList();toast('All messages marked as read');
-    }).catch(function(){ toast('Could not mark as read'); });
-  });
+  var markAllBtn = document.getElementById('markAllBtn');
+  if(markAllBtn){
+    markAllBtn.addEventListener('click',function(){
+      callBackend('/author-messages/read-all',{method:'POST'}).then(function(){
+        CONVERSATIONS.forEach(function(c){c.unread=0});
+        renderStats();renderConvList();toast('All messages marked as read');
+      }).catch(function(){ toast('Could not mark as read'); });
+    });
+  }
   document.getElementById('convSearch').addEventListener('input',function(){renderConvList();});
 }
 
