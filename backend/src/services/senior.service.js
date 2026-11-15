@@ -207,7 +207,7 @@ async function myAuthors(user, query) {
 
   const { page, limit } = pg(query);
   const [docs, total, me] = await Promise.all([
-    User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    User.find(filter).select('id fullName username email avatar status createdAt referredByUserId roles').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     User.countDocuments(filter),
     // Own code + _id (referredByUserId stores the inviter's _id, not custom id)
     ids === null ? null : User.findOne({ id: String(user.id) }).select('editorInviteCode _id').lean(),
