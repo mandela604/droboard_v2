@@ -732,12 +732,41 @@
       var text = (v.text || '').trim();
       if (!text) { toast('Argument can\u2019t be empty'); return; }
       var sideChanged = v.side && v.side !== a.side;
+      
+      // Update UI optimistically
+      var oldText = a.text;
+      var oldSide = a.side;
       a.text = text;
       if (v.side) a.side = v.side;
       a.edited = true;
       _editingId = null;
       rerender();
-      toast('Argument updated!' + (sideChanged ? ' Moved to ' + (a.side === 'for' ? O.sides.for : O.sides.against) : ''));
+      
+      // Send to backend
+      fetch('/api/debate/args/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, side: v.side || undefined })
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(card) {
+        // Update with server response
+        Object.assign(a, card);
+        rerender();
+        toast('✓ Argument updated!' + (sideChanged ? ' Moved to ' + (a.side === 'for' ? O.sides.for : O.sides.against) : ''));
+      })
+      .catch(function(e) {
+        console.error('Failed to edit argument:', e);
+        // Revert optimistic update
+        a.text = oldText;
+        a.side = oldSide;
+        rerender();
+        toast('✗ Failed to update. Try again.');
+      });
     }
     function cancelEdit() {
       _editingId = null;
@@ -751,11 +780,33 @@
         }
         return false;
       }
+      
+      // Remove optimistically
       if (!rm(_args)) return;
       if (_editingId === id) _editingId = null;
       render();
       if (document.getElementById('daThreadOv')) closeThread();
-      toast('Deleted your argument');
+      
+      // Send to backend
+      fetch('/api/debate/args/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(result) {
+        persistTree(O.debateId, _args);
+        toast('✓ Deleted');
+      })
+      .catch(function(e) {
+        console.error('Failed to delete argument:', e);
+        // Reload arguments to restore state
+        location.reload();
+        toast('✗ Failed to delete. Page refreshed.');
+      });
     }
     function wireEditEvents(scope) {
       if (!scope) return;
