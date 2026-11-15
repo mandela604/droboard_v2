@@ -284,18 +284,37 @@
     })();
 
     document.getElementById('opAvWrap')?.addEventListener('click', async () => {
-      const p = opPerson();
-      // Always try to open status viewer if available
+      const name = POST && POST.name;
+      if (!name) return;
+      
+      // Re-query status-service when clicked (may have loaded since page render)
+      let statuses = [];
+      if (window.DroboardStatus && typeof DroboardStatus.writerStatuses === 'function') {
+        statuses = DroboardStatus.writerStatuses(name) || [];
+        // If statuses aren't loaded yet, wait a moment and try again
+        if (!statuses.length) {
+          await new Promise(resolve => setTimeout(resolve, 250));
+          statuses = DroboardStatus.writerStatuses(name) || [];
+        }
+      }
+      
+      // If no statuses, just navigate to profile
+      if (!statuses.length) {
+        location.href = profileHref(name, POST.handle);
+        return;
+      }
+      
+      // Open status viewer with the statuses
       if (window.DroboardStatusRing && typeof DroboardStatusRing.open === 'function') {
-        // Statuses might be loading asynchronously — DroboardStatusRing will handle
-        // the case where statuses are empty or loading
         const ok = await DroboardStatusRing.open([{
-          id: p.name, name: p.name, avatar: p.avatar, statuses: p.statuses || [],
-        }], p.name);
+          id: name, name: name, avatar: POST.avatar, ring: 'has',
+          statuses: statuses, likes: 0, threads: 0,
+        }], name);
         if (ok) return;
       }
-      // Fallback: navigate to profile if status viewer failed or unavailable
-      location.href = profileHref(p.name, POST.handle);
+      
+      // Fallback to profile
+      location.href = profileHref(name, POST.handle);
     });
     document.getElementById('opName')?.addEventListener('click', () => { location.href = profileHref(POST.name, POST.handle); });
     document.getElementById('storyRef')?.addEventListener('click', () => toast('📖 Opening story…'));
