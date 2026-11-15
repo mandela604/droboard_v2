@@ -24,27 +24,21 @@ function renderChart(){const max=Math.max(...AUTHOR_DATA,...PLATFORM_DATA,...AD_
    Super Admin set for staff reporting. */
 function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 
-const TOP_EARNERS=[
-  {name:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',book:'The Ruthless CEO',earn:'$24,110',pct:'+22%'},
-  {name:'Isabella Rossi',avatar:'https://i.pravatar.cc/100?img=38',book:'His Hidden Luna',earn:'$21,050',pct:'+18%'},
-  {name:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',book:'Bound by the Alpha',earn:'$18,420',pct:'+15%'},
-  {name:'Layla Haddad',avatar:'https://i.pravatar.cc/100?img=48',book:'Broken Vows',earn:'$15,780',pct:'+12%'},
-];
-function renderTopEarners(){document.getElementById('topEarners').innerHTML=TOP_EARNERS.map(e=>`<div class="pp-row"><img class="pp-av" src="${e.avatar}"/><div class="pp-info"><div class="pp-name">${e.name}</div><div class="pp-book">${e.book}</div></div><div class="pp-earn"><b>${money(e.earn)}</b><span>${e.pct}</span></div></div>`).join('')}
+/* Top earners will be loaded from API. Empty by default. */
+const TOP_EARNERS=[];
+function renderTopEarners(){document.getElementById('topEarners').innerHTML=TOP_EARNERS.length ? TOP_EARNERS.map(e=>`<div class="pp-row"><img class="pp-av" src="${e.avatar}"/><div class="pp-info"><div class="pp-name">${e.name}</div><div class="pp-book">${e.book}</div></div><div class="pp-earn"><b>${money(e.earn)}</b><span>${e.pct}</span></div></div>`).join('') : '<div style="text-align:center;color:var(--text-faint);padding:20px">Loading earnings data...</div>'}
 
-/* KPI cards. These used to be typed straight into the markup as '$284.5K', so
-   they could never follow the admin currency — same numbers, one render path. */
-const OVERVIEW_STATS=[
-  {v:284500,l:'Total Platform Earnings',c:'var(--green)',d:'18%',up:true},
-  {v:148200,l:'Author Payouts',c:'var(--accent)',d:'22%',up:true},
-  {v:92400,l:'Platform Commission',c:'var(--blue)',d:'15%',up:true},
-  {v:43900,l:'Ad Revenue',c:'var(--amber)',d:'3%',up:false},
-];
+/* Overview stats will be loaded from API. Empty by default. */
+const OVERVIEW_STATS=[];
 function renderStatCards(){const el=document.getElementById('overviewStats');if(!el)return;
-  el.innerHTML=OVERVIEW_STATS.map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">${money(s.v)}</div><div class="lbl">${s.l}</div><div class="delta ${s.up?'up':'down'}"><i class="fas fa-arrow-${s.up?'up':'down'}" style="font-size:8px"></i> ${s.up?'+':'-'}${s.d} from last month</div></div>`).join('')}
+  el.innerHTML=OVERVIEW_STATS.length ? OVERVIEW_STATS.map(s=>`<div class="stat-card"><div class="num" style="color:${s.c}">—</div><div class="lbl">${s.l}</div><div class="delta ${s.up?'up':'down'}"><i class="fas fa-arrow-${s.up?'up':'down'}" style="font-size:8px"></i> Loading...</div></div>`).join('') : '<div style="text-align:center;color:var(--text-faint);padding:20px">Loading earnings overview...</div>'}
 
 function init(){
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});  callBackend('/earnings-overview');
+  (async function() {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:user||{name:'Editor',role:'Senior Editor',avatar:null},notifCount:0,hideSearch:true});
+  })();
+  callBackend('/earnings-overview');
   renderChart();renderTopEarners();renderStatCards();
 }
 

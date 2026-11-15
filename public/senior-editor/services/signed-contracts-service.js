@@ -20,7 +20,10 @@ async function callBackend(path, options) {
 
 function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
-  SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'signed-contracts', title: 'Contract Details', user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' }, notifCount: 8, hideSearch: true, });
+  (async () => {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'signed-contracts', title: 'Contract Details', user: user || { name: 'Editor', role: 'Senior Editor', avatar: null }, notifCount: 0, hideSearch: true, });
+  })();
 }
 
 function init(){

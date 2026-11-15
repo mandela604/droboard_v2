@@ -92,7 +92,7 @@ function bindEvents(){
 }
 
 function init(){
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'payments',title:'Payments',subtitle:'Manage platform payments and disbursements',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search payments...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
+  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'payments',title:'Payments',subtitle:'Manage platform payments and disbursements',user:null,notifCount:0,searchPlaceholder:'Search payments...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
   loadPayments();
   bindEvents();
   renderPagination();renderSummaryStats();refresh();
@@ -101,3 +101,4 @@ function init(){
 window.PaymentsService={init:init,exportReport:exportReport,openDatePicker:openDatePicker,openPaymentSettings:openPaymentSettings,openReconciliation:openReconciliation,viewPayment:viewPayment,moreActions:moreActions};
 
 })();
+

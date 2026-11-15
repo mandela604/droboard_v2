@@ -84,7 +84,10 @@ function ensureToast() {
 }
 
 function init() {
-  SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'transaction-history', title: 'Transaction History', subtitle: 'View all financial transactions across the platform', user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' }, notifCount: 8, searchPlaceholder: 'Search by ID, description, or user...', mobileSearchTarget: '#tableSearch', onSearch: (v) => { document.getElementById('tableSearch').value = v; refresh(); } });
+  (async () => {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'transaction-history', title: 'Transaction History', subtitle: 'View all financial transactions across the platform', user: user || { name: 'Editor', role: 'Senior Editor', avatar: null }, notifCount: 0, searchPlaceholder: 'Search by ID, description, or user...', mobileSearchTarget: '#tableSearch', onSearch: (v) => { document.getElementById('tableSearch').value = v; refresh(); } });
+  })();
   ensureToast();
   document.getElementById('tableSearch').addEventListener('input', refresh);
   document.getElementById('typeSelect').addEventListener('change', refresh);

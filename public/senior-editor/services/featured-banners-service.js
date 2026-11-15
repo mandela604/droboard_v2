@@ -84,7 +84,7 @@ function openAnalytics(id){ return callBackend('/featured-banners/' + encodeURIC
 function init(){
   if(_initDone) return;
   _initDone = true;
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'featured-banners',title:'Featured & Banners',subtitle:'Manage promotional banners and featured content placements',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
+  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'featured-banners',title:'Featured & Banners',subtitle:'Manage promotional banners and featured content placements',user:null,notifCount:0,hideSearch:true});
   // markup uses onclick="toast(...)" — expose globally
   if(typeof window.toast !== 'function') window.toast = toast;
   else {
@@ -101,3 +101,4 @@ window.FeaturedBannersService = { init: init, createBanner: createBanner, editBa
 if(typeof window.toast !== 'function') window.toast = toast;
 
 })();
+

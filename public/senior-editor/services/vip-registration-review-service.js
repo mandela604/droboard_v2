@@ -60,7 +60,7 @@ function bindEvents(){
 }
 
 function attachShell(){
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'vip-review',title:'Book Lock Review',subtitle:'Authors request to lock or unlock their entire book',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'vip-review',title:'Book Lock Review',subtitle:'Authors request to lock or unlock their entire book',user:null,notifCount:0,searchPlaceholder:'Search…'});
 }
 
 function init(){
@@ -72,3 +72,4 @@ function init(){
 window.VipRegistrationReviewService={init:init};
 
 })();
+

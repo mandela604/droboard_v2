@@ -17,14 +17,17 @@ const PER_PAGE = 4;
 let allMsgs = [], filtered = [], activeStat = 'all', currentPg = 1;
 
 async function init(){
-  shell = SeniorEditorSidebar.attach('#commRoot', {
-    activeItem: 'communication',
-    title: 'Communication',
-    subtitle: 'Author emails & team chat',
-    user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
-    notifCount: 4,
-    onSearch: v => { document.getElementById('mailSearch').value = v; currentPg = 1; applyFilters(); }
-  });
+  (async () => {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    shell = SeniorEditorSidebar.attach('#commRoot', {
+      activeItem: 'communication',
+      title: 'Communication',
+      subtitle: 'Author emails & team chat',
+      user: user || { name: 'Editor', role: 'Senior Editor', avatar: null },
+      notifCount: 0,
+      onSearch: v => { document.getElementById('mailSearch').value = v; currentPg = 1; applyFilters(); }
+    });
+  })();
 
   let d;
   try {

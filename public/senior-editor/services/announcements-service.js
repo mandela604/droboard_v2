@@ -42,24 +42,18 @@ async function apiFetch(path, options){
 const todayISO = new Date().toISOString().slice(0,10);
 function fmtDate(iso){ return new Date(iso+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 
-const DEMO_ANNOUNCEMENTS = [
-  { id:'ANN-001', title:'New Submission Guidelines', audience:'authors', content:'Updated guidelines for chapter submissions are now in effect. Minimum chapter length is now 2,000 words.', image:null, status:'published', createdDate:'2026-07-25', created:fmtDate('2026-07-25'), scheduledDate:null, scheduled:'' },
-  { id:'ANN-002', title:'Platform Maintenance July 30', audience:'all', content:'The platform will be under maintenance on July 30 from 2-4 AM EST. No submissions will be accepted during this window.', image:'https://i.postimg.cc/N9jY0w4m/5.jpg', status:'published', createdDate:'2026-07-24', created:fmtDate('2026-07-24'), scheduledDate:null, scheduled:'' },
-  { id:'ANN-003', title:'Writing Contest: Summer Romance', audience:'authors', content:'Submit your best romance chapters for a chance to win $5,000 and a featured placement!', image:'https://i.postimg.cc/tY7KnJyr/images.jpg', status:'scheduled', createdDate:'2026-07-22', created:fmtDate('2026-07-22'), scheduledDate:'2026-08-01', scheduled:fmtDate('2026-08-01') },
-  { id:'ANN-004', title:'New Feature: Beta Reading', audience:'readers', content:'Readers can now sign up as beta readers for upcoming chapters. Opt in from your profile settings.', image:null, status:'draft', createdDate:'2026-07-20', created:fmtDate('2026-07-20'), scheduledDate:null, scheduled:'' },
-  { id:'ANN-005', title:'Editor Spotlight: July Picks', audience:'readers', content:'Check out this month\'s editor-selected reads across every genre, hand-picked by our senior editorial team.', image:'https://i.postimg.cc/cgLZJNmC/8.jpg', status:'published', createdDate:'2026-07-10', created:fmtDate('2026-07-10'), scheduledDate:null, scheduled:'' },
-  { id:'ANN-006', title:'Holiday Submission Freeze', audience:'authors', content:'No new chapter submissions will be accepted between Dec 24 and Jan 2 while the editorial team is off.', image:null, status:'scheduled', createdDate:'2026-07-15', created:fmtDate('2026-07-15'), scheduledDate:'2026-12-20', scheduled:fmtDate('2026-12-20') },
-];
+const DEMO_ANNOUNCEMENTS = [];
 
 let ANNOUNCEMENTS = [];
 let filtered = [];
 let activeStatus = 'all';
 let currentPg = 1;
 let editingId = null;
-let pendingImage = null; // data URL staged in the modal before save
+let pendingImage = null;
 let shell = null;
 let schedTimer = null;
 let wired = false;
+let usingDemoData = false;
 
 /* ─────────────────────────────────────────
    LOAD
@@ -442,12 +436,15 @@ function wireEvents(){
    INIT
 ───────────────────────────────────────── */
 function init(){
-  shell = SeniorEditorSidebar.attach('#annRoot',{
-    activeItem:'announcements', title:'Announcements', subtitle:'Publish updates to authors and readers',
-    user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
-    searchPlaceholder:'Search announcements…',
-    onSearch:(v)=>{ document.getElementById('annSearch').value = v; currentPg = 1; applyFilters(); }
-  });
+  (async function() {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    shell = SeniorEditorSidebar.attach('#annRoot',{
+      activeItem:'announcements', title:'Announcements', subtitle:'Publish updates to authors and readers',
+      user:user||{name:'Editor',role:'Senior Editor',avatar:null}, notifCount:0,
+      searchPlaceholder:'Search announcements…',
+      onSearch:(v)=>{ document.getElementById('annSearch').value = v; currentPg = 1; applyFilters(); }
+    });
+  })();
   wireEvents();
   if (!schedTimer) schedTimer = setInterval(()=>checkScheduled(false), 20000);
   return loadAnnouncements();

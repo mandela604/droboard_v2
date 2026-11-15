@@ -25,12 +25,15 @@ let currentPage = 1;
 let expandedId = null;
 
 function attachShell(){
-  shell = SeniorEditorSidebar.attach('#authorsRoot',{
-    activeItem:'authors', title:'Authors', subtitle:'Manage invited and assigned authors',
-    user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:4,
-    searchPlaceholder:'Search authors…',
-    onSearch:(v)=>{ document.getElementById('authorSearch').value = v; currentPage = 1; renderAuthors(); }
-  });
+  (async function() {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    shell = SeniorEditorSidebar.attach('#authorsRoot',{
+      activeItem:'authors', title:'Authors', subtitle:'Manage invited and assigned authors',
+      user:user||{name:'Editor',role:'Senior Editor',avatar:null}, notifCount:0,
+      searchPlaceholder:'Search authors…',
+      onSearch:(v)=>{ document.getElementById('authorSearch').value = v; currentPage = 1; renderAuthors(); }
+    });
+  })();
 }
 
 /* ─────────────────────────────────────────

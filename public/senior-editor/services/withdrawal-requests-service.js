@@ -22,16 +22,7 @@ async function callBackend(path, options) {
    Super Admin set (usdToMoney accepts the live number or the seeded '$2,450.00'). */
 function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 
-const WITHDRAWALS=[
-  {id:'WD-0047',author:'Amara Okafor',avatar:'https://i.pravatar.cc/100?img=45',amount:'$2,450.00',method:'Bank Transfer',status:'pending',requested:'Jun 17, 2026',processed:'\u2014'},
-  {id:'WD-0046',author:'Sofia Lindqvist',avatar:'https://i.pravatar.cc/100?img=32',amount:'$1,820.00',method:'PayPal',status:'processing',requested:'Jun 16, 2026',processed:'Jun 17, 2026'},
-  {id:'WD-0045',author:'Isabella Rossi',avatar:'https://i.pravatar.cc/100?img=38',amount:'$3,100.00',method:'Mobile Money',status:'completed',requested:'Jun 14, 2026',processed:'Jun 16, 2026'},
-  {id:'WD-0044',author:'Marcus Chen',avatar:'https://i.pravatar.cc/100?img=12',amount:'$980.00',method:'Bank Transfer',status:'pending',requested:'Jun 13, 2026',processed:'\u2014'},
-  {id:'WD-0043',author:'Priya Nair',avatar:'https://i.pravatar.cc/100?img=27',amount:'$1,560.00',method:'PayPal',status:'completed',requested:'Jun 12, 2026',processed:'Jun 14, 2026'},
-  {id:'WD-0042',author:'Layla Haddad',avatar:'https://i.pravatar.cc/100?img=48',amount:'$2,890.00',method:'Bank Transfer',status:'processing',requested:'Jun 11, 2026',processed:'Jun 13, 2026'},
-  {id:'WD-0041',author:'Daniel Reyes',avatar:'https://i.pravatar.cc/100?img=51',amount:'$450.00',method:'Mobile Money',status:'pending',requested:'Jun 10, 2026',processed:'\u2014'},
-  {id:'WD-0040',author:'Julien Moreau',avatar:'https://i.pravatar.cc/100?img=15',amount:'$320.00',method:'PayPal',status:'rejected',requested:'Jun 9, 2026',processed:'Jun 11, 2026'},
-];
+const WITHDRAWALS=[];
 
 let currentView='all';
 let _bound=false;
@@ -64,7 +55,10 @@ async function loadWithdrawals(){
 
 function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'withdrawal-requests',title:'Withdrawal Requests',subtitle:'Manage and process author withdrawal requests',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search by author, amount, or ID...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
+  (async function() {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
+    SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'withdrawal-requests',title:'Withdrawal Requests',subtitle:'Manage and process author withdrawal requests',user:user||{name:'Editor',role:'Senior Editor',avatar:null},notifCount:0,searchPlaceholder:'Search by author, amount, or ID...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
+  })();
 }
 
 function bindEvents(){

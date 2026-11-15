@@ -21,7 +21,7 @@ var PER_PAGE = 3;
 function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
 
 async function init(){
-  shell = SeniorEditorSidebar.attach('#saRoot',{activeItem:'story-analytics',title:'Story Analytics',subtitle:'Performance metrics',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4});
+  shell = SeniorEditorSidebar.attach('#saRoot',{activeItem:'story-analytics',title:'Story Analytics',subtitle:'Performance metrics',user:null,notifCount:0});
 
   try {
     const d = await callBackend('/story-analytics');
@@ -48,3 +48,4 @@ function render(){
 window.StoryAnalyticsService = { init: init };
 
 })();
+

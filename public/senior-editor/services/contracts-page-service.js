@@ -58,9 +58,10 @@ function money(n) { if(window.DroboardCurrency && DroboardCurrency.usdToMoney) r
 
 async function init() {
   try {
+    const user = await (window.SeniorEditorGetUser || (async () => null))();
     SeniorEditorSidebar.attach('#pageRoot', {
     activeItem: 'contracts', title: 'Contracts', subtitle: 'Manage contracts, templates & signed agreements',
-    user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' }, notifCount: 8,
+    user: user || { name: 'Editor', role: 'Senior Editor', avatar: null }, notifCount: 0,
     searchPlaceholder: 'Search contracts…', mobileSearchTarget: '#searchInput',
     onSearch: function (v) { document.getElementById('searchInput').value = v; contractPage = 1; renderContracts(); }
   });

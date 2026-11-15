@@ -99,7 +99,7 @@ function viewReview(id) {
 
 function attachShell() {
   if (!window.SeniorEditorSidebar || !window.SeniorEditorSidebar.attach) return;
-  SeniorEditorSidebar.attach('#dashboardRoot', {activeItem:'book-review-center',title:'Book Review Center',subtitle:'Reader ratings across submitted books',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search by title, author, or category...',mobileSearchTarget:'#tableSearch',onSearch:(v) => { document.getElementById('tableSearch').value = v; refresh(); }});
+  SeniorEditorSidebar.attach('#dashboardRoot', {activeItem:'book-review-center',title:'Book Review Center',subtitle:'Reader ratings across submitted books',user:null,notifCount:0,searchPlaceholder:'Search by title, author, or category...',mobileSearchTarget:'#tableSearch',onSearch:(v) => { document.getElementById('tableSearch').value = v; refresh(); }});
 }
 
 function init() {
@@ -116,3 +116,4 @@ function openDateFilter(){ return callBackend('/book-reviews/date-filter').then(
 window.BookReviewCenterService = { init: init, openDateFilter: openDateFilter };
 
 })();
+

@@ -49,9 +49,10 @@ var _initDone = false;
 function init(){
   if(_initDone) return;
   _initDone = true;
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'system-pages',title:'System Pages',subtitle:'Manage all system and static pages on your platform',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
+  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'system-pages',title:'System Pages',subtitle:'Manage all system and static pages on your platform',user:null,notifCount:0,hideSearch:true});
   loadData().then(render);
 }
 
 window.SystemPagesService = { init:init, createPage:createPage, editPage:editPage, previewPage:previewPage, __ready:true };
 })();
+

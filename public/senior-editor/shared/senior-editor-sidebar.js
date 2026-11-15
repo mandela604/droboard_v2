@@ -54,6 +54,33 @@
     };
   })();
 
+  /* ── Get Current User — from session or API ──
+     Fetches the logged-in user's info. Returns {name, role, avatar} or null if offline.
+     Each service should call this instead of hardcoding demo users. */
+  async function getCurrentUser() {
+    try {
+      // Try session first (AuthSession.getSync loaded from public/services/auth-session.js)
+      if (window.AuthSession && typeof window.AuthSession.getSync === 'function') {
+        const sess = window.AuthSession.getSync();
+        if (sess && sess.name) {
+          return { name: sess.name, role: sess.role || 'Senior Editor', avatar: sess.avatar || null };
+        }
+      }
+      // Fallback: fetch from API
+      const res = await fetch('/api/senior-editor/me', { credentials: 'include' });
+      if (res.ok) {
+        const user = await res.json();
+        return {
+          name: user.fullName || user.name || user.username || 'Editor',
+          role: user.role || 'Senior Editor',
+          avatar: user.avatar || null
+        };
+      }
+    } catch (e) { /* offline or API unreachable */ }
+    return null;
+  }
+  window.SeniorEditorGetUser = getCurrentUser;
+
   const MENU_ITEMS = [
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html',              section: 'Overview' },
 

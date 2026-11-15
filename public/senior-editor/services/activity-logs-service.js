@@ -35,8 +35,26 @@ b.innerHTML=l.slice(0,8).map(r=>`<tr><td data-label="User"><div class="act-user"
 function renderPagination(){const w=document.getElementById('pageBtns');const p=[1,2,3];w.innerHTML=`<button class="pg-btn" disabled><i class="fas fa-chevron-left"></i></button>`+p.map(p=>`<button class="pg-btn${p===1?' active':''}" data-p="${p}">${p}</button>`).join('')+`<button class="pg-btn"><i class="fas fa-chevron-right"></i></button>`;w.querySelectorAll('[data-p]').forEach(b=>{b.addEventListener('click',()=>{w.querySelectorAll('.pg-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})})}
 
 function init(){
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'activity-logs',title:'Activity Logs',subtitle:'Track and monitor all platform activities and user actions',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,searchPlaceholder:'Search by user, action, or detail...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
-  document.getElementById('tableSearch').addEventListener('input',refresh);document.getElementById('actionFilter').addEventListener('change',refresh);
+  // Load real user from session/API instead of hardcoding demo user
+  (async function() {
+    const user = await (window.SeniorEditorGetUser || (async () => null))(
+    );
+    SeniorEditorSidebar.attach('#dashboardRoot', {
+      activeItem: 'activity-logs',
+      title: 'Activity Logs',
+      subtitle: 'Track and monitor all platform activities and user actions',
+      user: user || { name: 'Editor', role: 'Senior Editor', avatar: null },
+      notifCount: 0,
+      searchPlaceholder: 'Search by user, action, or detail...',
+      mobileSearchTarget: '#tableSearch',
+      onSearch: (v) => {
+        document.getElementById('tableSearch').value = v;
+        refresh();
+      }
+    });
+  })();
+  document.getElementById('tableSearch').addEventListener('input', refresh);
+  document.getElementById('actionFilter').addEventListener('change', refresh);
   return loadLogs();
 }
 

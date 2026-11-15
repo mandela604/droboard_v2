@@ -357,7 +357,7 @@ function bind(){
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!submitting)closeOverlay('cjRejectOv');});
 }
 function init(){
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'chapter-review',title:'Chapter Edit Review',subtitle:'Authors request edits — SE reviews to protect exclusive contracts',user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'},notifCount:4,searchPlaceholder:'Search…'});
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'chapter-review',title:'Chapter Edit Review',subtitle:'Authors request edits — SE reviews to protect exclusive contracts',user:null,notifCount:0,searchPlaceholder:'Search…'});
   ensureModal();
   bind();
   Crud.list({}).then(render).catch(function(e){
@@ -367,3 +367,4 @@ function init(){
 }
 window.ChapterEditReviewService={init:init};
 })();
+

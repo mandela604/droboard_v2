@@ -162,7 +162,7 @@ function bindEvents() {
 }
 
 function attachShell() {
-  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'platform-settings',title:'Platform Settings',subtitle:'Configure platform settings and preferences',user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,hideSearch:true});
+  SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'platform-settings',title:'Platform Settings',subtitle:'Configure platform settings and preferences',user:null,notifCount:0,hideSearch:true});
 }
 
 function init() {
@@ -175,3 +175,4 @@ function init() {
 window.PlatformSettingsService = { init: init };
 
 })();
+
