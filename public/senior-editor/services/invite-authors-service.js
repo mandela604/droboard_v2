@@ -46,10 +46,9 @@ function mapBackendWriter(u){
     code: u.code || '', via: u.via || 'assigned', signedUp: u.signedUp || u.createdAt || new Date().toISOString(),
     status: u.status || 'active',
   };
-  // Debug: log if via is missing
-  if (!u.via) {
-    console.warn('Backend author missing via field:', u);
-  }
+  // Debug: log all fields to see what the backend is returning
+  console.log('mapBackendWriter - input u:', u);
+  console.log('mapBackendWriter - mapped:', mapped);
   return mapped;
 }
 

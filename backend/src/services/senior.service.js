@@ -215,14 +215,21 @@ async function myAuthors(user, query) {
 
   const code = (me && me.editorInviteCode) || '';
   const myOid = me ? String(me._id) : null;
-  const items = docs.map(u => ({
-    id: u.id, name: u.fullName || u.username || '', username: u.username || '',
-    email: u.email || '', avatar: u.avatar || '',
-    code: code,
-    via: myOid && String(u.referredByUserId || '') === myOid ? 'invite' : 'assigned',
-    signedUp: u.createdAt || null,
-    status: u.status || 'active',
-  }));
+  
+  console.log('myAuthors - my _id:', myOid, 'my code:', code);
+  
+  const items = docs.map(u => {
+    const via = myOid && String(u.referredByUserId || '') === myOid ? 'invite' : 'assigned';
+    console.log(`user ${u.username}: referredByUserId="${u.referredByUserId}" vs myOid="${myOid}" => via="${via}"`);
+    return {
+      id: u.id, name: u.fullName || u.username || '', username: u.username || '',
+      email: u.email || '', avatar: u.avatar || '',
+      code: code,
+      via: via,
+      signedUp: u.createdAt || null,
+      status: u.status || 'active',
+    };
+  });
   return { items, total, page, limit, code };
 }
 
