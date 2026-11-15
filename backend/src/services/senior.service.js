@@ -201,35 +201,34 @@ async function activity(query) {
 // editor's code/link) vs 'assigned' (chief placed them here).
 async function myAuthors(user, query) {
   const ids = await scopeAuthorIds(user); // null ⇒ chief/admin ⇒ platform-wide
-  const filter = { roles: 'writer' };
-  if (ids !== null) filter.id = { $in: ids };
+  
+  // Get this editor's _id for referral matching
+  const me = ids === null ? null : await User.findOne({ id: String(user.id) }).select('_id').lean();
+  const myOid = me ? String(me._id) : null;
+  
+  // Filter: only writers referred by this editor
+  const filter = { roles: 'writer', referredByUserId: myOid };
+  if (ids !== null && !myOid) filter.id = { $in: ids }; // Fallback if no _id found
   if (query && query.q) Object.assign(filter, searchFilter(query.q, ['fullName', 'username', 'email']));
 
   const { page, limit } = pg(query);
-  const [docs, total, me] = await Promise.all([
+  const [docs, total, meCode] = await Promise.all([
     User.find(filter).select('id fullName username email avatar status createdAt referredByUserId roles').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     User.countDocuments(filter),
-    // Own code + _id (referredByUserId stores the inviter's _id, not custom id)
-    ids === null ? null : User.findOne({ id: String(user.id) }).select('editorInviteCode _id').lean(),
+    // Get this editor's invite code
+    ids === null ? null : User.findOne({ id: String(user.id) }).select('editorInviteCode').lean(),
   ]);
 
-  const code = (me && me.editorInviteCode) || '';
-  const myOid = me ? String(me._id) : null;
+  const code = (meCode && meCode.editorInviteCode) || '';
   
-  console.log('myAuthors - my _id:', myOid, 'my code:', code);
-  
-  const items = docs.map(u => {
-    const via = myOid && String(u.referredByUserId || '') === myOid ? 'invite' : 'assigned';
-    console.log(`user ${u.username}: referredByUserId="${u.referredByUserId}" vs myOid="${myOid}" => via="${via}"`);
-    return {
-      id: u.id, name: u.fullName || u.username || '', username: u.username || '',
-      email: u.email || '', avatar: u.avatar || '',
-      code: code,
-      via: via,
-      signedUp: u.createdAt || null,
-      status: u.status || 'active',
-    };
-  });
+  const items = docs.map(u => ({
+    id: u.id, name: u.fullName || u.username || '', username: u.username || '',
+    email: u.email || '', avatar: u.avatar || '',
+    code: code,
+    via: 'invite', // All returned authors are invited (by definition of the filter)
+    signedUp: u.createdAt || null,
+    status: u.status || 'active',
+  }));
   return { items, total, page, limit, code };
 }
 
