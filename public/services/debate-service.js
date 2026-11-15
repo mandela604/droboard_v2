@@ -99,6 +99,8 @@
       // Restore user's prior vote from API response
       S.userVote = post.userVote || null;
       S.side = post.userSide || S.userVote || null;
+      
+      DEBATE_ID = postId; // Set for backend API calls
 
       return {
         id: postId,
