@@ -284,15 +284,17 @@
     })();
 
     document.getElementById('opAvWrap')?.addEventListener('click', async () => {
-      // Play the SAME lineup the ring was drawn from (the shared store keys
-      // it by author name), otherwise "viewed" lands on slides nobody sees.
       const p = opPerson();
-      if (p.statuses.length && window.DroboardStatusRing) {
+      // Always try to open status viewer if available
+      if (window.DroboardStatusRing && typeof DroboardStatusRing.open === 'function') {
+        // Statuses might be loading asynchronously — DroboardStatusRing will handle
+        // the case where statuses are empty or loading
         const ok = await DroboardStatusRing.open([{
-          id: p.name, name: p.name, avatar: p.avatar, statuses: p.statuses,
+          id: p.name, name: p.name, avatar: p.avatar, statuses: p.statuses || [],
         }], p.name);
         if (ok) return;
       }
+      // Fallback: navigate to profile if status viewer failed or unavailable
       location.href = profileHref(p.name, POST.handle);
     });
     document.getElementById('opName')?.addEventListener('click', () => { location.href = profileHref(POST.name, POST.handle); });
