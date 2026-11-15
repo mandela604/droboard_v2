@@ -84,10 +84,10 @@
     try {
       // Get current user from session
       var userSession = window.AuthSession && window.AuthSession.getSync ? window.AuthSession.getSync() : {};
-      var currentUser = userSession.fullName || userSession.name || 'Welcome';
+      var currentUser = userSession.fullName || userSession.name || 'User';
       
-      // Update welcome message with real user name
-      var welcomeEl = document.querySelector('h2[id*="welcome"]') || document.querySelector('[data-role="welcome"]');
+      // Update welcome message with real user name - use correct selector
+      var welcomeEl = document.querySelector('.welcome-greet');
       if (welcomeEl) {
         welcomeEl.textContent = 'Welcome back, ' + currentUser + ' 👋';
       }
