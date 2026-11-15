@@ -136,6 +136,14 @@
     return String(n);
   }
 
+  var api = {
+    getStats: async function () { return await callBackend('/dashboard'); },
+    getBooks: async function () { return await callBackend('/books'); },
+    init: init,
+    _STATS: STATS,
+    _BOOKS: BOOKS
+  };
+
   function init() {
     wireEngagementCreator();
     renderBooks();
@@ -156,11 +164,5 @@
     if (window.DroboardNav) window.DroboardNav.configure({ active: 'profile' });
   }
 
-  var api = window.AuthorCenterService || {};
-  api.getStats = api.getStats || async function () { return await callBackend('/dashboard'); };
-  api.getBooks = api.getBooks || async function () { return await callBackend('/books'); };
-  api.init = init;
-  api._STATS = STATS;
-  api._BOOKS = BOOKS;
   window.AuthorCenterService = api;
 })();
