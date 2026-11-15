@@ -1053,47 +1053,7 @@
      and every feed card count from these) ── */
   var SEED_V = 1;
   function defaultArgs() {
-    return [
-      { id: 'a1', name: 'Ada_Writes', avatar: 'https://i.pravatar.cc/100?img=32', verified: 'writer', side: 'for', statusRing: 'has', time: '2h', text: 'Every character deserves growth. Redemption arcs are what make stories unforgettable.', up: 48, down: 6, myVote: null,
-        statuses: [{ bg: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=500&h=900&fit=crop', quote: '"Writing at 2am has a different energy."', caption: 'Ada_Writes · Live now', time: '20m ago' }],
-        replies: [
-        { id: 'r1', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', verified: true, side: 'for', statusRing: 'has', time: '1h', text: 'Exactly! The journey from darkness to light is what hooks us.', up: 12, down: 1, myVote: null,
-          statuses: [{ bg: 'https://i.postimg.cc/vDn9YLx5/wife2.jpg', quote: '"Team Alex or Team Jaxon?"', caption: 'Poll live now', time: '5h ago' }],
-          replies: [] },
-        { id: 'r2', name: 'Kenji_Tanaka', avatar: 'https://i.pravatar.cc/100?img=60', side: 'for', statusRing: 'none', time: '45m', text: 'Agreed. Without redemption, stories feel hollow.', up: 5, down: 0, myVote: null, replies: [] },
-      ]},
-      { id: 'a2', name: 'Marcus_Thorn', avatar: 'https://i.pravatar.cc/100?img=15', verified: false, side: 'against', statusRing: 'viewed', time: '1d', text: 'Some actions cross a line. Forcing redemption cheapens the consequences.', up: 62, down: 9, myVote: null,         replies: [
-        { id: 'r3', name: 'Luna_Reyes', avatar: 'https://i.pravatar.cc/100?img=25', side: 'against', statusRing: 'has', time: '22h', text: 'Right? If the villain just says sorry, what was the point of the suffering?', up: 18, down: 2, myVote: null,
-          statuses: [{ bg: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', quote: '"This story ruined my whole week (in the best way)."', caption: 'Recommending a read', time: '2h ago' }],
-          replies: [] },
-        { id: 'r5', name: 'Priya_Sharma', avatar: 'https://i.pravatar.cc/100?img=44', verified: true, side: 'against', statusRing: 'viewed', time: '20h', text: 'Consequences are what make choices matter in a story.', up: 9, down: 1, myVote: null, replies: [] },
-        { id: 'r6', name: 'Finn_Calloway', avatar: 'https://i.pravatar.cc/100?img=68', side: 'against', statusRing: 'none', time: '18h', text: 'If everyone gets redeemed, nobody is truly dangerous.', up: 14, down: 3, myVote: null, replies: [] },
-        { id: 'r7', name: 'Mei_Lin', avatar: 'https://i.pravatar.cc/100?img=31', side: 'against', statusRing: 'has', time: '15h', text: 'The tension dies when you know the villain will be forgiven.', up: 11, down: 2, myVote: null,
-          statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' }],
-          replies: [] },
-      ]},
-      { id: 'a3', name: 'Sarah_Odum', avatar: 'https://i.pravatar.cc/100?img=48', verified: true, side: 'for', statusRing: 'has', time: '3d', text: 'If we don\'t believe people can change, what\'s the point of any story at all?', up: 31, down: 4, myVote: null, replies: [] },
-      { id: 'a4', name: 'Luna_Reyes', avatar: 'https://i.pravatar.cc/100?img=25', verified: false, side: 'against', statusRing: 'has', time: '2d', text: 'Villains who get forgiven without real sacrifice aren\'t redeemed — they\'re just excused.', up: 44, down: 7, myVote: null,
-        statuses: [{ bg: 'https://i.postimg.cc/fkdXzjS8/wolf.jpg', quote: '"This story ruined my whole week (in the best way)."', caption: 'Recommending a read', time: '2h ago' }],
-        replies: [] },
-      { id: 'a5', name: 'Kenji_Tanaka', avatar: 'https://i.pravatar.cc/100?img=60', verified: false, side: 'for', statusRing: 'none', time: '5d', text: 'The best villains are the ones who mirror the hero. Their redemption is the hero\'s reflection.', up: 27, down: 3, myVote: null, replies: [] },
-      { id: 'a6', name: 'Priya_Sharma', avatar: 'https://i.pravatar.cc/100?img=44', verified: true, side: 'for', statusRing: 'viewed', time: '4d', text: 'Redemption doesn\'t mean forgetting. It means choosing to be better despite what you\'ve done.', up: 19, down: 5, myVote: null, replies: [] },
-      { id: 'a7', name: 'Diego_Vargas', avatar: 'https://i.pravatar.cc/100?img=53', verified: false, side: 'against', statusRing: 'none', time: '6h', text: 'We hold heroes to impossible standards but villains get a free pass? Nah.', up: 55, down: 8, myVote: null, replies: [] },
-      { id: 'a8', name: 'Zara_Okafor', avatar: 'https://i.pravatar.cc/100?img=36', verified: true, side: 'against', statusRing: 'has', time: '1w', text: 'Forgiveness is for the victims to give, not for writers to force on them.', up: 71, down: 11, myVote: null,
-        statuses: [
-          { bg: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=500&h=900&fit=crop', quote: '"Chapter 21 is finally live — the truth comes out tonight."', caption: 'His Sweet Revenge · New chapter', time: '2h ago' },
-          { bg: 'https://i.postimg.cc/RqtfSQJJ/wife3.jpg', quote: '"I did not expect this ending. Neither will you."', caption: 'Behind the scenes', time: '1h ago' },
-        ],
-        replies: [
-        { id: 'r4', name: 'Diego_Vargas', avatar: 'https://i.pravatar.cc/100?img=53', side: 'against', statusRing: 'none', time: '6d', text: 'This. The victim\'s journey matters more than the villain\'s arc.', up: 22, down: 3, myVote: null, replies: [] },
-      ]},
-      { id: 'a9', name: 'Finn_Calloway', avatar: 'https://i.pravatar.cc/100?img=68', verified: false, side: 'for', statusRing: 'none', time: '8d', text: 'Some of the greatest characters in fiction started as villains. Imagine robbing readers of that journey.', up: 36, down: 5, myVote: null, replies: [] },
-      { id: 'a10', name: 'Mei_Lin', avatar: 'https://i.pravatar.cc/100?img=31', verified: false, side: 'against', statusRing: 'has', time: '3h', text: 'A villain crying at the end doesn\'t erase a hundred chapters of cruelty.', up: 49, down: 6, myVote: null,
-        statuses: [{ bg: 'https://i.postimg.cc/N9jY0w4m/5.jpg', quote: '"Some letters are never meant to be sent."', caption: 'Elegy story', time: '6h ago' }],
-        replies: [] },
-      { id: 'a11', name: 'Omar_Hassan', avatar: 'https://i.pravatar.cc/100?img=57', verified: false, side: 'for', statusRing: 'viewed', time: '9d', text: 'Redemption arcs teach empathy. That\'s literally the point of literature.', up: 22, down: 4, myVote: null, replies: [] },
-      { id: 'a12', name: 'Chloe_Bennett', avatar: 'https://i.pravatar.cc/100?img=45', verified: true, side: 'against', statusRing: 'none', time: '5d', text: 'If the villain is truly irredeemable, giving them a soft ending is bad writing.', up: 38, down: 7, myVote: null, replies: [] },
-    ];
+    return []; // No demo data — load real arguments from API
   }
 
   /* ── Per-debate persistence (user-posted args survive page changes, so
