@@ -82,14 +82,29 @@
 
   async function hydrate() {
     try {
+      // Get current user from session
+      var userSession = window.AuthSession && window.AuthSession.getSync ? window.AuthSession.getSync() : {};
+      var currentUser = userSession.fullName || userSession.name || 'Welcome';
+      
+      // Update welcome message with real user name
+      var welcomeEl = document.querySelector('h2[id*="welcome"]') || document.querySelector('[data-role="welcome"]');
+      if (welcomeEl) {
+        welcomeEl.textContent = 'Welcome back, ' + currentUser + ' 👋';
+      }
+      
       // Fetch stats from API
       var statsRes = await api.getStats();
-      if (statsRes && statsRes.stats) {
+      console.log('Stats response:', statsRes);
+      
+      // Handle different response formats
+      var statsArray = Array.isArray(statsRes) ? statsRes : (statsRes && statsRes.stats) ? statsRes.stats : [];
+      
+      if (statsArray && statsArray.length > 0) {
         STATS.length = 0;
-        statsRes.stats.forEach(function (s) {
+        statsArray.forEach(function (s) {
           STATS.push({
             label: s.label || s.name || 'Unknown',
-            num: s.value || '0',
+            num: s.value || s.num || '0',
             growth: s.growth || '0%',
             icon: s.icon || 'fa-chart-simple',
             bg: s.bg || 'rgba(200,200,200,.08)',
