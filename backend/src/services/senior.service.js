@@ -206,10 +206,14 @@ async function myAuthors(user, query) {
   const me = ids === null ? null : await User.findOne({ id: String(user.id) }).select('_id').lean();
   const myOid = me ? String(me._id) : null;
   
+  console.log('[myAuthors] user.id:', user.id, '| myOid:', myOid);
+  
   // Filter: only writers referred by this editor
   const filter = { roles: 'writer', referredByUserId: myOid };
   if (ids !== null && !myOid) filter.id = { $in: ids }; // Fallback if no _id found
   if (query && query.q) Object.assign(filter, searchFilter(query.q, ['fullName', 'username', 'email']));
+
+  console.log('[myAuthors] filter:', JSON.stringify(filter));
 
   const { page, limit } = pg(query);
   const [docs, total, meCode] = await Promise.all([
@@ -218,6 +222,11 @@ async function myAuthors(user, query) {
     // Get this editor's invite code
     ids === null ? null : User.findOne({ id: String(user.id) }).select('editorInviteCode').lean(),
   ]);
+
+  console.log('[myAuthors] found', docs.length, 'authors matching filter, total:', total);
+  docs.forEach((d, i) => {
+    console.log(`  [${i}] ${d.username} - referredByUserId: ${d.referredByUserId}`);
+  });
 
   const code = (meCode && meCode.editorInviteCode) || '';
   
@@ -229,6 +238,9 @@ async function myAuthors(user, query) {
     signedUp: u.createdAt || null,
     status: u.status || 'active',
   }));
+  
+  console.log('[myAuthors] returning:', { items: items.length, total, page, limit, code });
+  
   return { items, total, page, limit, code };
 }
 

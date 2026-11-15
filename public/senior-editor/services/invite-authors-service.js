@@ -331,8 +331,14 @@ async function syncFromBackend(){
   if(codeRes && codeRes.code) backendCode = codeRes.code;
   if(authorsRes && authorsRes.items) {
     backendAuthors = authorsRes.items;
-    console.log('Backend myAuthors response:', authorsRes);
+    console.log('=== Backend myAuthors response ===');
+    console.log('Full response:', authorsRes);
     console.log('Items received:', backendAuthors);
+    console.log('Total authors:', authorsRes.total);
+    console.log('Code:', authorsRes.code);
+    backendAuthors.forEach((item, idx) => {
+      console.log(`[${idx}]`, item);
+    });
   }
 }
 
