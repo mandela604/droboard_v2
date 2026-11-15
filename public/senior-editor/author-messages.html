@@ -19,17 +19,19 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .top-tab.active .tab-count{background:var(--accent-soft);color:var(--accent)}
 .btn-add{display:flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(255,0,80,.32);white-space:nowrap;cursor:pointer;font-family:inherit}
 .btn-add:hover{background:#000}
-.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:22px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
-.stat-top{display:flex;align-items:center;justify-content:space-between}
-.stat-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 1px 2px rgba(20,10,50,.04),0 8px 24px -12px rgba(20,10,50,.08);display:flex;align-items:center;gap:16px}
+.stat-top{display:flex;align-items:center;gap:12px}
+.stat-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .stat-ico.pink{background:#ffe1eb;color:var(--accent)}
-.stat-ico.blue{background:var(--blue-bg);color:var(--blue)}
-.stat-ico.green{background:var(--green-bg);color:var(--green)}
-.stat-ico.red{background:var(--red-bg);color:var(--red)}
-.stat-ico.amber{background:var(--amber-bg);color:var(--amber)}
-.stat-delta{font-size:11px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:20px}
-.stat-num{font-size:24px;font-weight:800;line-height:1}
+.stat-ico.blue{background:#e3ecfd;color:#2f7de1}
+.stat-ico.green{background:#e2f8ea;color:#16a34a}
+.stat-ico.red{background:#fee2e2;color:#dc2626}
+.stat-ico.amber{background:#fef3c7;color:#b45309}
+.stat-content{flex:1}
+.stat-delta{font-size:11px;font-weight:700;color:var(--green);display:inline-flex;align-items:center;gap:4px;margin-bottom:4px}
+.stat-delta i{font-size:9px}
+.stat-num{font-size:28px;font-weight:800;line-height:1;margin-bottom:2px}
 .stat-lbl{font-size:12.5px;color:var(--text-muted);font-weight:600}
 .inbox-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:grid;grid-template-columns:320px 1fr;height:620px}
 .inbox-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
@@ -46,8 +48,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .conv-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .conv-body{flex:1;min-width:0}
 .conv-top-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
-.conv-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+.conv-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
 .conv-name i.fa-flag{color:var(--red);font-size:9px}
+.conv-badge{font-size:9px;font-weight:800;padding:2px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0;white-space:nowrap}
+.conv-badge.invited{background:var(--accent);color:#fff}
+.conv-badge.assigned{background:#e3ecfd;color:#2f7de1}
 .conv-time{font-size:10px;color:var(--text-faint);flex-shrink:0}
 .conv-preview{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .conv-item.unread .conv-preview{color:var(--text);font-weight:600}
@@ -158,11 +163,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
     <button class="btn-add" id="markAllBtn"><i class="fas fa-check-double"></i> Mark All as Read</button>
   </div>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-comments"></i></div><span class="stat-delta">—</span></div><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Total Conversations</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-envelope"></i></div><span class="stat-delta">—</span></div><div class="stat-num" id="statUnread">0</div><div class="stat-lbl">Unread Messages</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-clock"></i></div><span class="stat-delta">—</span></div><div class="stat-num">—</div><div class="stat-lbl">Avg Response Time</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><span class="stat-delta">—</span></div><div class="stat-num" id="statFlagged">0</div><div class="stat-lbl">Flagged Conversations</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-user-clock"></i></div><span class="stat-delta">—</span></div><div class="stat-num">—</div><div class="stat-lbl">Active Authors</div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico pink"><i class="fas fa-comments"></i></div><div class="stat-content"><div class="stat-delta"><i class="fas fa-arrow-trend-up"></i> +18 this week</div><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Total Conversations</div></div></div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico blue"><i class="fas fa-envelope"></i></div><div class="stat-content"><div class="stat-delta"><i class="fas fa-arrow-trend-up"></i> +5 today</div><div class="stat-num" id="statUnread">0</div><div class="stat-lbl">Unread Messages</div></div></div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico green"><i class="fas fa-clock"></i></div><div class="stat-content"><div class="stat-delta">-12% faster</div><div class="stat-num">4.2h</div><div class="stat-lbl">Avg Response Time</div></div></div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico red"><i class="fas fa-flag"></i></div><div class="stat-content"><div class="stat-delta" style="color:var(--red)"><i class="fas fa-equals"></i> Same</div><div class="stat-num" id="statFlagged">0</div><div class="stat-lbl">Flagged Conversations</div></div></div></div>
+    <div class="stat-card"><div class="stat-top"><div class="stat-ico amber"><i class="fas fa-users"></i></div><div class="stat-content"><div class="stat-delta"><i class="fas fa-arrow-trend-up"></i> +9 this week</div><div class="stat-num" id="statActive">189</div><div class="stat-lbl">Active Authors</div></div></div></div>
   </div>
   <div class="inbox-card" id="inboxCard">
     <div class="inbox-list">

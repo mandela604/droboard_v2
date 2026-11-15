@@ -43,6 +43,7 @@ function mapConversation(c) {
     loaded: false,
     toUserId: c.toUserId || null,
     isNew: !!c.isNew,
+    via: c.via || null,
   };
 }
 function mapMessage(m) {
@@ -148,7 +149,7 @@ function renderConvList(){
     var preview=lastMsg
       ? ((lastMsg.from===PERSPECTIVE?'You: ':(lastMsg.file?'📎 File: '+lastMsg.file.name:''))+((lastMsg.text||'').substring(0,60)))
       : (c.preview||'');
-    return '<div class="conv-item'+(c.unread>0?' unread':'')+(isActive(c)?' active':'')+(c.status==='closed'?' is-closed':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+(c.status==='closed'?'<span class="closed-chip">Closed</span>':'')+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
+    return '<div class="conv-item'+(c.unread>0?' unread':'')+(isActive(c)?' active':'')+(c.status==='closed'?' is-closed':'')+'" data-id="'+c.id+'"><img class="conv-avatar" src="'+c.avatar+'" alt=""/><div class="conv-body"><div class="conv-top-row"><div class="conv-name">'+c.name+(c.flagged?'<i class="fas fa-flag"></i>':'')+(c.status==='closed'?'<span class="closed-chip">Closed</span>':'')+''+(c.via==='invite'?'<span class="conv-badge invited">Invited</span>':(c.via==='assigned'?'<span class="conv-badge assigned">Assigned</span>':''))+'</div><div class="conv-time">'+c.time+'</div></div><div class="conv-preview">'+preview+'</div></div>'+(c.unread>0?'<span class="unread-badge">'+c.unread+'</span>':'')+'</div>';
   }).join('');
   wrap.querySelectorAll('.conv-item').forEach(function(el){
     el.addEventListener('click',function(){
