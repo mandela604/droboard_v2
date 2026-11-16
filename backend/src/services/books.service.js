@@ -161,13 +161,16 @@ async function getBookDetail(id, viewerId) {
     stats: {
       comments, reads: book.reads || 0, shares,
       rating: book.rating || 0, ratingCount: book.ratingCount || 0,
-      // Likes = every reaction on every chapter of this book, joined together.
-      likes: chapterRx.total,
+      // Likes = every reaction on this book (story grid + chapters), so the
+      // stat and the grid the reader just used can never disagree.
+      likes: chapterRx.total + Object.values(reactions.counts || {})
+        .reduce((a, v) => a + (Number(v) || 0), 0),
     },
     // Book-wide reaction display (bridge grid + Likes stat). Per-user state is
     // per chapter, so this aggregate deliberately carries no `userRx`.
     chapterReactions: chapterRx,
-    likes: chapterRx.total,
+    likes: chapterRx.total + Object.values(reactions.counts || {})
+      .reduce((a, v) => a + (Number(v) || 0), 0),
     reactions,
     tipCount,
     hubs: {

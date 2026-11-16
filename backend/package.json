@@ -40,6 +40,7 @@
     "smoke:boards-admin": "node scripts/smoke-admin-boards.cjs",
     "smoke:notifications": "node scripts/smoke-notifications.cjs",
     "smoke:notifications:all": "node scripts/smoke-notifications-all.cjs",
+    "smoke:debate:routing": "node scripts/smoke-debate-routing.cjs",
     "smoke:store": "node scripts/smoke-store.cjs",
     "smoke:author:dashboard": "node scripts/smoke-author-dashboard.cjs",
     "smoke:ratings": "node scripts/smoke-story-ratings.cjs",

@@ -89,6 +89,18 @@
     
     if (!postId && !debateId && !bookId) throw new Error('No debate id or book in URL');
 
+    // Book-level debate reached from the bridge without an id: resolve the
+    // story's first debate from its engagement payload, then use the same
+    // metadata path as a linked chapter/book debate.
+    if (!postId && !debateId && bookId) {
+      var storyRes = await fetch('/api/stories/' + encodeURIComponent(bookId) + '/engagement', { credentials: 'include' });
+      if (!storyRes.ok) throw new Error('Story debates API failed: ' + storyRes.status);
+      var storyData = await storyRes.json();
+      var storyDebates = (storyData && storyData.engagement && storyData.engagement.debates) || [];
+      if (!storyDebates.length) throw new Error('This story has no debate yet');
+      debateId = storyDebates[0].id;
+    }
+
     // Path 1: Post-based debate (from feed/droboard)
     if (postId && !debateId && !bookId) {
       var res = await fetch('/api/posts/' + encodeURIComponent(postId), { credentials: 'include' });
@@ -96,11 +108,23 @@
       var post = await res.json();
       var d = (post && post.debateData) || {};
 
-      // Restore user's prior vote from API response
-      S.userVote = post.userVote || null;
+      // Restore user's prior vote from API response. The vote lives inside
+      // debateData on the post card (toCard deletes the raw votes array).
+      S.userVote = (d && d.userVote) || post.userVote || null;
       S.side = post.userSide || S.userVote || null;
       
       DEBATE_ID = postId; // Set for backend API calls
+
+      // Post debates have their own argument endpoint — fetch it the same way
+      // book/chapter debates do so all three paths render identical cards.
+      var postArgs = [];
+      try {
+        var argsRes = await fetch('/api/posts/' + encodeURIComponent(postId) + '/debate/args', { credentials: 'include' });
+        if (argsRes.ok) {
+          var argsData = await argsRes.json();
+          postArgs = (argsData && argsData.items) || [];
+        }
+      } catch (e) { /* arguments are non-fatal */ }
 
       return {
         id: postId,
@@ -112,6 +136,7 @@
         agV: d.agV || 0,
         expiresAt: post.expiresAt || null,
         poster: posterFrom(post),
+        args: postArgs,
       };
     }
 
@@ -244,7 +269,18 @@
 
   /* ── init ── */
   async function init() {
-    DEBATE = await resolveDebate();
+    try {
+      DEBATE = await resolveDebate();
+    } catch (e) {
+      // Never leave a blank page: say what failed so the user can retry or
+      // open a different debate.
+      console.error('[debate-page]', e);
+      var q = document.getElementById('debQ');
+      if (q) q.textContent = 'Could not load this debate';
+      var mount = document.getElementById('argsMount');
+      if (mount) mount.innerHTML = '<div class="deb-empty">' + esc((e && e.message) || 'Request failed') + '</div>';
+      return;
+    }
     // S already populated from API in resolveDebate
 
     if (window.DroboardDotsMenu) {

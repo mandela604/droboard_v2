@@ -68,8 +68,11 @@ router.patch('/library/items/:storyId/move', requireAuth, writeLimiter, audit('l
     body: z.object({ from: listEnum, to: listEnum }).strict(),
   })), ctrl.libraryMove);
 
-// story detail (bridge + collection story contracts)
-router.get('/stories/:id', generalLimiter,
-  validate(z.object({ params: z.object({ id: z.string().min(1).max(120) }) })), ctrl.storyDetail);
+// NOTE: story detail is intentionally NOT registered here. This router is
+// mounted at BOTH /api and /api/feed. The /api mount comes before the
+// /api/stories engagement router in server.js, so a /stories/:id handler here
+// would swallow /api/stories/<debateId>?book=…&ch=… and send the debate page
+// into the story-detail lookup instead of the debate-metadata one. Story detail
+// is served by engagement.routes.js at GET /api/stories/:id.
 
 module.exports = router;

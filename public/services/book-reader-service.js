@@ -934,7 +934,7 @@ function renderPolls() {
       {
         kinds: { poll: true, pred: false, deb: false },
         chapterLabel: chLabel(poll),
-        live: { bookId: STORY.id, bookLevel: true, rowId: poll.id, kind: 'poll' },
+        poll: poll,
       }
     );
   });
@@ -949,7 +949,7 @@ function renderPolls() {
       {
         kinds: { poll: false, pred: true, deb: false },
         chapterLabel: chLabel(pred),
-        live: { bookId: STORY.id, bookLevel: true, rowId: pred.id, kind: 'pred' },
+        prediction: pred,
       }
     );
   });
@@ -996,7 +996,13 @@ function renderDebates() {
         kinds: { poll: false, pred: false, deb: true },
         chapterLabel: isBookWide ? '' : chLabel(deb), // only show "Ch. X" for chapter-scoped
         debateId: deb.id,
-        live: { bookId: STORY.id, bookLevel: true, rowId: deb.id, kind: 'deb' },
+        // The story engagement payload already carries motion/votes. Passing a
+        // `live` object here made renderInto wait for a chapter engagement
+        // fetch that never happens, so book/chapter debate cards came back
+        // empty. Carry the row directly and give the page ids for the deep link.
+        bookId: STORY.id,
+        chapterId: isBookWide ? null : deb.chapter,
+        debate: deb,
       }
     );
   });

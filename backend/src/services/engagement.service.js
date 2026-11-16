@@ -375,6 +375,9 @@ async function reactStory({ bookId, userId, rid }) {
   await Reaction.create({ userId: String(userId), targetType: 'story', targetId: book.id, rid });
   book.reactions.set(rid, (book.reactions.get(rid) || 0) + 1);
   const counts = rxCounts(book);
+  // The story-level reaction grid IS what the reader sees, so Book.likes must
+  // mirror its sum (same as Chapter.likes mirrors its own grid).
+  book.likes = Object.keys(counts).reduce((a, k) => a + (Number(counts[k]) || 0), 0);
   await book.save();
   // Tell the author someone reacted to their story (first reaction per user).
   if (String(book.authorId) !== String(userId)) {
@@ -405,6 +408,8 @@ async function unreactStory({ bookId, userId }) {
   if (prev) {
     const left = Math.max(0, (book.reactions.get(prev.rid) || 0) - 1);
     if (left) book.reactions.set(prev.rid, left); else book.reactions.delete(prev.rid);
+    const counts = rxCounts(book);
+    book.likes = Object.keys(counts).reduce((a, k) => a + (Number(counts[k]) || 0), 0);
     await book.save();
   }
   const totals = await syncBookLikes(book.id);
@@ -459,6 +464,13 @@ async function chapterReactionTotals(bookId) {
 // sorting and the bridge stat all agree without each one re-aggregating.
 async function syncBookLikes(bookId) {
   const totals = await chapterReactionTotals(bookId);
+  const b = await Book.findOne({ id: String(bookId) }).select('reactions').lean().catch(() => null);
+  const raw = b && b.reactions instanceof Map
+    ? Object.fromEntries(b.reactions)
+    : ((b && b.reactions) || {});
+  Object.keys(raw).forEach(rid => { totals.counts[rid] = (totals.counts[rid] || 0) + (Number(raw[rid]) || 0); });
+  totals.total = Object.keys(totals.counts).reduce((a, k) => a + (Number(totals.counts[k]) || 0), 0);
+  totals.likes = totals.total;
   await Book.updateOne({ id: String(bookId) }, { $set: { likes: totals.total } });
   return totals;
 }
@@ -643,9 +655,62 @@ async function shareContent({ contentType, contentId, userId, channel }) {
   const e = new Error('bad_content_type'); e.status = 400; throw e;
 }
 
+/* ── Debate metadata (the debate page's first fetch) ────────────────────
+   A book-level debate lives in Book.debates[], a chapter-level one in
+   Chapter.debate. The debate page arrives with (debateId, bookId, chapterId?)
+   and needs the SAME shaped object from either surface. Kept in the service
+   so every router that can receive /stories/:id shares one implementation. */
+async function debateMetadata({ debateId, bookId, chapterId, viewerId }) {
+  if (!bookId) { const e = new Error('book_required'); e.status = 400; throw e; }
+
+  if (chapterId) {
+    // Callers use either the public chapter uuid (reader pages) or the chapter
+    // number (book-wide debate list). Accept both so the debate page never
+    // 404s just because of which id the linking surface happened to carry.
+    const chapterQuery = /^\d+$/.test(String(chapterId))
+      ? { bookId: String(bookId), n: parseInt(chapterId, 10) }
+      : { bookId: String(bookId), id: String(chapterId) };
+    const chapter = await Chapter.findOne(chapterQuery).lean();
+    if (!chapter || !chapter.debate || String(chapter.debate.id) !== String(debateId)) {
+      const e = new Error('debate_not_found'); e.status = 404; throw e;
+    }
+    const d = chapter.debate;
+    let userVote = null;
+    if (viewerId) {
+      const v = await EngagementVote.findOne({
+        chapterId: String(chapter.id), userId: String(viewerId),
+        kind: 'debate', itemId: String(debateId),
+      }).lean();
+      userVote = v ? (v.optionIdx === 0 ? 'for' : 'against') : null;
+    }
+    return {
+      type: 'chapter', id: String(debateId), bookId: String(bookId), chapterId: String(chapter.id),
+      motion: d.motion || '', forText: d.forText || 'For', againstText: d.againstText || 'Against',
+      forV: d.forV || 0, agV: d.agV || 0, expiresAt: d.expiresAt || null, userVote,
+    };
+  }
+
+  const book = await Book.findOne({ id: String(bookId) }).lean();
+  const debate = book && (book.debates || []).find(d => String(d.id) === String(debateId));
+  if (!debate) { const e = new Error('debate_not_found'); e.status = 404; throw e; }
+  let userVote = null;
+  if (viewerId) {
+    const v = await EngagementVote.findOne({
+      bookId: String(bookId), chapterId: '', userId: String(viewerId),
+      kind: 'debate', itemId: String(debateId),
+    }).lean();
+    userVote = v ? (v.optionIdx === 0 ? 'for' : 'against') : null;
+  }
+  return {
+    type: 'book', id: String(debateId), bookId: String(bookId),
+    motion: debate.motion || '', forText: debate.forText || 'For', againstText: debate.againstText || 'Against',
+    forV: debate.forV || 0, agV: debate.agV || 0, expiresAt: debate.expiresAt || null, userVote,
+  };
+}
+
 module.exports = {
   loadChapter, vote, retract, results, trackProgress, readState,
-  bookEngagement, bookVote, bookRetract,
+  bookEngagement, bookVote, bookRetract, debateMetadata,
   // The story detail read builds the same engagement block, so it borrows the
   // mapper instead of growing a second one.
   shapeStoryEngagement, storyVotes, ENGAGEMENT_LISTS,

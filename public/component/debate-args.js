@@ -229,7 +229,14 @@
 
     console.log('[debate-args] Attached with options:', { debateType: O.debateType, debateId: O.debateId, argsCount: (opts.args || []).length });
 
-    let _args = ((O.debateId && loadStoredTree(O.debateId)) || (opts.args || [])).slice().map(_canonStatuses);
+    // Server args are authoritative: the debate page fetches them from the
+    // API on every load. A stale localStorage tree must not hide real
+    // arguments (that made book/chapter debates look empty). Local storage is
+    // only a fallback for surfaces that don't pass args at all.
+    var initialArgs = Array.isArray(opts.args)
+      ? opts.args
+      : ((O.debateId && loadStoredTree(O.debateId)) || []);
+    let _args = initialArgs.slice().map(_canonStatuses);
     let _filter = 'all';
     let _replyTo = null;
     let _threadId = null;

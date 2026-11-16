@@ -288,18 +288,21 @@
       mountEl.setAttribute('data-ch', chN);
 
       var live = opts.live;
+      var pred = opts.pred || null;
+      var deb = opts.deb || null;
       if (!live || !live.bookId || !live.chapterId) {
         // Page-supplied rows (no backend read for this surface).
         cache[key] = {
           poll: opts.poll || null,
-          prediction: opts.prediction || null,
-          debate: opts.debate || null,
+          prediction: opts.prediction || pred || null,
+          debate: opts.debate || deb || null,
           authorNote: opts.authorNote !== undefined ? opts.authorNote : (authorNote || ''),
           myVotes: {},
         };
         if (opts.poll && typeof opts.poll.voted === 'number' && opts.poll.voted >= 0) cache[key].myVotes.poll = opts.poll.voted;
         if (opts.prediction && typeof opts.prediction.voted === 'number' && opts.prediction.voted >= 0) cache[key].myVotes.pred = opts.prediction.voted;
         if (opts.debate && typeof opts.debate.voted === 'number' && opts.debate.voted >= 0) cache[key].myVotes.debate = opts.debate.voted;
+        if (deb && typeof deb.voted === 'number' && deb.voted >= 0) cache[key].myVotes.debate = deb.voted;
         mountEl.innerHTML = htmlFor(key, chN);
         return;
       }
