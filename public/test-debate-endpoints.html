@@ -125,10 +125,22 @@
           throw new Error(`Login failed: ${res.status}`);
         }
 
+        // 1.5 GET BOOKS to find Nine Lives, Twice
+        await logTest('1.5️⃣ FIND "Nine Lives, Twice" BOOK', 'LOADING', { url: '/api/books', method: 'GET' });
+        res = await request('GET', '/api/books');
+        if (res.status !== 200 || !res.body.items) {
+          throw new Error(`Books list failed: ${res.status}`);
+        }
+        const nineLives = res.body.items.find(b => b.title && b.title.includes('Nine Lives'));
+        if (!nineLives) {
+          throw new Error('Nine Lives, Twice book not found in seed');
+        }
+        const bookId = nineLives.id;
+        await logTest('1.5️⃣ FIND "Nine Lives, Twice" BOOK', 'PASS', { status: res.status, response: `Found: ${nineLives.title}\nID: ${bookId}` });
+
         // 2. GET CHAPTER (with embedded debate)
-        await logTest('2️⃣ GET CHAPTER (Nine Lives, Twice - Chapter 1)', 'LOADING', { url: '/api/books/{bookId}/chapters/1', method: 'GET' });
-        const bookId = '000001a1-e486-773a-93b4-358a51fba1c2';
-        const chapterKey = '1';
+        const chapterKey = '1'; // Chapter 1
+        await logTest('2️⃣ GET CHAPTER (Nine Lives, Twice - Chapter 1)', 'LOADING', { url: `/api/books/${bookId}/chapters/${chapterKey}`, method: 'GET' });
         res = await request('GET', `/api/books/${bookId}/chapters/${chapterKey}`);
         if (res.status === 200 && res.body.debate) {
           const debateId = res.body.debate.id;

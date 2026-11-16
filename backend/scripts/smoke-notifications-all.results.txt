@@ -1,0 +1,30 @@
+PASS  post reaction notifies author
+PASS  post like notifies author
+PASS  post share notifies author
+PASS  comment on post notifies author
+PASS  reply notifies parent comment author
+PASS  comment on debate notifies author
+PASS  comment on discussion notifies thread author
+PASS  reaction on discussion notifies thread author
+PASS  debate argument notifies debate author
+PASS  argument upvote notifies argument author
+PASS  story reaction notifies author
+PASS  chapter reaction notifies author
+PASS  story share notifies author
+PASS  book rating notifies author
+PASS  status like notifies owner
+PASS  expired status sends a views + reactions digest  ::  [{"label":"Views","value":"1"},{"label":"Reactions","value":"3"}]
+PASS  expiry digest is idempotent
+PASS  editor invite signup notifies inviter
+PASS  editor invite assigns the new author
+PASS  league rollover notifies final position
+PASS  verification approval notifies the writer
+PASS  book rejection notifies the author with feedback
+PASS  book edit rejection notifies the author
+PASS  unflagging a book notifies the author
+PASS  editor message notifies the author
+PASS  muted/category-off channels suppress a row
+PASS  every server type has a default link label
+PASS  client store mirrors every server type
+
+===== 28/28 notification coverage assertions passed =====
