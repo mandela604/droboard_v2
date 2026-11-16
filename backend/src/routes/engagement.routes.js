@@ -48,8 +48,8 @@ router.delete('/:bookId/chapters/:key/reaction', requireAuth, writeLimiter, audi
 
 // Get a single debate by debate ID (for debate page fetch)
 // Can be either chapter-level or book-level debate
-// URL: GET /api/debates/:debateId?book=<bookId>[&ch=<chapterId>]
-router.get('/debates/:debateId', attachViewer, generalLimiter,
+// URL: GET /api/stories/:debateId?book=<bookId>[&ch=<chapterId>]
+router.get('/:debateId', attachViewer, generalLimiter,
   validate(z.object({ 
     params: z.object({ debateId: z.string().min(1).max(40) }),
     query: z.object({ book: id.optional(), ch: z.string().max(40).optional() }).strict(),
