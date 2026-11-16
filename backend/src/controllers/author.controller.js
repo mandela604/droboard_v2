@@ -169,8 +169,9 @@ async function launchKit(req, res) {
 
 async function saveLaunchKit(req, res) {
   return base.wrap(res, async () => {
-    const out = await author.saveLaunchKit({ userId: req.user.id, data: req.valid.body, id: req.valid.params.id });
-    if (!req.valid.params.id) res.status(201);
+    const id = req.valid.params && req.valid.params.id;
+    const out = await author.saveLaunchKit({ userId: req.user.id, data: req.valid.body, id });
+    if (!id) res.status(201);
     return out;
   });
 }

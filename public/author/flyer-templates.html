@@ -100,10 +100,9 @@ function toast(msg){var h=document.getElementById('toastHost');var el=document.c
 function readCopies(){try{return JSON.parse(localStorage.getItem(COPY_KEY)||'{}')||{}}catch(e){return{}}}
 function writeCopy(id,vars){var all=readCopies();all[id]=vars;try{localStorage.setItem(COPY_KEY,JSON.stringify(all))}catch(e){}}
 function myProfile(){
-  // Real session first; fall back to the Author Center identity shown on
-  // the dashboard when nobody is signed in.
+  // Real signed-in identity only — no placeholder author/handle on flyers.
   var s=(window.AuthSession&&AuthSession.getSync)?AuthSession.getSync():{};
-  return { authorName:s.name||'Luna Vale', handle:s.handle?('@'+String(s.handle).replace(/^@/,'')):'@luna_vale', userPhoto:s.avatar||'' };
+  return { authorName:s.name||'', handle:s.handle?('@'+String(s.handle).replace(/^@/,'')):'', userPhoto:s.avatar||'' };
 }
 function savedCount(){var all=readCopies();return Object.keys(all).length;}
 function render(){

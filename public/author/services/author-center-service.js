@@ -90,14 +90,18 @@
 
   async function hydrate() {
     try {
-      // Get current user from session
+      // Get current user from session. A cookie-only login has no stored user
+      // row yet, so restore it from /api/users/me before painting the greeting.
       var userSession = window.AuthSession && window.AuthSession.getSync ? window.AuthSession.getSync() : {};
-      var currentUser = userSession.name || userSession.fullName || 'User';
+      if (!userSession.name && window.AuthSession && window.AuthSession.ensureAccount) {
+        try { await window.AuthSession.ensureAccount(); userSession = window.AuthSession.getSync(); } catch (e) {}
+      }
+      var currentUser = userSession.name || userSession.handle || '';
 
-      // Update welcome message with real user name - use correct selector
+      // Update welcome message with the real signed-in name
       var welcomeEl = document.querySelector('.welcome-greet');
       if (welcomeEl) {
-        welcomeEl.textContent = 'Welcome back, ' + currentUser + ' 👋';
+        welcomeEl.textContent = currentUser ? ('Welcome back, ' + currentUser + ' 👋') : 'Welcome back 👋';
       }
 
       // Topbar avatar = the signed-in user's own image, never a demo face.
