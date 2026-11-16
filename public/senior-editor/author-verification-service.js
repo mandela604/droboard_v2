@@ -24,6 +24,19 @@
   function label(r) {
     return r.author || r.name || r.email || 'Unknown author';
   }
+  // Never say "No documents" when the record actually carries an NIN, an
+  // alternate ID or uploaded ID photos. Older deployments returned a stale
+  // label; derive it from the KYC itself as the source of truth.
+  function documentOf(r) {
+    const k = r.kyc || {};
+    const hasAlt = !!(k.altId && (k.altId.type || k.altId.no));
+    const hasPhotos = !!(k.idPhotos && (k.idPhotos.front || k.idPhotos.back));
+    if (k.type === 'guardian') return (k.guardian && k.guardian.name) ? 'Guardian ID' : 'Guardian ID';
+    if (k.type === 'pending' || hasAlt) return (k.altId && k.altId.type) || 'Alternate ID';
+    if (k.nin || hasPhotos) return 'National ID (NIN)';
+    if (r.document && !/^no documents$/i.test(r.document)) return r.document;
+    return r.doc || 'No documents';
+  }
   function showError(msg) {
     const el = document.getElementById('tableBody');
     if (el) el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> ' + esc(msg) + '</td></tr>';
@@ -49,7 +62,7 @@
       id: String(r.id || ''),
       author: label(r),
       name: label(r),
-      document: r.document || r.doc || 'No documents',
+      document: documentOf(r),
       submitted: r.submitted || '—',
       reviewer: typeof r.reviewer === 'object'
         ? ((r.reviewer && (r.reviewer.name || r.reviewer.fullName)) || 'Unassigned')
@@ -131,7 +144,7 @@
       + '<div class="sub-by">Submitted ' + esc(r.submitted) + ' · Reviewer: ' + esc(r.reviewer) + '</div></div></div>'
       + '<div class="sub-grid">'
       + '<div class="sub-card"><label>Status</label><b>' + esc(r.status) + '</b></div>'
-      + '<div class="sub-card"><label>Document</label><b>' + esc(r.document) + '</b></div>'
+      + '<div class="sub-card"><label>Document</label><b>' + esc(documentOf(r)) + '</b></div>'
       + '<div class="sub-card"><label>Submitted</label><b>' + esc(r.submitted) + '</b></div>'
       + '<div class="sub-card"><label>Request ID</label><b>' + esc(r.id) + '</b></div>'
       + '</div>'
@@ -146,19 +159,19 @@
   function row(r) {
     const open = openId === String(r.id);
     return '<tr class="req-row' + (open ? ' is-open' : '') + '" data-row="' + esc(r.id) + '">'
-      + '<td class="auth-cell" data-label="Author"><span class="row-chev"><i class="fas fa-chevron-right"></i></span>'
+      + '<td class="auth-cell" data-label="Author"><div class="cell-flex"><span class="row-chev"><i class="fas fa-chevron-right"></i></span>'
       + '<img class="auth-avatar" src="' + avatar(r.avatar) + '" alt=""/>'
-      + '<div><div class="auth-name">' + esc(label(r)) + '</div><div class="auth-email">' + esc(r.email || '—') + '</div></div></td>'
-      + '<td class="doc-cell" data-label="Document"><i class="fas fa-file"></i> ' + esc(r.document || '—') + '</td>'
+      + '<div><div class="auth-name">' + esc(label(r)) + '</div><div class="auth-email">' + esc(r.email || '—') + '</div></div></div></td>'
+      + '<td class="doc-cell" data-label="Document"><div class="cell-flex"><i class="fas fa-file"></i> ' + esc(documentOf(r)) + '</div></td>'
       + '<td class="plain-cell" data-label="Submitted">' + esc(r.submitted || '—') + '</td>'
-      + '<td class="reviewer-cell" data-label="Reviewer"><img src="' + avatar(r.reviewerAvatar) + '" alt=""/><span>' + esc(r.reviewer || '—') + '</span></td>'
+      + '<td class="reviewer-cell" data-label="Reviewer"><div class="cell-flex"><img src="' + avatar(r.reviewerAvatar) + '" alt=""/><span>' + esc(r.reviewer || '—') + '</span></div></td>'
       + '<td data-label="Status"><span class="status-pill ' + esc(r.status) + '">' + esc(r.status) + '</span></td>'
-      + '<td class="actions-cell" data-label="Actions">'
+      + '<td class="actions-cell" data-label="Actions"><div class="cell-flex">'
       + (r.status === 'pending'
         ? '<button class="act-btn approve" data-approve="' + esc(r.id) + '" title="Approve"><i class="fas fa-check"></i></button>'
           + '<button class="act-btn reject" data-reject="' + esc(r.id) + '" title="Reject"><i class="fas fa-times"></i></button>'
         : '<span class="sub-note">Reviewed</span>')
-      + '</td></tr>' + detailRow(r);
+      + '</div></td></tr>' + detailRow(r);
   }
 
   function render() {

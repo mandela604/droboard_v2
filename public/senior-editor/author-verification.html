@@ -66,14 +66,14 @@
   thead th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--text-faint);text-transform:uppercase;background:var(--table-head);padding:12px 20px;white-space:nowrap}
   tbody td{padding:14px 20px;border-top:1px solid var(--border);font-size:13px;vertical-align:middle}
   tbody tr:hover{background:var(--hover)}
-  .auth-cell{display:flex;align-items:center;gap:12px}
+  .auth-cell .cell-flex{display:flex;align-items:center;gap:12px}
   .auth-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid var(--border)}
   .auth-name{font-weight:700;font-size:13px}
   .auth-email{color:var(--text-muted);font-size:11.5px;margin-top:1px}
-  .doc-cell{display:flex;align-items:center;gap:8px;font-weight:600;font-size:12.5px}
+  .doc-cell .cell-flex{display:flex;align-items:center;gap:8px;font-weight:600;font-size:12.5px}
   .doc-cell i{color:var(--text-faint);font-size:13px}
   .plain-cell{font-weight:600;font-size:12.5px}
-  .reviewer-cell{display:flex;align-items:center;gap:8px}
+  .reviewer-cell .cell-flex{display:flex;align-items:center;gap:8px}
   .reviewer-cell img{width:22px;height:22px;border-radius:50%;object-fit:cover}
   .reviewer-cell span{font-size:12px;font-weight:600;color:var(--text-muted)}
   .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;white-space:nowrap;background:var(--green-bg);color:var(--green)}
@@ -85,7 +85,7 @@
   .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
   .status-pill.pending .dot{background:var(--amber)}
   .status-pill.rejected .dot{background:var(--red)}
-  .actions-cell{display:flex;align-items:center;gap:6px}
+  .actions-cell .cell-flex{display:flex;align-items:center;gap:6px}
   .act-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;cursor:pointer}
   .act-btn:hover{color:var(--accent);border-color:var(--accent)}
   .act-btn.approve:hover{color:var(--green);border-color:var(--green)}
@@ -270,8 +270,8 @@
 
 
 <script src="shared/senior-editor-sidebar.js"></script>
-<script src="shared/kyc-panel.js?v=1"></script>
-<script src="author-verification-service.js?v=8"></script>
+<script src="shared/kyc-panel.js?v=2"></script>
+<script src="author-verification-service.js?v=9"></script>
 <script>AuthorVerificationService.init();</script>
 </body>
 </html>

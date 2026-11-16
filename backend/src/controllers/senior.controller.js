@@ -476,29 +476,66 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// The console always shows the editor the author actually belongs to. That
+// ownership can come from the assignment pod, a book's assignedSeId, or the
+// editor invite the writer signed up with — check all three.
+async function editorOwnerMap(userIds) {
+  const { User } = require('../models/user.model');
+  const { EditorAssignment } = require('../models/chief.model');
+  const { Book } = require('../models/content.model');
+  const isHex = (v) => /^[0-9a-fA-F]{24}$/.test(String(v));
+  const ids = [...new Set(userIds.map(String).filter(Boolean))];
+  if (!ids.length) return { ownerOf: new Map(), edMap: new Map() };
+  const userQuery = { $or: [{ id: { $in: ids } }] };
+  if (ids.some(isHex)) userQuery.$or.push({ _id: { $in: ids.filter(isHex) } });
+  const users = await User.find(userQuery).select('id _id referredByUserId').lean();
+  const flavors = [...new Set(users.reduce((a, u) => a.concat([String(u.id), String(u._id)]), []).filter(Boolean))];
+  const referredIds = [...new Set(users.map((u) => String(u.referredByUserId || '')).filter(Boolean))];
+  const refQuery = { $or: [{ id: { $in: referredIds } }] };
+  if (referredIds.some(isHex)) refQuery.$or.push({ _id: { $in: referredIds.filter(isHex) } });
+  const [assigns, books, refUsers] = await Promise.all([
+    EditorAssignment.find({ authorIds: { $in: flavors } }).select('editorId authorIds').lean(),
+    Book.find({ authorId: { $in: flavors }, assignedSeId: { $ne: null } }).select('authorId assignedSeId').lean(),
+    referredIds.length ? User.find(refQuery).select('id _id fullName username avatar').lean() : [],
+  ]);
+  const ownerOf = new Map();
+  for (const a of assigns) {
+    for (const uid of (a.authorIds || []).map(String)) if (!ownerOf.has(uid)) ownerOf.set(uid, String(a.editorId));
+  }
+  for (const b of books) if (!ownerOf.has(String(b.authorId))) ownerOf.set(String(b.authorId), String(b.assignedSeId));
+  const refByOid = new Map(refUsers.map((u) => [String(u._id), u]));
+  for (const u of users) {
+    if (!ownerOf.has(String(u.id)) && refByOid.has(String(u.referredByUserId))) {
+      ownerOf.set(String(u.id), String(refByOid.get(String(u.referredByUserId)).id));
+    }
+  }
+  const editorIds = [...new Set(ownerOf.values())];
+  const edQuery = { $or: [{ id: { $in: editorIds } }] };
+  if (editorIds.some(isHex)) edQuery.$or.push({ _id: { $in: editorIds.filter(isHex) } });
+  const editors = editorIds.length ? await User.find(edQuery).select('id _id fullName username avatar').lean() : [];
+  const edMap = new Map();
+  editors.forEach((e) => { edMap.set(String(e.id), e); edMap.set(String(e._id), e); });
+  return { ownerOf, edMap };
+}
+
 // The console keys rows by person, so each record carries the author's display
 // fields and the owning editor. A writer with no owner stays unassigned rather
 // than inheriting a demo reviewer.
 async function decorateVerifications(list) {
   const { User } = require('../models/user.model');
-  const { EditorAssignment } = require('../models/chief.model');
   const userIds = list.map((r) => r.userId).filter(Boolean);
   if (!userIds.length) return list;
-  const [users, assigns] = await Promise.all([
-    User.find({ id: { $in: userIds } }).select('id fullName username email avatar').lean(),
-    EditorAssignment.find({ authorIds: { $in: userIds } }).select('editorId authorIds').lean(),
-  ]);
-  const byId = new Map(users.map((u) => [u.id, u]));
-  const ownerOf = new Map();
-  for (const a of assigns) for (const uid of a.authorIds) if (!ownerOf.has(uid)) ownerOf.set(uid, a.editorId);
-  const editorIds = [...new Set(ownerOf.values())];
-  const editors = editorIds.length
-    ? await User.find({ id: { $in: editorIds } }).select('id fullName avatar').lean()
-    : [];
-  const edById = new Map(editors.map((u) => [u.id, u]));
+  const isHex = (v) => /^[0-9a-fA-F]{24}$/.test(String(v));
+  const q = { $or: [{ id: { $in: userIds.map(String) } }] };
+  if (userIds.some(isHex)) q.$or.push({ _id: { $in: userIds.filter(isHex) } });
+  const users = await User.find(q).select('id _id fullName username email avatar').lean();
+  const byId = new Map();
+  users.forEach((u) => { byId.set(String(u.id), u); byId.set(String(u._id), u); });
+  const { ownerOf, edMap } = await editorOwnerMap(userIds);
   return list.map((r) => {
-    const u = byId.get(r.userId) || {};
-    const ed = edById.get(ownerOf.get(r.userId));
+    const u = byId.get(String(r.userId)) || {};
+    const ownerId = ownerOf.get(String(r.userId)) || ownerOf.get(String(u.id));
+    const ed = edMap.get(String(ownerId));
     const submitted = fmtDate(r.submittedAt || r.createdAt);
     return {
       ...r,
@@ -523,9 +560,20 @@ async function decorateVerifications(list) {
 // Every writer belongs to exactly one senior editor (invite or assignment), so
 // the queue is strictly that editor's writers; chief/admin see the platform.
 async function scopeVerifications(req, list) {
+  const { User } = require('../models/user.model');
+  const { Book } = require('../models/content.model');
   const ids = await senior.scopeAuthorIds(req.user);
   if (ids === null) return list;
-  const mine = new Set(ids.map(String));
+  const mine = new Set((ids || []).map(String));
+  const me = await User.findOne({ id: String(req.user.id) }).select('id _id').lean().catch(() => null);
+  if (me) {
+    const [books, invited] = await Promise.all([
+      Book.find({ assignedSeId: String(req.user.id) }).select('authorId').lean().catch(() => []),
+      User.find({ referredByUserId: me._id }).select('id').lean().catch(() => []),
+    ]);
+    books.forEach((b) => mine.add(String(b.authorId)));
+    invited.forEach((u) => mine.add(String(u.id)));
+  }
   return list.filter((r) => mine.has(String(r.userId)));
 }
 

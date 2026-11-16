@@ -112,24 +112,32 @@
   function name(rec) { return rec.author || rec.name || 'Author'; }
   function docLabel(rec) { return rec.bookTitle || rec.doc || rec.id || ''; }
 
-  function badge(k) {
+  function hasAlt(k) { return !!(k && k.altId && (k.altId.type || k.altId.no)); }
+
+  function badge(k, rec) {
+    // The record's DECISION is the source of truth — never call a submission
+    // "Verified" just because it contains an NIN. A pending or rejected record
+    // must still read pending or rejected to the reviewer.
+    var st = String((rec && (rec.verificationStatus || rec.status)) || '');
+    if (st === 'pending') return '<span class="kyc-badge pending"><i class="fas fa-hourglass-half"></i> Pending review</span>';
+    if (st === 'rejected') return '<span class="kyc-badge missing"><i class="fas fa-circle-exclamation"></i> Rejected</span>';
     if (!k) return '<span class="kyc-badge missing"><i class="fas fa-circle-exclamation"></i> Not submitted</span>';
     if (!k.idPhotos || !k.idPhotos.front || !k.idPhotos.back) return '<span class="kyc-badge pending"><i class="fas fa-image"></i> Photos missing</span>';
     if (k.type === 'guardian') return '<span class="kyc-badge guardian"><i class="fas fa-user-shield"></i> Guardian co-sign</span>';
-    /* An alternate ID (passport, licence, voter's card) is its own verified path —
-       only an alternate that is still waiting on the NIN reads as "pending". */
-    if (k.altId) {
+    if (hasAlt(k)) {
       if (k.type === 'pending') return '<span class="kyc-badge pending"><i class="fas fa-hourglass-half"></i> Pending NIN</span>';
       return '<span class="kyc-badge verified"><i class="fas fa-stamp"></i> Verified · ' + esc(k.altId.type) + '</span>';
     }
-    return '<span class="kyc-badge verified"><i class="fas fa-shield-halved"></i> Verified · self NIN</span>';
+    if (st === 'approved') return '<span class="kyc-badge verified"><i class="fas fa-shield-halved"></i> Verified · self NIN</span>';
+    return '<span class="kyc-badge pending"><i class="fas fa-hourglass-half"></i> Awaiting review</span>';
   }
 
   function fields(rec) {
     var k = rec.kyc;
+    var alt = hasAlt(k);
     var path = k.type === 'guardian' ? 'Guardian co-sign'
-      : k.altId ? (k.type === 'pending' ? 'Pending NIN · alternate ID' : 'Verified · ' + esc(k.altId.type))
-      : 'NIN verified';
+      : alt ? (k.type === 'pending' ? 'Pending NIN · alternate ID' : 'Verified · ' + esc(k.altId.type))
+      : 'NIN submitted · awaiting review';
     var f = [
       { l: 'Full legal name', v: esc(name(rec)) },
       { l: 'Date of birth', v: date(k.dob) + ' <small>age ' + esc(k.age) + '</small>' },
@@ -139,7 +147,7 @@
       f.push({ l: 'Guardian', v: esc(k.guardian.name) });
       f.push({ l: 'Relationship', v: esc(k.guardian.relationship) });
       f.push({ l: 'Guardian ID no.', v: esc(k.guardian.idNo), mono: true });
-    } else if (k.altId) {
+    } else if (hasAlt(k)) {
       f.push({ l: 'ID type', v: esc(k.altId.type) });
       f.push({ l: 'ID no.', v: esc(k.altId.no), mono: true });
     } else {
@@ -252,7 +260,7 @@
     _records[String(rec.id)] = rec;
     var h = '<div class="kyc-panel"><div class="kyc-panel-head">'
       + '<div class="kyc-panel-title"><i class="fas fa-id-card"></i> Author Identity &amp; Personal Details</div>'
-      + badge(k) + '</div>';
+      + badge(k, rec) + '</div>';
     if (!k) {
       h += '<div class="kyc-empty"><i class="fas fa-circle-exclamation"></i><div><b>No identity details submitted</b>'
         + '<span>This application has no KYC record. Ask the author to submit identity in the Author Center before signing.</span></div></div></div>';
