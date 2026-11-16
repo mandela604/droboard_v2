@@ -65,8 +65,10 @@
   }
 
   function onCreated(book, item) {
-    book.engagements = (book.engagements || []).concat([item]);
     if (window.AuthorDrawer) window.AuthorDrawer.toast('Live on ' + book.title + '.');
+    // Re-read from the server so the new item (and its real id + totals)
+    // shows up in the engagement list straight away.
+    refreshBooks();
   }
 
   function wireEngagementCreator() {
@@ -164,10 +166,18 @@
           chapters: b.chapterCount || 0,
           status: rejected ? 'rejected' : (b.status || 'draft'),
           statusLabel: rejected ? 'Needs Changes' : undefined,
-          statusClass: rejected ? 'rejected' : (b.status || 'draft')
+          statusClass: rejected ? 'rejected' : (b.status || 'draft'),
+          // Book-level engagement (the layer the author creates here). The
+          // chapter layer lives with each chapter in the reader.
+          engagements: {
+            polls: b.polls || [],
+            predictions: b.predictions || [],
+            debates: b.debates || []
+          }
         });
       });
       renderBooks();
+      renderEngagements();
     } catch (e) {
       console.error('Failed to load books:', e);
       document.getElementById('bookList').innerHTML = '<div class="empty" style="color:var(--red)"><i class="fas fa-exclamation-triangle"></i> Failed to load books. Please refresh the page.</div>';
@@ -178,6 +188,189 @@
     if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
     return String(n);
+  }
+
+  /* ── STORY ENGAGEMENT (book level) ──────────────────────────────────
+     The author's own polls / predictions / debates, with the live totals
+     readers see on the story page. Edit keeps the item id (so the votes
+     already cast stay attached); Delete removes it. */
+  var ENG_EDIT = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function engLabel(kind) { return kind === 'poll' ? 'Poll' : kind === 'prediction' ? 'Prediction' : 'Debate'; }
+  function engIcon(kind) { return kind === 'poll' ? '📊' : kind === 'prediction' ? '🔮' : '⚔️'; }
+  function engTotal(item, kind) {
+    if (kind === 'debate') return (item.forV || 0) + (item.agV || 0);
+    return (item.opts || []).reduce(function (a, o) { return a + (o.v || 0); }, 0);
+  }
+  function engRows() {
+    var out = [];
+    BOOKS.forEach(function (b) {
+      var e = b.engagements || {};
+      [['poll', e.polls || []], ['prediction', e.predictions || []], ['debate', e.debates || []]]
+        .forEach(function (pair) {
+          pair[1].forEach(function (item) { out.push({ book: b, kind: pair[0], item: item }); });
+        });
+    });
+    return out;
+  }
+  function engEditForm(r) {
+    var actions = '<div class="eng-edit-actions"><button class="eng-btn primary" data-eng-save="1">Save</button>' +
+      '<button class="eng-btn" data-eng-cancel="1">Cancel</button></div>';
+    if (r.kind === 'debate') {
+      return '<div class="eng-edit">' +
+        '<input class="eng-input" id="engMotion" value="' + esc(r.item.motion || '') + '" placeholder="The motion"/>' +
+        '<input class="eng-input" id="engFor" value="' + esc(r.item.forText || 'For') + '" placeholder="Label for the FOR side"/>' +
+        '<input class="eng-input" id="engAgainst" value="' + esc(r.item.againstText || 'Against') + '" placeholder="Label for the AGAINST side"/>' +
+        actions + '</div>';
+    }
+    var opts = (r.item.opts || []).map(function (o, i) {
+      return '<input class="eng-input" data-eng-opt="' + i + '" value="' + esc(o.t || '') + '" placeholder="Option ' + (i + 1) + '"/>';
+    }).join('');
+    return '<div class="eng-edit">' +
+      '<input class="eng-input" id="engQuestion" value="' + esc(r.item.q || '') + '" placeholder="Question"/>' +
+      opts + actions + '</div>';
+  }
+  function renderEngagements() {
+    var wrap = document.getElementById('engagementList');
+    if (!wrap) return;
+    var rows = engRows();
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="eng-empty">No story engagement yet. Use the ⋯ menu on a book to add a Poll, Prediction or Debate — readers see it on the story page.</div>';
+      return;
+    }
+    wrap.innerHTML = rows.map(function (r, i) {
+      var editing = !!(ENG_EDIT && ENG_EDIT.bookId === r.book.id && ENG_EDIT.kind === r.kind && ENG_EDIT.itemId === String(r.item.id));
+      var detail = r.kind === 'debate'
+        ? (r.item.forV || 0) + ' for · ' + (r.item.agV || 0) + ' against'
+        : (r.item.opts || []).map(function (o) { return o.t + ' (' + (o.v || 0) + ')'; }).join(' · ');
+      var head = '<div class="eng-row-head">' +
+        '<span class="eng-ico">' + engIcon(r.kind) + '</span>' +
+        '<span class="eng-kind">' + engLabel(r.kind) + '</span>' +
+        '<span class="eng-q">' + esc(r.kind === 'debate' ? (r.item.motion || '') : (r.item.q || '')) + '</span>' +
+        '<span class="eng-total">' + engTotal(r.item, r.kind) + ' votes</span>' +
+        '</div>' +
+        '<div class="eng-meta">' + esc(r.book.title) + ' · ' + esc(detail) + '</div>';
+      var actions = editing ? '' :
+        '<div class="eng-actions">' +
+        '<button class="eng-btn" data-eng-edit="' + i + '">Edit</button>' +
+        '<button class="eng-btn danger" data-eng-del="' + i + '">Delete</button>' +
+        '</div>';
+      return '<div class="eng-item">' + head + actions + (editing ? engEditForm(r) : '') + '</div>';
+    }).join('');
+    bindEngagementActions();
+  }
+  function bindEngagementActions() {
+    var wrap = document.getElementById('engagementList');
+    if (!wrap) return;
+    wrap.querySelectorAll('[data-eng-edit]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var r = engRows()[parseInt(btn.getAttribute('data-eng-edit'), 10)];
+        if (!r) return;
+        ENG_EDIT = { bookId: r.book.id, kind: r.kind, itemId: String(r.item.id) };
+        renderEngagements();
+      });
+    });
+    wrap.querySelectorAll('[data-eng-del]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var r = engRows()[parseInt(btn.getAttribute('data-eng-del'), 10)];
+        if (!r) return;
+        var label = r.kind === 'debate' ? (r.item.motion || '') : (r.item.q || '');
+        if (!window.confirm('Delete this ' + engLabel(r.kind).toLowerCase() + '?\n\n"' + label + '"\n\nReaders will stop seeing it, and its votes go with it.')) return;
+        deleteEngagement(r);
+      });
+    });
+    wrap.querySelectorAll('[data-eng-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function () { ENG_EDIT = null; renderEngagements(); });
+    });
+    wrap.querySelectorAll('[data-eng-save]').forEach(function (btn) {
+      btn.addEventListener('click', function () { saveEngagement(); });
+    });
+  }
+  function engItemUrl(bookId, kind, itemId) {
+    return CFG.API_BASE + '/books/' + encodeURIComponent(bookId) + '/engagement/' + kind + '/' + encodeURIComponent(itemId);
+  }
+  async function deleteEngagement(r) {
+    try {
+      var res = await fetch(engItemUrl(r.book.id, r.kind, r.item.id), {
+        method: 'DELETE', credentials: 'include',
+      });
+      if (!res.ok) throw new Error('status ' + res.status);
+      ENG_EDIT = null;
+      await refreshBooks();
+      toast('Deleted');
+    } catch (e) {
+      toast('Could not delete — try again');
+    }
+  }
+  async function saveEngagement() {
+    if (!ENG_EDIT) return;
+    var rows = engRows();
+    var r = rows.find(function (x) {
+      return x.book.id === ENG_EDIT.bookId && x.kind === ENG_EDIT.kind && String(x.item.id) === ENG_EDIT.itemId;
+    });
+    if (!r) { ENG_EDIT = null; renderEngagements(); return; }
+    var body = {};
+    if (r.kind === 'debate') {
+      var motion = (document.getElementById('engMotion') || {}).value;
+      var forText = (document.getElementById('engFor') || {}).value;
+      var againstText = (document.getElementById('engAgainst') || {}).value;
+      if (!motion || !motion.trim()) { toast('The motion cannot be empty'); return; }
+      body.motion = motion.trim();
+      body.forText = (forText || '').trim() || 'For';
+      body.againstText = (againstText || '').trim() || 'Against';
+    } else {
+      var q = (document.getElementById('engQuestion') || {}).value;
+      if (!q || !q.trim()) { toast('The question cannot be empty'); return; }
+      body.question = q.trim();
+      var opts = Array.prototype.slice.call(document.querySelectorAll('[data-eng-opt]')).map(function (i) { return (i.value || '').trim(); });
+      if (opts.some(function (t) { return !t; })) { toast('Every option needs a label'); return; }
+      body.opts = opts;
+    }
+    try {
+      var res = await fetch(engItemUrl(r.book.id, r.kind, r.item.id), {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('status ' + res.status);
+      ENG_EDIT = null;
+      await refreshBooks();
+      toast('Saved');
+    } catch (e) {
+      toast('Could not save — try again');
+    }
+  }
+  // Re-read the author's books so the engagement list shows the server truth.
+  async function refreshBooks() {
+    try {
+      var live = await api.getBooks();
+      BOOKS.length = 0;
+      (live || []).forEach(function (b) {
+        BOOKS.push({
+          id: b.id, title: b.title || 'Untitled',
+          genre: b.genre || '', cover: b.cover || '',
+          reads: fmtNum(b.reads), likes: fmtNum(b.likes),
+          chapters: b.chapterCount || 0,
+          status: b.status || 'draft',
+          statusClass: b.status || 'draft',
+          engagements: {
+            polls: b.polls || [], predictions: b.predictions || [], debates: b.debates || []
+          }
+        });
+      });
+      renderBooks();
+      renderEngagements();
+    } catch (e) { /* keep the current paint */ }
+  }
+  function toast(msg) {
+    if (window.AuthorDrawer && window.AuthorDrawer.toast) { window.AuthorDrawer.toast(msg); return; }
+    if (typeof window.toast === 'function') { window.toast(msg); return; }
+    var t = document.getElementById('toast');
+    if (t) { t.textContent = msg; t.classList.add('show'); setTimeout(function () { t.classList.remove('show'); }, 2200); }
   }
 
   var api = {
@@ -191,6 +384,7 @@
   function init() {
     wireEngagementCreator();
     renderBooks();
+    renderEngagements();
     hydrate().then(function() {
       renderStats();
     }).catch(function(e) {

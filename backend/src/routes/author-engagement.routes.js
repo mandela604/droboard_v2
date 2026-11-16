@@ -94,6 +94,48 @@ router.post('/engagement', writeLimiter, audit('author.engagement.create'),
     });
   });
 
+// Edit an existing item IN PLACE: the id and the per-option vote counts stay,
+// so the votes readers already cast keep pointing at the same item. Changing
+// the NUMBER of options is refused — the counts are per position, so the
+// author should delete the item and create a fresh one instead.
+router.put('/engagement/:kind/:itemId', writeLimiter, audit('author.engagement.update'),
+  validate(z.object({
+    params: z.object({ bookId: id, kind: z.enum(['poll', 'prediction', 'debate']), itemId: z.string().min(1).max(120) }),
+    body: z.object({
+      question: z.string().trim().min(1).max(300).optional(),
+      opts: z.array(z.string().trim().min(1).max(60)).min(2).max(4).optional(),
+      motion: z.string().trim().min(1).max(500).optional(),
+      forText: z.string().trim().max(60).optional(),
+      againstText: z.string().trim().max(60).optional(),
+    }).strict(),
+  })),
+  async (req, res) => {
+    const base = require('../controllers/base.controller');
+    return base.wrap(res, async () => {
+      const { kind, itemId } = req.valid.params;
+      const data = req.valid.body || {};
+      const book = await Book.findOne({ id: req.valid.params.bookId, authorId: req.user.id });
+      if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
+      const array = kind === 'debate' ? 'debates' : `${kind}s`;
+      const item = (book[array] || []).find(i => String(i.id) === String(itemId));
+      if (!item) { const e = new Error('not_found'); e.status = 404; throw e; }
+
+      if (kind === 'debate') {
+        if (data.motion !== undefined) item.motion = data.motion;
+        if (data.forText !== undefined) item.forText = data.forText || 'For';
+        if (data.againstText !== undefined) item.againstText = data.againstText || 'Against';
+      } else {
+        if (data.opts && data.opts.length !== (item.opts || []).length) {
+          const e = new Error('opt_count_changed'); e.status = 409; throw e;
+        }
+        if (data.question !== undefined) item.q = data.question;
+        if (data.opts) item.opts.forEach((o, i) => { o.t = data.opts[i]; });
+      }
+      await book.save();
+      return { ...(item.toJSON ? item.toJSON() : item), kind };
+    });
+  });
+
 // Remove an engagement item by id
 router.delete('/engagement/:kind/:itemId', writeLimiter, audit('author.engagement.delete'),
   validate(z.object({

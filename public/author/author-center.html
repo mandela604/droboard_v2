@@ -160,6 +160,37 @@ a{color:inherit;text-decoration:none}
 @media (max-width:359px){
   .stat-num{font-size:17px}
 }
+
+/* ── STORY ENGAGEMENT LIST ── */
+.eng-item{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:12px 14px;margin-bottom:10px;
+}
+.eng-row-head{display:flex;align-items:center;gap:8px}
+.eng-ico{font-size:14px}
+.eng-kind{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);background:rgba(255,0,80,.1);border-radius:999px;padding:2px 8px;flex-shrink:0}
+.eng-q{font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eng-total{font-size:11px;font-weight:700;color:var(--text-muted);flex-shrink:0}
+.eng-meta{font-size:11px;color:var(--text-muted);margin-top:5px;padding-left:2px}
+.eng-actions{display:flex;gap:8px;margin-top:9px}
+.eng-btn{
+  background:var(--hover);border:1px solid var(--border);color:var(--text);
+  font:inherit;font-size:11px;font-weight:700;padding:5px 11px;border-radius:8px;cursor:pointer;
+}
+.eng-btn:hover{border-color:var(--accent);color:var(--accent)}
+.eng-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.eng-btn.danger:hover{border-color:var(--red);color:var(--red)}
+.eng-edit{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.eng-input{
+  width:100%;background:var(--input-bg,var(--hover));border:1px solid var(--border);
+  border-radius:9px;padding:8px 10px;font:inherit;font-size:12.5px;color:var(--text);
+}
+.eng-input:focus{outline:none;border-color:var(--accent)}
+.eng-edit-actions{display:flex;gap:8px;margin-top:2px}
+.eng-empty{
+  padding:18px;text-align:center;color:var(--text-muted);font-size:12px;
+  border:1px dashed var(--border);border-radius:12px;background:var(--card);
+}
 @media (min-width:600px){
   .content{max-width:560px;margin:0 auto;padding:20px 20px 28px}
   .topbar{max-width:560px;margin:0 auto;padding-left:16px;padding-right:16px}
@@ -209,6 +240,11 @@ a{color:inherit;text-decoration:none}
     </div>
   </section>
 
+  <section class="section" id="engagementSection">
+    <div class="sec-head"><h2 class="sec-title">Story Engagement</h2></div>
+    <div id="engagementList"></div>
+  </section>
+
 </div>
 
 <!-- Writer verification sheet -->
@@ -239,12 +275,12 @@ a{color:inherit;text-decoration:none}
 <!-- Platform bottom nav removed: author pages carry no bottom nav -->
 <script src="../component/book-card.js?v=4"></script>
 <script src="../component/expiry-chips.js?v=1"></script>
-<script src="../component/engagement-creator.js?v=2"></script>
+<script src="../component/engagement-creator.js?v=3"></script>
 <script src="../component/kyc-form.js?v=1"></script>
 <script src="../services/auth-session.js"></script>
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js?v=4"></script>
-<script src="services/author-center-service.js?v=10"></script>
+<script src="services/author-center-service.js?v=12"></script>
 <script src="services/verification-service.js?v=3"></script>
 <script>AuthorCenterService.init(); VerificationService.init();</script>
 <script src="../shared/theme-chrome.js"></script>

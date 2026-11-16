@@ -332,6 +332,10 @@
       _toast(_labelFor(created.kind) + ' added to ' + (_ctx.bookTitle || 'this story') + '.');
       if (typeof _ctx.onCreated === 'function') _ctx.onCreated(created);
     } catch (e) {
+      // The sheet may already be closed (state cleared) — the old code crashed
+      // here on `_state.busy`, hiding the real failure.
+      console.error('[engagement-creator] create failed:', e);
+      if (!_state) return;
       _state.busy = false;
       _state.error = (e && e.message && e.message !== 'Failed to fetch')
         ? e.message
