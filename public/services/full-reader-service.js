@@ -882,10 +882,10 @@
           adsFirst: false, // reading comments never start with an ad
           scrollBox: 420, // bounded inner-scroll list + pinned composer
           fullCommentsUrl: function () {
-            return 'comments.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + currentChNum();
+            return 'comments.html?story=' + encodeURIComponent(storyIdNow()) + '&ch=' + chapterId;
           },
           ads: (ADST.adsEnabled === false || chapterAdFree(curSeasonIdx, curChIdx)) ? false : undefined,
-          getCommentUrl: (c) => "comments.html?story=" + encodeURIComponent(storyIdNow()) + "&ch=" + currentChNum() + "#comment-" + (c && c.id),
+          getCommentUrl: (c) => "comments.html?story=" + encodeURIComponent(storyIdNow()) + "&ch=" + chapterId + "#comment-" + (c && c.id),
           onPost: (c) => API.postComment({ scope: chapterId ? 'chapter' : 'story', storyId: storyId, chapterId: chapterId, text: c.text, team: c.team }),
           onReply: (parentId, c) => API.postComment({ scope: chapterId ? 'chapter' : 'story', storyId: storyId, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
           onEdit: (c, oldText, newText) => API.editComment(c.id, newText),

@@ -103,6 +103,9 @@
     .da-vote-btn i{font-size:11px}
     .da-vote-btn span{font-size:11px}
 
+    /* Disable vote buttons during edit */
+    .da-item.editing .da-vote-btn{pointer-events:none;opacity:.5;cursor:not-allowed}
+
     /* Reply area */
     .da-reply-area{display:none;padding:6px 0 0 14px;border-left:2px solid rgba(255,0,80,.1);margin-left:18px;margin-top:3px}
     .da-reply-area.open{display:flex;gap:7px;align-items:center}
@@ -229,6 +232,7 @@
     let _replyTo = null;
     let _threadId = null;
     let _editingId = null;
+    let _editingSnapshot = null; // Store original state before editing
 
     /* ── helpers ── */
     function countReplies(a) {
@@ -346,7 +350,7 @@
       var totalR = countReplies(a);
       
       // Build statuses HTML if available
-      var h = '<div class="da-item' + (isReply ? ' is-reply' : '') + '" data-arg-id="' + esc(a.id) + '">' +
+      var h = '<div class="da-item' + (isReply ? ' is-reply' : '') + (a.id === _editingId ? ' editing' : '') + '" data-arg-id="' + esc(a.id) + '">' +
         '<div class="da-inner">' +
           avHTML(a) +
           '<div class="da-body">' +
@@ -696,6 +700,8 @@
     function startEdit(id, inThread) {
       var a = findArg(id);
       if (!a) { toast('Argument not found'); return; }
+      // Save snapshot of vote state before editing
+      _editingSnapshot = { id: id, myVote: a.myVote, up: a.up, down: a.down };
       _editingId = id;
       rerender();
       var ta = null;
@@ -735,6 +741,9 @@
       if (!text) { toast('Argument can\u2019t be empty'); return; }
       var sideChanged = v.side && v.side !== a.side;
       
+      // Clear snapshot since we're saving changes
+      _editingSnapshot = null;
+      
       // Update UI optimistically
       var oldText = a.text;
       var oldSide = a.side;
@@ -771,6 +780,16 @@
       });
     }
     function cancelEdit() {
+      // Revert vote changes if any were made during edit
+      if (_editingSnapshot && _editingId === _editingSnapshot.id) {
+        var a = findArg(_editingId);
+        if (a) {
+          a.myVote = _editingSnapshot.myVote;
+          a.up = _editingSnapshot.up;
+          a.down = _editingSnapshot.down;
+        }
+      }
+      _editingSnapshot = null;
       _editingId = null;
       rerender();
     }
@@ -868,6 +887,8 @@
       }
       rootEl.querySelectorAll('[data-vote-up]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          // Don't allow voting while in edit mode
+          if (_editingId) { toast('Finish editing first'); return; }
           var a = findArg(btn.getAttribute('data-vote-up'));
           if (!a) return;
           
@@ -904,6 +925,8 @@
       });
       rootEl.querySelectorAll('[data-vote-down]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          // Don't allow voting while in edit mode
+          if (_editingId) { toast('Finish editing first'); return; }
           var a = findArg(btn.getAttribute('data-vote-down'));
           if (!a) return;
           

@@ -203,14 +203,33 @@ async function submitBook({ userId, bookId }) {
 }
 
 /* book change request: persists a pending BookEdit proposal for editors */
-async function requestBookChange({ userId, bookId, changes, details, order }) {
+const BOOK_EDIT_FIELDS = ['title', 'synopsis', 'genre', 'categoryId', 'cover', 'tags', 'tropes'];
+async function requestBookChange({ userId, bookId, changes, details, order, proposed: values }) {
   const book = await ownBook({ userId, bookId });
   const list = Array.isArray(changes) ? changes.map(String).slice(0, 12) : [];
-  if (!list.length && !(order && order.length)) { const e = new Error('empty_request'); e.status = 400; throw e; }
+  const proposed = {};
+  if (values && typeof values === 'object') {
+    BOOK_EDIT_FIELDS.forEach(k => {
+      if (values[k] === undefined || values[k] === null || values[k] === '') return;
+      proposed[k] = values[k];
+    });
+  }
+  if (!list.length && !(order && order.length) && !Object.keys(proposed).length) {
+    const e = new Error('empty_request'); e.status = 400; throw e;
+  }
+  // The proposal is applied verbatim on approve, so reject a non-uploaded cover
+  // now instead of failing later in the editor's queue.
+  if (proposed.cover !== undefined) {
+    const { validateMediaUrl } = require('./media.service');
+    proposed.cover = validateMediaUrl(proposed.cover, 'cover');
+  }
+  // The editor UI reads the author's own words from proposed.authorNote.
+  const note = [];
+  if (list.length) note.push('Requested: ' + list.join(', ') + '.');
+  if (order && order.length) note.push('Requested chapter order: ' + order.join(' → ') + '.');
+  if (details) note.push(String(details));
+  if (note.length) proposed.authorNote = note.join(' ').slice(0, 2000);
   const { BookEdit } = require('../models/application.model');
-  const proposed = { changes: list };
-  if (details) proposed.details = String(details).slice(0, 2000);
-  if (order) proposed.order = order.map(String).slice(0, 500);
   const doc = await BookEdit.create({ bookId: book.id, authorId: userId, proposed, status: 'pending' });
   return { applied: false, proposal: doc.toJSON() };
 }

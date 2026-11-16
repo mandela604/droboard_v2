@@ -25,7 +25,7 @@
 
   function qs() { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(); } }
   function storyParam() { try { return qs().get('story') || ''; } catch (e) { return ''; } }
-  function chParam() { try { const n = parseInt(qs().get('ch'), 10); return isNaN(n) ? 0 : n; } catch (e) { return 0; } }
+  function chParam() { try { return qs().get('ch') || ''; } catch (e) { return ''; } }
 
   function countAll(list) {
     return (list || []).reduce((n, c) => n + 1 + countAll(c.replies || []), 0);

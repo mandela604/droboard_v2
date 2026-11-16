@@ -552,9 +552,9 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
             adsRepeat: false, // no repeating slots in reader chapters
             adsFirst: false, // reading comments never start with an ad
             scrollBox: 420, // bounded inner-scroll list + pinned composer
-            fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n,
+            fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + (ch.liveId || ch.n),
             ads: (ST.adsEnabled === false || chapterAdFree(ch.n)) ? false : undefined, // paid unlock / page-off = ad-free thread
-            getCommentUrl: (c) => 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + ch.n + '#comment-' + (c && c.id),
+            getCommentUrl: (c) => 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + (ch.liveId || ch.n) + '#comment-' + (c && c.id),
             onPost: (c) => API.postComment({ storyId: STORY_ID, chapterId: chapterId, text: c.text, team: c.team }),
             onReply: (parentId, c) => API.postComment({ storyId: STORY_ID, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
             onEdit: (c, oldText, newText) => API.editComment(c.id, newText),

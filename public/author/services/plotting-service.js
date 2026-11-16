@@ -76,6 +76,7 @@
 
   function renderHeader() {
     if (!BOOK) return;
+    document.title = (BOOK.title || 'Book') + ' · Plotting · Droboard';
     var title = document.querySelector('.bh-title');
     var genre = document.querySelector('.bh-genre');
     var cover = document.querySelector('.bh-cover img');

@@ -82,6 +82,16 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 .note-box.editor{border-left:3px solid var(--acc)}
 .note-box.empty-note{color:var(--tx-faint);font-style:italic}
 
+.field-select,.field-textarea{
+  width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;
+  padding:11px 12px;color:var(--tx-body);font-size:12.5px;font-family:inherit;outline:none;
+}
+.field-select:focus,.field-textarea:focus{border-color:var(--acc)}
+.field-textarea{min-height:84px;resize:vertical;line-height:1.55}
+.field-textarea::placeholder{color:var(--tx-faint)}
+.detail-status.live{background:var(--green-bg);color:var(--green)}
+.detail-status.draft{background:rgba(37,99,235,.1);color:var(--blue)}
+
 .drawer-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .drawer-overlay.open{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;left:0;bottom:0;z-index:201;width:82%;max-width:320px;background:var(--l1);box-shadow:2px 0 24px rgba(0,0,0,.12);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
@@ -148,7 +158,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js?v=2"></script>
 <script src="../services/notification-store.js?v=8"></script>
-<script src="services/request-chapter-review-service.js?v=4"></script>
+<script src="services/request-chapter-review-service.js?v=5"></script>
 <script>ChapterReviewService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
   <script src="../component/auth-wall.js?v=1"></script>

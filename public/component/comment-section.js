@@ -245,7 +245,7 @@
     .dcs-reply-total i{font-size:12px}
 
     /* Fallback reaction popup (only used without reaction-picker.js) */
-    .dcs-rx-popup{position:absolute;left:0;bottom:100%;z-index:400;background:var(--dcs-bg);border:1px solid var(--dcs-bd);border-radius:30px;padding:6px 8px;display:none;flex-direction:row;gap:2px;box-shadow:0 8px 24px var(--dcs-shadow-md);animation:dcsRxPop .18s cubic-bezier(.34,1.56,.64,1)}
+    .dcs-rx-popup{position:absolute;left:0;bottom:100%;z-index:1950;background:var(--dcs-bg);border:1px solid var(--dcs-bd);border-radius:30px;padding:6px 8px;display:none;flex-direction:row;gap:2px;box-shadow:0 8px 24px var(--dcs-shadow-md);animation:dcsRxPop .18s cubic-bezier(.34,1.56,.64,1)}
     .dcs-rx-popup.show{display:flex}
     @keyframes dcsRxPop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
     .dcs-rx-btn{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 5px;border-radius:10px;cursor:pointer;transition:.14s;user-select:none}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>Bound By Obsession · Overview</title>
+<title>Overview · Droboard</title>
 <link rel="icon" type="image/png" href="../assets/droboard-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
@@ -114,6 +114,7 @@ a{color:inherit;text-decoration:none}
   padding:16px;box-shadow:var(--shadow);
 }
 .synopsis-text{font-size:13.5px;line-height:1.65;color:var(--text)}
+.synopsis-text.dim{color:var(--text-2);font-style:italic}
 .synopsis-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .tag-chip{font-size:10.5px;font-weight:700;color:var(--text-2);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:var(--r-pill)}
 
@@ -197,10 +198,10 @@ a{color:inherit;text-decoration:none}
     <div class="progress-card">
       <div class="prog-top">
         <span class="prog-label">Chapters written</span>
-        <span class="prog-pct">56 / 56</span>
+        <span class="prog-pct" id="progPct">—</span>
       </div>
-      <div class="prog-track"><div class="prog-fill" style="width:100%"></div></div>
-      <div class="prog-meta">Outline complete · Last chapter published May 20, 2025</div>
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      <div class="prog-meta" id="progMeta"></div>
     </div>
   </section>
 
@@ -214,13 +215,8 @@ a{color:inherit;text-decoration:none}
   <section class="section">
     <div class="section-head"><h2 class="section-title"><i class="fas fa-quote-left"></i>Synopsis</h2></div>
     <div class="synopsis-card">
-      <div class="synopsis-text">A ruthless hotel heir vows to ruin the family that destroyed his … until he's forced into a marriage of convenience with the one woman standing in his way, and finds that revenge and obsession look a lot alike.</div>
-      <div class="synopsis-tags">
-        <span class="tag-chip">Enemies to Lovers</span>
-        <span class="tag-chip">Marriage of Convenience</span>
-        <span class="tag-chip">Revenge Plot</span>
-        <span class="tag-chip">56 Chapters</span>
-      </div>
+      <div class="synopsis-text" id="synopsisText">Loading…</div>
+      <div class="synopsis-tags" id="synopsisTags"></div>
     </div>
   </section>
 
@@ -241,7 +237,7 @@ a{color:inherit;text-decoration:none}
 
 <script src="services/api-config.js"></script>
 <script src="services/drawer-service.js?v=2"></script>
-<script src="services/book-overview-service.js?v=2"></script>
+<script src="services/book-overview-service.js?v=3"></script>
 <script>BookOverviewService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

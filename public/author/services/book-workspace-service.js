@@ -32,9 +32,10 @@
   var PAGE_SIZE = 12;
   var currentPage = 1;
   var totalPages = 1;
+  var SEARCH = '';
 
   function chapterBadge(ch) {
-    if (ch.status === 'published') return '<span class="ch-dot published"></span>';
+    if (ch.status === 'published' || ch.status === 'live') return '<span class="ch-dot published"></span>';
     if (ch.status === 'scheduled') return '<span class="ch-badge scheduled">Scheduled</span>';
     if (ch.status === 'draft') return '<span class="ch-badge draft">Draft</span>';
     if (ch.status === 'pending_review') return '<span class="ch-badge" style="background:rgba(217,119,6,.12);color:#b7690a">Pending Review</span>';
@@ -42,17 +43,43 @@
     return '';
   }
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function filteredChapters() {
+    if (!SEARCH) return CHAPTERS;
+    return CHAPTERS.filter(function (ch) {
+      var hay = (ch.num + ' ' + ch.title + ' ' + (ch.status || '') + ' ' + ch.words + ' words').toLowerCase();
+      return hay.indexOf(SEARCH) !== -1;
+    });
+  }
+
   function renderChapters() {
+    var list = filteredChapters();
+    totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+    var countEl = document.getElementById('chaptersTitleCount');
+    if (countEl) countEl.textContent = list.length;
+    if (!list.length) {
+      document.getElementById('pgInfo').textContent = SEARCH ? 'No chapters match your search' : 'No chapters yet';
+      document.getElementById('chapterList').innerHTML = '<div style="padding:28px 16px;text-align:center;color:var(--text-2);font-size:12.5px;font-weight:600;background:var(--surface);border:1px dashed var(--border);border-radius:var(--r-md)"><i class="fas fa-book" style="display:block;font-size:22px;margin-bottom:8px;color:var(--border)"></i>'
+        + (SEARCH ? 'No chapter titles or numbers match “' + esc(SEARCH) + '”.' : 'No chapters yet. Create your first chapter to get started.') + '</div>';
+      document.getElementById('chaptersPagination').innerHTML = '';
+      return;
+    }
     var start = (currentPage - 1) * PAGE_SIZE;
-    var pageItems = CHAPTERS.slice(start, start + PAGE_SIZE);
-    document.getElementById('pgInfo').textContent = 'Showing ' + (start + 1) + '–' + (start + pageItems.length) + ' of ' + CHAPTERS.length + ' chapters';
+    var pageItems = list.slice(start, start + PAGE_SIZE);
+    document.getElementById('pgInfo').textContent = 'Showing ' + (start + 1) + '–' + (start + pageItems.length) + ' of ' + list.length + ' chapters';
     document.getElementById('chapterList').innerHTML = pageItems.map(function (ch, i) {
       return '<div class="chapter-card fade" style="animation-delay:' + (i * 0.03) + 's">'
-        + '<div class="ch-top"><div class="ch-title-row"><span class="ch-title">' + ch.num + '. ' + ch.title + '</span>' + chapterBadge(ch) + '</div>'
-        + '<div style="display:flex;align-items:center;gap:6px"><button class="ch-edit-btn" onclick="editChapter(' + ch.num + ')" title="Edit chapter"><i class="fas fa-pen"></i></button>'
+        + '<div class="ch-top"><div class="ch-title-row"><span class="ch-title">' + esc(ch.num) + '. ' + esc(ch.title) + '</span>' + chapterBadge(ch) + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px"><button class="ch-edit-btn" onclick="editChapter(' + Number(ch.num) + ')" title="Edit chapter"><i class="fas fa-pen"></i></button>'
         + '<span class="ch-more"><i class="fas fa-ellipsis"></i></span></div></div>'
-        + '<div class="ch-meta-row"><span class="ch-meta">' + ch.words + ' words &middot; ' + ch.date + '</span>'
-        + '<span class="ch-views">' + (ch.views !== '–' ? '<i class="far fa-eye"></i> ' + ch.views + ' Reads' : '–') + '</span></div></div>';
+        + '<div class="ch-meta-row"><span class="ch-meta">' + esc(ch.words) + ' words &middot; ' + esc(ch.date) + '</span>'
+        + '<span class="ch-views">' + (ch.views !== '–' ? '<i class="far fa-eye"></i> ' + esc(ch.views) + ' Reads' : '–') + '</span></div></div>';
     }).join('');
     renderPagination();
   }
@@ -182,6 +209,7 @@
         window.BookWorkspaceService.getChapters(BOOK_ID, 1, 1000)
       ]);
       var book = res[0]; var chRes = res[1];
+      document.title = (book.title || 'Book') + ' · Chapters · Droboard';
       document.querySelector('.bh-title').textContent = book.title;
       document.querySelector('.bh-genre').textContent = book.genre || '';
       var coverImg = document.querySelector('.bh-cover img');
@@ -230,6 +258,14 @@
     document.getElementById('newChapterBtn').addEventListener('click', function () {
       location.href = '../Pages/create.html?book=' + encodeURIComponent(BOOK_ID) + '&newChapter=1';
     });
+    var searchInput = document.getElementById('chapterSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        SEARCH = this.value.trim().toLowerCase();
+        currentPage = 1;
+        renderChapters();
+      });
+    }
     if (window.DroboardWorkspaceTabs) window.DroboardWorkspaceTabs.configure({ active: 'chapters' });
     if (window.DroboardNav) window.DroboardNav.configure({ active: 'profile' });
     bindLockModal();

@@ -104,6 +104,7 @@
     var updated = document.querySelector('.bh-updated');
     var stats = document.querySelector('.bh-stats');
     if (!BOOK) return;
+    document.title = (BOOK.title || 'Book') + ' · Characters · Droboard';
     if (title) title.textContent = BOOK.title || 'Untitled';
     if (genre) genre.textContent = [BOOK.genre, BOOK.category].filter(Boolean).join(' · ') || 'No genre set';
     if (cover) {

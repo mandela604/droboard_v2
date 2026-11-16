@@ -132,7 +132,7 @@
       
       DEBATE_ID = debateId;
 
-      return {
+      var debateObj = {
         id: debateId,
         question: debate.motion || 'Join the debate.',
         prompt: '',
@@ -145,7 +145,27 @@
         bookId: bookId,
         chapterId: debate.chapterId || null,
         type: debate.type || (chapterId ? 'chapter' : 'book'),
+        args: [],
       };
+
+      // Fetch actual arguments for chapter/book debates from the API
+      var debateType = debateObj.type || (chapterId ? 'chapter' : 'book');
+      if (debateType === 'chapter' || debateType === 'book') {
+        try {
+          var argsUrl = '/api/debates/' + encodeURIComponent(debateId) + '/args?book=' + encodeURIComponent(bookId);
+          if (chapterId) argsUrl += '&ch=' + encodeURIComponent(chapterId);
+          var argsRes = await fetch(argsUrl, { credentials: 'include' });
+          if (argsRes.ok) {
+            var argsData = await argsRes.json();
+            debateObj.args = (argsData && argsData.items) || [];
+          }
+        } catch (e) {
+          console.error('Failed to fetch debate arguments:', e);
+          // Fall back to empty args
+        }
+      }
+
+      return debateObj;
     }
 
     throw new Error('Invalid debate URL parameters');
@@ -194,9 +214,8 @@
   /* ── vote ── */
   function vote(side) {
     if (isShut()) { toast('This debate has closed — the result is final.'); return; }
-    if (S.userVote === side) return;
-    if (S.userVote === 'for') DEBATE.forV--;
-    if (S.userVote === 'against') DEBATE.agV--;
+    // Prevent picking a side if user has already voted on ANY side
+    if (S.userVote) { toast('You\'ve already chosen a side — you can\'t change it.'); return; }
     S.userVote = side;
     if (side === 'for') DEBATE.forV++;
     else DEBATE.agV++;
@@ -287,7 +306,7 @@
         debateType: debateType,
         bookId: DEBATE.bookId || null,
         chapterId: DEBATE.chapterId || null,
-        args: seedArgs(),
+        args: DEBATE.args || seedArgs(),
         onSidePick: function (side) {
           S.side = side;
           if (!S.userVote) { S.userVote = side; if (side === 'for') DEBATE.forV++; else DEBATE.agV++; renderSides(); }

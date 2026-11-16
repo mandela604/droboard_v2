@@ -95,7 +95,8 @@ async function requestBookChange(req, res) {
   return base.wrap(res, async () => {
     const out = await author.requestBookChange({
       userId: req.user.id, bookId: req.valid.params.id,
-      changes: req.valid.body.changes, details: req.valid.body.details, order: req.valid.body.order,
+      changes: req.valid.body.changes, details: req.valid.body.details,
+      order: req.valid.body.order, proposed: req.valid.body.proposed,
     });
     res.status(201);
     return out;

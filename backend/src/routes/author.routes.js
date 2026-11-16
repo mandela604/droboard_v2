@@ -96,7 +96,16 @@ router.post('/books/:id/change-requests', writeLimiter, audit('author.changeRequ
       changes: z.array(z.string().max(80)).max(12).optional(),
       details: z.string().max(2000).optional(),
       order: z.array(z.string().max(120)).max(500).optional(),
-    }).strict().refine(b => (b.changes && b.changes.length) || (b.order && b.order.length), { message: 'empty_request' }),
+      proposed: z.object({
+        title: z.string().max(200).optional(),
+        synopsis: z.string().max(5000).optional(),
+        genre: z.string().max(80).optional(),
+        categoryId: z.string().max(120).optional(),
+        cover: z.string().max(2000).optional(),
+        tags: z.array(z.string().max(40)).max(20).optional(),
+        tropes: z.array(z.string().max(40)).max(10).optional(),
+      }).strict().optional(),
+    }).strict().refine(b => (b.changes && b.changes.length) || (b.order && b.order.length) || (b.proposed && Object.keys(b.proposed).length), { message: 'empty_request' }),
   })), ctrl.requestBookChange);
 router.get('/books/:id/overview', generalLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.overview);
