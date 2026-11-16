@@ -57,7 +57,14 @@
   }
 
   async function fetchComments(sid, chN) {
-    return window.DroboardComments.api.fetchComments({ storyId: sid, chapterId: chN || '', limit: 50 });
+    // No chapter → the WHOLE book (its own thread + every chapter thread).
+    // With a chapter → that chapter's thread only.
+    return window.DroboardComments.api.fetchComments({
+      storyId: sid,
+      chapterId: chN || '',
+      scope: chN ? 'chapter' : 'book',
+      limit: 50,
+    });
   }
 
   async function postComment({ sid, chN, text, parentId, team }) {

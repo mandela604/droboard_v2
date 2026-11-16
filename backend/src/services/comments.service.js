@@ -200,7 +200,9 @@ async function createComment({ authorId, user, data }) {
 
 async function listComments({ scope, storyId, chapterId, postId, discussionId, page, limit, viewerId }) {
   const filter = { parentId: null };
-  if (scope) filter.scope = scope;
+  // 'book' = the whole story: its own thread plus every chapter thread.
+  if (scope === 'book') filter.scope = { $in: ['story', 'chapter'] };
+  else if (scope) filter.scope = scope;
   if (storyId) filter.storyId = storyId;
   if (chapterId) filter.chapterId = chapterId;
   if (postId) filter.postId = postId;

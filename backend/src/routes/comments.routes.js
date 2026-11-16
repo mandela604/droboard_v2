@@ -20,7 +20,9 @@ const commentBody = z.object({
 }).strict();
 
 router.get('/', generalLimiter, optionalAuth, validate(z.object({ query: z.object({
-  scope: z.enum(['story', 'chapter', 'post', 'discussion']).optional(),
+  // 'book' = every comment on a story: the story thread AND the per-chapter
+  // threads. The story page and the full comments page both need that view.
+  scope: z.enum(['story', 'chapter', 'post', 'discussion', 'book']).optional(),
   storyId: z.string().max(40).optional(), chapterId: z.string().max(40).optional(),
   postId: z.string().max(40).optional(), discussionId: z.string().max(40).optional(),
   page: z.string().max(6).optional(), limit: z.string().max(6).optional(),

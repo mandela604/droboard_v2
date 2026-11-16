@@ -122,7 +122,7 @@ async function getBookDetail(id, viewerId) {
   const { CategoryMembership } = require('../models/content.model');
   const [chapters, author, votes, reactions, chapterRx, comments, shares, tipCount, genreHub] = await Promise.all([
     Chapter.find({ bookId: book.id, status: { $in: ['live', 'published'] } }).sort({ n: 1 })
-      .select('n title words status views price authorNote poll prediction debate').lean(),
+      .select('id n title words status views price authorNote poll prediction debate').lean(),
     book.authorId ? User.findOne({ id: book.authorId })
       .select('id username fullName avatar bio emailVerified followerCount').lean() : Promise.resolve(null),
     engagement.storyVotes(book.id, viewer),
@@ -147,17 +147,46 @@ async function getBookDetail(id, viewerId) {
   ]);
 
   const writer = await writerCard(author, viewer);
-  const [boardMembership, saved, reading] = await Promise.all([
+  const [boardMembership, saved, progressRows] = await Promise.all([
     viewer && genreHub ? CategoryMembership.exists({ userId: viewer, categoryId: genreHub.id }) : null,
     viewer ? LibraryItem.findOne({ userId: viewer, storyId: book.id, list: { $in: ['saved', 'library', 'later'] } }).select('list').lean() : null,
-    viewer ? ReadingProgress.findOne({ userId: viewer, storyId: book.id }).sort({ updatedAt: -1 }).lean() : null,
+    // Every chapter this reader touched — the continue point is the newest
+    // row, the book progress is the sum of the finished ones.
+    viewer ? ReadingProgress.find({ userId: viewer, storyId: book.id })
+      .select('chapterId pct finished secondsSpent lastReadAt').lean() : [],
   ]);
   const last = chapters[chapters.length - 1] || null;
+
+  /* Continue reading — where the reader stopped, and how far they are.
+     pct is BOOK level (finished chapters + the current chapter's own pct),
+     because a chapter's own pct only reaches 100 when it is finished. */
+  const rows = progressRows || [];
+  const newest = rows.slice().sort((a, b) => new Date(b.lastReadAt || 0) - new Date(a.lastReadAt || 0))[0] || null;
+  const chapterById = {};
+  chapters.forEach(c => { chapterById[String(c.id)] = c; });
+  const stopChapter = newest ? (chapterById[String(newest.chapterId)] || null) : null;
+  const finishedCount = rows.filter(r => r.finished).length;
+  const chapterPct = newest ? Math.min(100, Math.max(0, Number(newest.pct) || 0)) : 0;
+  const totalChapters = chapters.length;
+  const bookPct = totalChapters
+    ? Math.min(100, Math.round(((finishedCount + chapterPct / 100) / totalChapters) * 100))
+    : 0;
+  const continueReading = newest ? {
+    chapterId: newest.chapterId || null,
+    chapterN: stopChapter ? stopChapter.n : null,
+    title: stopChapter ? (stopChapter.title || null) : null,
+    pct: bookPct,
+    chapterPct,
+    finishedChapters: finishedCount,
+    totalChapters,
+    secondsSpent: newest.secondsSpent || 0,
+    updatedAt: newest.lastReadAt || null,
+  } : null;
 
   return Object.assign({}, book, {
     chapters,
     writer,
-    engagement: engagement.shapeStoryEngagement(book, votes),
+    engagement: await engagement.storyEngagement(book, votes, chapters, viewer),
     stats: {
       comments, reads: book.reads || 0, shares,
       rating: book.rating || 0, ratingCount: book.ratingCount || 0,
@@ -183,10 +212,7 @@ async function getBookDetail(id, viewerId) {
       circle: null,
     },
     save: { saved: !!saved, list: saved ? saved.list : null },
-    continueReading: reading ? {
-      chapterId: reading.chapterId || null, pct: reading.pct || 0,
-      secondsSpent: reading.secondsSpent || 0, updatedAt: reading.updatedAt || null,
-    } : null,
+    continueReading,
     lastChapterN: last ? last.n : null,
     lastChapterTitle: last ? last.title : null,
     similar: await similarBooks(book, 8),

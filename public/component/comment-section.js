@@ -1640,9 +1640,11 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
   async function fetchComments(opts) {
     const o = opts || {};
-    const scope = o.chapterId ? 'chapter' : 'story';
-    let url = COMMENTS_API + '/comments?scope=' + scope + '&storyId=' + encodeURIComponent(o.storyId || '');
-    if (o.chapterId) url += '&chapterId=' + encodeURIComponent(o.chapterId);
+    // 'book' = the whole story (its thread + every chapter thread). Anything
+    // else keeps the old per-surface behaviour.
+    const scope = o.scope || (o.chapterId ? 'chapter' : 'story');
+    let url = COMMENTS_API + '/comments?scope=' + encodeURIComponent(scope) + '&storyId=' + encodeURIComponent(o.storyId || '');
+    if (o.chapterId && scope !== 'book') url += '&chapterId=' + encodeURIComponent(o.chapterId);
     url += '&limit=' + (o.limit || 50);
     const res = await fetch(url, { credentials: 'include' });
     if (!res.ok) throw new Error('Comments failed (' + res.status + ')');

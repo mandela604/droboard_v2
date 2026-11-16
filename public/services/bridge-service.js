@@ -85,8 +85,10 @@
     const cat = catOf(s);
     const genre = s.genre || cat.name;
 
-    // engagement: backend sends { polls[], predictions[], debates[] } —
-    // rows only exist when the author created them (id === null → none).
+    // engagement: backend sends { polls[], predictions[], debates[] } — the
+    // book-level items when the book has them, the chapters' items when it
+    // does not (each one then carries its chapter key so the vote lands on
+    // the right chapter).
     const eng = s.engagement || {};
     const poll0 = (eng.polls || [])[0] || null;
     const pred0 = (eng.predictions || [])[0] || null;
@@ -101,13 +103,22 @@
       : ((s.reactions && s.reactions.counts) ? s.reactions.counts : {});
     const userRx   = agg ? null : ((s.reactions && s.reactions.userRx) || null);
 
-    // continue reading from backend continueReading object
+    // Continue reading — from the backend: the chapter the reader stopped in
+    // plus the book-level percentage (finished chapters + the current one's).
     const cr = s.continueReading || null;
     const firstFreeChapter = rows.find(c => !c.price || c.price === 0) || rows[0] || {};
-    const continueChId = cr ? (cr.chapterId || firstFreeChapter.n || 1) : (firstFreeChapter.n || 1);
-    const continueRow = rows.find(c => String(c.n) === String(continueChId) || c.id === continueChId);
-    const continueChTitle = continueRow ? (continueRow.title || 'Chapter ' + continueChId) : (firstFreeChapter.title || (totalCh ? 'Chapter 1' : '—'));
-    const continuePct = cr ? Math.round(cr.pct || 0) : 0;
+    const stopRow = cr && cr.chapterId
+      ? (rows.find(c => String(c.id) === String(cr.chapterId))
+         || rows.find(c => cr.chapterN != null && String(c.n) === String(cr.chapterN))
+         || null)
+      : null;
+    // New story → the first chapter. Started → the chapter they stopped in.
+    const continueChN = stopRow ? stopRow.n : (firstFreeChapter.n || 1);
+    const continueChTitle = stopRow
+      ? (stopRow.title || 'Chapter ' + stopRow.n)
+      : (firstFreeChapter.title || (totalCh ? 'Chapter 1' : '—'));
+    const continuePct = cr ? Math.min(100, Math.max(0, Number(cr.pct) || 0)) : 0;
+    const continueChapterPct = cr ? Math.min(100, Math.max(0, Number(cr.chapterPct) || 0)) : 0;
 
     // hubs: backend sends hubs.board (null when the story has no category
     // board) and circle: null until a membership model ships.
@@ -149,7 +160,17 @@
         ratingCount: stats.ratingCount || s.ratingCount || 0,
       },
       likes: (agg && typeof agg.total === 'number') ? agg.total : (s.likes || stats.likes || 0),
-      continue: { chapterId: continueChId, chapterTitle: continueChTitle, progress: continuePct, timeLeft: cr && cr.secondsSpent ? fmtN(cr.secondsSpent) + 's read' : '' },
+      continue: {
+        chapterN: continueChN,
+        chapterId: (cr && cr.chapterId) || null,
+        chapterTitle: continueChTitle,
+        progress: continuePct,
+        chapterPct: continueChapterPct,
+        started: !!(cr && cr.chapterId),
+        finishedChapters: (cr && cr.finishedChapters) || 0,
+        totalChapters: totalCh,
+        timeLeft: cr && cr.secondsSpent ? fmtN(cr.secondsSpent) + 's read' : '',
+      },
       synopsis: { short: s.synopsis || '' },
       engagement: {
         poll: poll0 ? {
@@ -157,6 +178,9 @@
           q: poll0.q || '',
           opts: (poll0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
           voted: poll0.myVote != null ? poll0.myVote : -1,
+          chapter: poll0.chapter != null ? poll0.chapter : null,
+          chapterKey: poll0.chapterKey || null,
+          source: poll0.source || 'book',
         } : null,
         debate: deb0 ? {
           id: deb0.id,
@@ -164,12 +188,18 @@
           dFor: deb0.forV || 0,
           dAg: deb0.agV || 0,
           voted: deb0.myVote != null ? deb0.myVote : -1,
+          chapter: deb0.chapter != null ? deb0.chapter : null,
+          chapterKey: deb0.chapterKey || null,
+          source: deb0.source || 'book',
         } : null,
         pred: pred0 ? {
           id: pred0.id,
           q: pred0.q || '',
           opts: (pred0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
           voted: pred0.myVote != null ? pred0.myVote : -1,
+          chapter: pred0.chapter != null ? pred0.chapter : null,
+          chapterKey: pred0.chapterKey || null,
+          source: pred0.source || 'book',
         } : null,
       },
       hubs: {
@@ -417,8 +447,11 @@
     const c = DATA.continue;
     document.getElementById('rpTitle').textContent = c.chapterTitle;
     document.getElementById('rpBarFill').style.width = c.progress + '%';
-    document.getElementById('rpPct').textContent = c.progress + '% complete';
-    document.getElementById('rpLeft').textContent = c.timeLeft || '—';
+    const total = c.totalChapters ? ' · Ch ' + c.chapterN + ' of ' + c.totalChapters : '';
+    document.getElementById('rpPct').textContent = c.started
+      ? c.progress + '% complete' + total
+      : 'Not started yet' + total;
+    document.getElementById('rpLeft').textContent = c.timeLeft || (c.started ? 'Keep reading' : 'Start reading');
   }
 
   function renderSynopsis() {
@@ -437,6 +470,18 @@
     renderPred();
   }
 
+  /* The engagement the reader sees may belong to a chapter (that is where
+     the create flow writes it) — say so, so the card never looks like it is
+     the whole book's poll when it is one chapter's. */
+  function engChapterLabel(item) {
+    return (item && item.chapter != null) ? ' · Ch ' + item.chapter : '';
+  }
+  function paintEngBadge(cardId, base, item) {
+    const el = document.querySelector('#' + cardId + ' .ec-badge');
+    if (!el) return;
+    el.innerHTML = base + engChapterLabel(item);
+  }
+
   function renderPoll() {
     const p = DATA.engagement.poll;
     const el = document.getElementById('pollOpts');
@@ -449,6 +494,7 @@
     }
     S.pollVoted = p.voted;
     document.getElementById('pollQ').textContent = p.q;
+    paintEngBadge('card-poll', '📊 Poll', p);
     const opts = p.opts;
     const tot = opts.reduce((s, o) => s + o.v, 0) || 1;
     el.innerHTML = opts.map((o, i) => {
@@ -473,6 +519,7 @@
     if (sides) sides.parentElement.style.display = '';
     S.debateVote = db.voted === 0 ? 'for' : db.voted === 1 ? 'against' : null;
     qEl.textContent = db.q;
+    paintEngBadge('card-debate', '<span class="live-dot"></span> Live Debate', db);
     const tot = db.dFor + db.dAg || 1;
     const fp = Math.round(db.dFor / tot * 100);
     document.getElementById('forBar').style.width = fp + '%';
@@ -499,6 +546,7 @@
     }
     S.predVoted = p.voted;
     document.getElementById('predQ').textContent = p.q;
+    paintEngBadge('card-pred', '🔮 Prediction', p);
     const opts = p.opts;
     const tot = opts.reduce((s, o) => s + o.v, 0) || 1;
     el.innerHTML = opts.map((o, i) => {
@@ -603,14 +651,15 @@
     if (!window.DroboardComments) { fail('comment component missing — hard refresh'); return; }
     mount.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i> Loading comments…</div>';
     const API = window.DroboardComments.api;
-    API.fetchComments({ storyId: STORY_ID })
+    // scope 'book' = the story thread AND every chapter thread of this book.
+    API.fetchComments({ storyId: STORY_ID, scope: 'book', limit: 50 })
       .then(function (live) {
-        const trueTotal = (function countAll(list) {
-          return (list || []).reduce(function (n, c) { return n + 1 + countAll(c.replies || []); }, 0);
-        })(live);
+        // The count is the BACKEND's whole-book number (story + chapter
+        // comments); the list below is what this panel shows.
+        const total = Number(DATA.stats.comments) || 0;
         window.DroboardComments.attach(mount, {
           storyId: STORY_ID,
-          title: fmtN(trueTotal) + ' comments',
+          title: fmtN(total) + (total === 1 ? ' comment' : ' comments'),
           comments: live,
           teams: [],
           currentUser: { name: 'You', avatar: null, team: null },
@@ -745,28 +794,57 @@
     const poll0 = (eng.polls || [])[0] || null;
     const pred0 = (eng.predictions || [])[0] || null;
     const deb0  = (eng.debates || [])[0] || null;
+    const extra = (x) => ({
+      chapter: x.chapter != null ? x.chapter : null,
+      chapterKey: x.chapterKey || null,
+      source: x.source || 'book',
+    });
     DATA.engagement.poll = poll0 ? {
       id: poll0.id, q: poll0.q || '',
       opts: (poll0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
       voted: poll0.myVote != null ? poll0.myVote : -1,
+      ...extra(poll0),
     } : null;
     DATA.engagement.pred = pred0 ? {
       id: pred0.id, q: pred0.q || '',
       opts: (pred0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
       voted: pred0.myVote != null ? pred0.myVote : -1,
+      ...extra(pred0),
     } : null;
     DATA.engagement.debate = deb0 ? {
       id: deb0.id, q: deb0.motion || '',
       dFor: deb0.forV || 0, dAg: deb0.agV || 0,
       voted: deb0.myVote != null ? deb0.myVote : -1,
+      ...extra(deb0),
     } : null;
     renderEngagement();
   }
 
-  async function bookVote(body, label) {
+  /* The engagement can live on the book OR on one of its chapters. The vote
+     must land where the item lives, so the URL follows the item's source. */
+  function engItem(kind) {
+    const e = DATA.engagement || {};
+    if (kind === 'poll') return e.poll;
+    if (kind === 'pred') return e.pred;
+    if (kind === 'debate') return e.debate;
+    return null;
+  }
+  async function castVote(kind, payload, label) {
     if (window.RequireAuth && !RequireAuth.ensure(label)) return false;
+    const item = engItem(kind);
+    if (!item || !item.id) return false;
+    const chapterKey = item.chapterKey || null;
+    let url, body;
+    if (chapterKey) {
+      const path = kind === 'pred' ? 'prediction' : kind;
+      url = `${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/chapters/${encodeURIComponent(chapterKey)}/${path}/vote`;
+      body = payload;
+    } else {
+      url = `${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/engagement/vote`;
+      body = Object.assign({ id: item.id, kind: kind === 'pred' ? 'prediction' : kind }, payload);
+    }
     try {
-      await postJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/engagement/vote`, body, 'Vote API');
+      await postJSON(url, body, 'Vote API');
       await refreshEngagement();
       return true;
     } catch (e) {
@@ -781,21 +859,21 @@
     const p = DATA.engagement.poll;
     if (!p || !p.id) return;
     if (S.pollVoted >= 0) { toast('✅ Already voted!'); return; }
-    bookVote({ id: p.id, kind: 'poll', option: i }, 'vote in this poll');
+    castVote('poll', { option: i }, 'vote in this poll');
   }
 
   function voteDebate(side) {
     const db = DATA.engagement.debate;
     if (!db || !db.id) return;
     if (S.debateVote) { toast('✅ Already voted!'); return; }
-    bookVote({ id: db.id, kind: 'debate', side: side }, 'take a side');
+    castVote('debate', { side: side }, 'take a side');
   }
 
   function votePred(i) {
     const p = DATA.engagement.pred;
     if (!p || !p.id) return;
     if (S.predVoted >= 0) { toast('✅ Already locked!'); return; }
-    bookVote({ id: p.id, kind: 'prediction', option: i }, 'lock this prediction');
+    castVote('pred', { option: i }, 'lock this prediction');
   }
 
   function toggleSyn() {
@@ -878,7 +956,8 @@
   }
 
   function goToReader() {
-    const ch = DATA.continue ? DATA.continue.chapterId : 1;
+    // The reader takes a chapter NUMBER (?ch=), not an id.
+    const ch = (DATA.continue && DATA.continue.chapterN) || 1;
     window.location.href = `full-reader.html?story=${encodeURIComponent(STORY_ID)}&ch=${encodeURIComponent(ch)}`;
   }
 
