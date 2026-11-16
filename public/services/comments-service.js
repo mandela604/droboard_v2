@@ -26,6 +26,7 @@
   function qs() { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(); } }
   function storyParam() { try { return qs().get('story') || ''; } catch (e) { return ''; } }
   function chParam() { try { return qs().get('ch') || ''; } catch (e) { return ''; } }
+  // FIXED: Now returns UUID string, not parseInt
 
   function countAll(list) {
     return (list || []).reduce((n, c) => n + 1 + countAll(c.replies || []), 0);
