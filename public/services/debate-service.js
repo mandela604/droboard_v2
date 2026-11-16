@@ -57,6 +57,17 @@
     return []; // No fallback demo data — let real data load from API
   }
 
+  /* Side of the viewer's own top-level argument, if they've already posted.
+     The server shapes each card with `mine` + `side`; locking on that makes
+     the chosen side survive every future visit to this debate. */
+  function myArgSide(args) {
+    var arr = args || [];
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] && arr[i].mine && !arr[i].parentId) return arr[i].side || null;
+    }
+    return null;
+  }
+
   /* ── poster (who started the debate) → profile link ── */
   function posterFrom(post, time, forceOfficial) {
     if (!post) return null;
@@ -125,6 +136,11 @@
           postArgs = (argsData && argsData.items) || [];
         }
       } catch (e) { /* arguments are non-fatal */ }
+
+      // If this viewer already argued, their side is final — restore it even
+      // when the post payload doesn't carry a userVote field.
+      var argSide = myArgSide(postArgs);
+      if (argSide) { S.userVote = argSide; S.side = argSide; }
 
       return {
         id: postId,
@@ -197,6 +213,11 @@
         }
       }
 
+      // Book/chapter debates have no vote surface, so the viewer's posted
+      // argument is the only source of truth for their locked side.
+      var argSide = myArgSide(debateObj.args);
+      if (argSide) { S.userVote = argSide; S.side = argSide; }
+
       return debateObj;
     }
 
@@ -222,8 +243,13 @@
       ? fmtN((d.forV || 0) + (d.agV || 0)) + ' votes — final'
       : fmtN((d.forV || 0) + (d.agV || 0)) + ' joined the discussion';
 
-    document.getElementById('sideFor').classList.toggle('chosen', S.userVote === 'for');
-    document.getElementById('sideAg').classList.toggle('chosen', S.userVote === 'against');
+    var sideFor = document.getElementById('sideFor');
+    var sideAg = document.getElementById('sideAg');
+    sideFor.classList.toggle('chosen', S.userVote === 'for');
+    sideAg.classList.toggle('chosen', S.userVote === 'against');
+    // A chosen side stays highlighted and visibly locks the other one out.
+    sideFor.classList.toggle('locked-out', !!S.userVote && S.userVote !== 'for');
+    sideAg.classList.toggle('locked-out', !!S.userVote && S.userVote !== 'against');
     document.getElementById('debSides').classList.toggle('shut', shut);
 
     var badge = document.getElementById('debBadge');
@@ -340,7 +366,9 @@
       var debateType = DEBATE.type || 'post'; // 'post', 'book', or 'chapter'
       ARGS = DroboardDebateArgs.attach('#argsMount', {
         sides: { for: DEBATE.forText, against: DEBATE.againstText },
-        currentUser: { name: 'You', avatar: 'https://i.pravatar.cc/100?img=5', verified: false },
+        // No demo profile. Posted arguments are rendered from the server's
+        // real user card; there is no fake avatar to flash while posting.
+        currentUser: { name: '', avatar: null, verified: false },
         requireSide: true,
         readOnly: isShut(),
         userSide: S.side,
@@ -352,8 +380,12 @@
         args: DEBATE.args || seedArgs(),
         onSidePick: function (side) {
           S.side = side;
-          if (!S.userVote) { S.userVote = side; if (side === 'for') DEBATE.forV++; else DEBATE.agV++; renderSides(); }
-          saveState();
+          if (!S.userVote) {
+            S.userVote = side;
+            if (side === 'for') DEBATE.forV++; else DEBATE.agV++;
+            renderSides();
+            persistVote(side);
+          }
           toast('You picked: ' + (side === 'for' ? '\u2705 For' : '\u274C Against'));
         },
         onPost: function () {},

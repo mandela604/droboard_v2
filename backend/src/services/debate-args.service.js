@@ -119,6 +119,12 @@ async function listArgs({ postId, side, sort, viewerId }) {
 async function createArg({ postId, userId, text, side, parentId }) {
   const post = await loadPostOr404(postId);
   const votedSide = await assertVotedSide(post, userId);
+  // A viewer argues once per debate. Their side is final — no second
+  // top-level argument, and no switching sides. Replies are still allowed.
+  if (!parentId) {
+    const mine = await DebateArg.findOne({ postId: String(postId), authorId: String(userId), parentId: null }).select('id').lean();
+    if (mine) err('already_argued', 409);
+  }
   let parent = null;
   if (parentId) {
     parent = await DebateArg.findOne({ id: String(parentId), postId: String(postId) }).lean();
@@ -268,8 +274,12 @@ async function listArgsByDebateId({ debateId, bookId, chapterId, side, sort, vie
 }
 
 async function createArgByDebateId({ debateId, bookId, chapterId, userId, text, side, parentId }) {
-  // No vote-side enforcement for book/chapter debates (no vote system, just arguments)
-  // User can pick either side
+  // One top-level argument per viewer per debate; the chosen side is final.
+  // Replies remain open (they inherit the parent's side).
+  if (!parentId) {
+    const mine = await DebateArg.findOne({ postId: String(debateId), authorId: String(userId), parentId: null }).select('id').lean();
+    if (mine) err('already_argued', 409);
+  }
   let parent = null;
   if (parentId) {
     parent = await DebateArg.findOne({ id: String(parentId), postId: String(debateId) }).lean();

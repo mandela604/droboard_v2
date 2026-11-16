@@ -28,6 +28,20 @@
 
   function session(storyId, key, words) {
     var acc = 0, last = Date.now(), finishedSent = false, stopped = false;
+    // Furthest scroll position reached this session. Monotonic: scrolling back
+    // up must never lower the progress that gets persisted for this chapter.
+    var pct = 0;
+    function setPct(v) {
+      v = Math.min(100, Math.max(0, Number(v) || 0));
+      if (v > pct) pct = v;
+    }
+    // Every progress write carries the current pct, so "Continue reading" on
+    // the bridge reflects how far the reader actually got — not just time.
+    function body(secs) {
+      var b = { secondsSpent: secs };
+      if (pct > 0) b.pct = pct;
+      return b;
+    }
     function drain() {
       var now = Date.now();
       var d = Math.max(0, Math.round((now - last) / 1000));
@@ -38,7 +52,7 @@
       if (stopped) return;
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') { last = Date.now(); return; }
       acc += drain();
-      if (acc >= 30) { var s = acc; acc = 0; post(storyId, key, { secondsSpent: s }); }
+      if (acc >= 30) { var s = acc; acc = 0; post(storyId, key, body(s)); }
     }
     var timer = setInterval(heartbeat, 10000);
     function stop() {
@@ -46,16 +60,18 @@
       stopped = true;
       try { clearInterval(timer); } catch (e) {}
       var total = drain() + acc;
-      if (total > 0 && !finishedSent) post(storyId, key, { secondsSpent: total });
+      if ((total > 0 || pct > 0) && !finishedSent) post(storyId, key, body(total));
     }
     function finish() {
       if (finishedSent) return;
       finishedSent = true;
       acc += drain();
-      var body = { secondsSpent: acc, pct: 100, finished: true };
-      if (words) body.wordsRead = words;
+      var b = body(acc);
+      b.pct = 100;
+      b.finished = true;
+      if (words) b.wordsRead = words;
       acc = 0;
-      post(storyId, key, body);
+      post(storyId, key, b);
       try { if (window.Acquisition && Acquisition.record) Acquisition.record('chapter_read', { storyId: storyId }); } catch (e) {}
     }
     try { if (window.Acquisition && Acquisition.record) Acquisition.record('story_open', { storyId: storyId }); } catch (e) {}
@@ -64,7 +80,7 @@
       document.addEventListener('visibilitychange', function () { last = Date.now(); });
     }
     if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('pagehide', stop);
-    return { finish: finish, stop: stop };
+    return { finish: finish, stop: stop, setPct: setPct };
   }
 
   window.ReaderTrack = { post: post, session: session, entitlements: entitlements };

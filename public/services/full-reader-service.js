@@ -346,6 +346,16 @@
     try {
       const sb = document.getElementById('scrollBody');
       const max = sb.scrollHeight - sb.clientHeight;
+      // Measure whichever container actually scrolls (inner shell or window)
+      // and forward the real position to the session so it is persisted.
+      let pct = 0;
+      if (max > 0) pct = Math.round(sb.scrollTop / max * 100);
+      else {
+        const doc = document.documentElement;
+        const maxW = doc.scrollHeight - doc.clientHeight;
+        if (maxW > 0) pct = Math.round(((window.scrollY || doc.scrollTop || 0) / maxW) * 100);
+      }
+      if (TrackSession.setPct) TrackSession.setPct(pct);
       if (max > 0 && (sb.scrollTop / max) >= 0.85) TrackSession.finish();
     } catch (e) {}
   }
@@ -481,7 +491,12 @@
       TrackSession = ReaderTrack.session(storyIdNow(), (ch.liveId || ch.n), ch.words || 0);
       if (!TrackScrollBound) {
         TrackScrollBound = true;
-        try { document.getElementById('scrollBody').addEventListener('scroll', TrackScrollCheck, { passive: true }); } catch (e) {}
+        try {
+          document.getElementById('scrollBody').addEventListener('scroll', TrackScrollCheck, { passive: true });
+          // The inner container only scrolls on a bounded shell; otherwise the
+          // window does, so listen there too or progress would stay at 0.
+          window.addEventListener('scroll', TrackScrollCheck, { passive: true });
+        } catch (e) {}
       }
     }
 

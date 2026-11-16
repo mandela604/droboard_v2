@@ -778,13 +778,24 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
         TrackLeave(); ST.currentCh = n; TrackStart(cur);
         try { if (window.ReadingHistory) ReadingHistory.touch(STORY_ID, n); } catch (e) {}
       }
+      return cur;
     }
 
     sb.addEventListener("scroll", () => {
       const max = sb.scrollHeight - sb.clientHeight;
       const pct = max > 0 ? Math.min(100, Math.round(sb.scrollTop / max * 100)) : 0;
       document.getElementById("readProgressFill").style.width = pct + "%";
-      syncCurrentChapter();
+      const cur = syncCurrentChapter();
+      // Track progress of the current chapter itself (not the whole scroll
+      // body, which spans every chapter) so each chapter stores its own pct.
+      if (TrackSession && cur && TrackSession.setPct) {
+        const r = cur.getBoundingClientRect();
+        const sr = sb.getBoundingClientRect();
+        if (r.height > 0) {
+          const seen = Math.max(0, Math.min(r.bottom, sr.bottom) - r.top);
+          TrackSession.setPct(Math.min(100, Math.round(seen / r.height * 100)));
+        }
+      }
     }, { passive: true });
 
     const observer = new IntersectionObserver(entries => {

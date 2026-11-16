@@ -115,14 +115,21 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
   const secs = Math.min(3600, Math.max(0, parseInt(secondsSpent, 10) || 0));
   const sid = String(storyId || bookId);
   const cid = String(chapterId || '');
-  const prev = await ReadingProgress.findOne({ userId: String(userId), storyId: sid, chapterId: cid }).select('finished readCredited').lean();
+  const prev = await ReadingProgress.findOne({ userId: String(userId), storyId: sid, chapterId: cid }).select('finished readCredited pct').lean();
   const creditRead = !!cid && (!prev || !prev.readCredited);
   const update = {
     $inc: { secondsSpent: secs, wordsRead: Math.max(0, parseInt(wordsRead, 10) || 0) },
     $set: { lastReadAt: new Date() },
   };
   if (creditRead) update.$set.readCredited = true;
-  if (pct !== undefined) update.$set.pct = Math.min(100, Math.max(0, Number(pct) || 0));
+  if (pct !== undefined) {
+    const nextPct = Math.min(100, Math.max(0, Number(pct) || 0));
+    // Progress only moves forward. A scroll-back, a stale heartbeat or a
+    // reopened chapter must never erase how far the reader already got —
+    // that was why "Continue reading" kept falling back to 0%.
+    const prevPct = Math.min(100, Math.max(0, Number((prev && prev.pct) || 0) || 0));
+    update.$set.pct = Math.max(nextPct, prevPct);
+  }
   if (finished !== undefined) update.$set.finished = !!finished;
   const doc = await ReadingProgress.findOneAndUpdate(
     { userId: String(userId), storyId: sid, chapterId: cid },

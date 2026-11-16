@@ -67,6 +67,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-side.against.chosen{border-color:var(--red-bd);background:var(--red-s)}
 .deb-side.for:hover{border-color:var(--green-bd)}
 .deb-side.against:hover{border-color:var(--red-bd)}
+/* Once the viewer has chosen a side, the other one is disabled for good. */
+.deb-side.locked-out{opacity:.42;filter:grayscale(.6);cursor:not-allowed;pointer-events:none}
 .deb-side-emoji{font-size:26px;margin-bottom:6px;flex-shrink:0}
 .deb-side-label{font-size:12px;font-weight:800;margin-bottom:8px;flex:1;min-height:36px;display:flex;align-items:center;justify-content:center}
 .deb-side.for .deb-side-label{color:#0d9668}
@@ -235,7 +237,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 <div class="toast" id="toast"></div>
 
-<script src="../component/debate-args.js?v=7"></script>
+<script src="../component/debate-args.js?v=8"></script>
 <script src="../component/status-viewer.js?v=17"></script>
 <script src="../component/status-ring.js?v=5"></script>
   <script src="../services/status-service.js?v=11"></script>
@@ -253,7 +255,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="../component/ad-slot.js?v=3"></script>
 <script src="../services/league-service.js"></script>
 <script src="../component/expiry-chips.js?v=8"></script>
-<script src="../services/debate-service.js?v=3"></script>
+<script src="../services/debate-service.js?v=4"></script>
 <script>DebatePage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

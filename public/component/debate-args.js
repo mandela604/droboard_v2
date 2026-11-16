@@ -49,7 +49,12 @@
     .da-side-chip:active{transform:scale(.97)}
     .da-side-chip.on.for{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:#0d9668}
     .da-side-chip.on.against{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.08);color:#dc2626}
+    /* Once the viewer has posted an argument their side is locked for good. */
+    .da-side-chip[disabled]{cursor:default;opacity:1}
+    .da-side-chip.dim{opacity:.38;filter:grayscale(.6)}
     .da-side-hint{font-size:10px;color:var(--tx-muted,#888);margin-bottom:8px;text-align:center}
+    .da-locked-note{font-size:10.5px;color:var(--tx-muted,#888);text-align:center;margin:-2px 0 10px;display:flex;align-items:center;justify-content:center;gap:5px}
+    .da-composer-send.busy{opacity:.6;pointer-events:none}
 
     /* Edit form (own argument: text + side) */
     .da-edit{margin-top:2px}
@@ -243,6 +248,21 @@
     let _editingId = null;
     let _editingSnapshot = null; // Store original state before editing
 
+    // One top-level argument per viewer per debate. The side of that argument
+    // (read from the server's `mine` cards) is locked for life: it stays
+    // highlighted, the opposite side is disabled, and a second argument
+    // cannot be posted. Replies are still allowed — they inherit that side.
+    function myTopSide(list) {
+      for (var i = 0; i < (list || []).length; i++) {
+        var a = list[i];
+        if (a && a.mine && !a.parentId) return a.side || null;
+      }
+      return null;
+    }
+    let lockedSide = myTopSide(initialArgs);
+    if (lockedSide) O.userSide = lockedSide;
+    let _posting = false;
+
     /* ── helpers ── */
     function countReplies(a) {
       let n = (a.replies || []).length;
@@ -339,12 +359,15 @@
 
     /* ── edit form (own arg: rewrite text + move side) ── */
     function editFormHTML(a) {
-      return '<div class="da-edit" data-edit-form="' + esc(a.id) + '">' +
-        '<textarea class="da-edit-ta" data-edit-text="' + esc(a.id) + '" rows="3" placeholder="Edit your argument\u2026">' + esc(a.text) + '</textarea>' +
+      // A locked side cannot be switched, not even while editing the text.
+      var sides = lockedSide ? '' :
         '<div class="da-edit-sides">' +
           '<button type="button" class="da-side-chip for' + (a.side === 'for' ? ' on' : '') + '" data-edit-side="for">\u2705 ' + esc(O.sides.for) + '</button>' +
           '<button type="button" class="da-side-chip against' + (a.side === 'against' ? ' on' : '') + '" data-edit-side="against">\u274C ' + esc(O.sides.against) + '</button>' +
-        '</div>' +
+        '</div>';
+      return '<div class="da-edit" data-edit-form="' + esc(a.id) + '">' +
+        '<textarea class="da-edit-ta" data-edit-text="' + esc(a.id) + '" rows="3" placeholder="Edit your argument\u2026">' + esc(a.text) + '</textarea>' +
+        sides +
         '<div class="da-edit-acts">' +
           '<button type="button" class="da-edit-cancel" data-edit-cancel="' + esc(a.id) + '">Cancel</button>' +
           '<button type="button" class="da-edit-save" data-edit-save="' + esc(a.id) + '"><i class="fas fa-check"></i> Save</button>' +
@@ -408,13 +431,17 @@
       if (_filter !== 'all') list = list.filter(function (a) { return a.side === _filter; });
 
       var h = '';
-      // side picker (top)
+      // side picker (top) — locked for life once this viewer has posted
       if (O.requireSide && !O.readOnly) {
+        var dimFor = lockedSide && lockedSide !== 'for' ? ' dim' : '';
+        var dimAg = lockedSide && lockedSide !== 'against' ? ' dim' : '';
+        var dis = lockedSide ? ' disabled' : '';
         h += '<div class="da-side-picker">' +
-          '<button class="da-side-chip for' + (O.userSide === 'for' ? ' on' : '') + '" data-pick-side="for">\u2705 ' + esc(O.sides.for) + '</button>' +
-          '<button class="da-side-chip against' + (O.userSide === 'against' ? ' on' : '') + '" data-pick-side="against">\u274C ' + esc(O.sides.against) + '</button>' +
+          '<button class="da-side-chip for' + (O.userSide === 'for' ? ' on' : '') + dimFor + '" data-pick-side="for"' + dis + '>\u2705 ' + esc(O.sides.for) + '</button>' +
+          '<button class="da-side-chip against' + (O.userSide === 'against' ? ' on' : '') + dimAg + '" data-pick-side="against"' + dis + '>\u274C ' + esc(O.sides.against) + '</button>' +
         '</div>';
-        if (!O.userSide) h += '<div class="da-side-hint">Pick a side to post your argument</div>';
+        if (lockedSide) h += '<div class="da-locked-note"><i class="fas fa-lock"></i> You\'ve already debated on this side</div>';
+        else if (!O.userSide) h += '<div class="da-side-hint">Pick a side to post your argument</div>';
       }
 
       // filter
@@ -446,12 +473,13 @@
       }
       h += '</div>';
 
-      // composer
+      // composer — a posted argument locks the viewer out of posting another
+      var canPost = !!O.userSide && !lockedSide && !_posting;
       h += O.readOnly
         ? '<div class="da-closed"><i class="fas fa-lock"></i> This debate has closed — the result is final. The arguments stay here to read.</div>'
         : '<div class="da-composer">' +
-        '<textarea class="da-composer-input" id="daComposerInput" rows="1" placeholder="' + (O.userSide ? 'Post your argument\u2026' : 'Pick a side first\u2026') + '"' + (O.userSide ? '' : ' disabled') + '></textarea>' +
-        '<button class="da-composer-send" id="daComposerSend"' + (O.userSide ? '' : ' disabled') + '><i class="fas fa-paper-plane"></i></button>' +
+        '<textarea class="da-composer-input" id="daComposerInput" rows="1" placeholder="' + (lockedSide ? 'You\'ve already posted your argument' : O.userSide ? 'Post your argument\u2026' : 'Pick a side first\u2026') + '"' + (canPost ? '' : ' disabled') + '></textarea>' +
+        '<button class="da-composer-send' + (_posting ? ' busy' : '') + '" id="daComposerSend"' + (canPost ? '' : ' disabled') + '><i class="fas fa-' + (_posting ? 'spinner fa-spin' : 'paper-plane') + '"></i></button>' +
       '</div>';
 
       rootEl.innerHTML = h;
@@ -869,6 +897,7 @@
       // side pick
       rootEl.querySelectorAll('[data-pick-side]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          if (lockedSide) return; // side is final once an argument is posted
           var side = btn.getAttribute('data-pick-side');
           O.userSide = side;
           if (O.onSidePick) O.onSidePick(side);
@@ -1043,7 +1072,7 @@
       var ci = rootEl.querySelector('#daComposerInput');
       var cs = rootEl.querySelector('#daComposerSend');
       if (ci && cs) {
-        ci.addEventListener('input', function () { cs.disabled = !ci.value.trim() || !O.userSide; });
+        ci.addEventListener('input', function () { cs.disabled = !ci.value.trim() || !O.userSide || lockedSide || _posting; });
         ci.addEventListener('keydown', function (e) {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doPost(); }
         });
@@ -1057,25 +1086,16 @@
       if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
       var parent = findArg(parentId);
       if (!parent) return;
-      
-      var tempId = 'r' + Date.now();
-      var reply = {
-        id: tempId,
-        name: O.currentUser.name || 'You',
-        avatar: O.currentUser.avatar,
-        verified: O.currentUser.verified,
-        side: parent.side,
-        statusRing: 'none',
-        time: 'Just now',
-        text: text,
-        up: 0, down: 0, myVote: null,
-        replies: [],
-      };
-      parent.replies = parent.replies || [];
-      parent.replies.push(reply);
-      render();
-      scrollToArg(tempId);
-      
+
+      // No optimistic "You" card: that fake identity (with a demo avatar)
+      // used to flash before the server responded. Show only a spinner and
+      // render the real server card once it resolves.
+      var sendBtn = rootEl.querySelector('[data-reply-send="' + parentId + '"]');
+      if (sendBtn) {
+        sendBtn.disabled = true; sendBtn.classList.add('busy');
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      }
+
       // Determine correct API endpoint based on debate type
       var url, body;
       if (O.debateType === 'post') {
@@ -1089,8 +1109,7 @@
         if (O.chapterId) url += (O.bookId ? '&' : '?') + 'ch=' + encodeURIComponent(O.chapterId);
         body = JSON.stringify({ text: text, parentId: parentId });
       }
-      
-      // Send to backend
+
       fetch(url, {
         method: 'POST',
         credentials: 'include',
@@ -1102,23 +1121,21 @@
         return res.json();
       })
       .then(function(card) {
-        // Replace temp ID with server-issued ID
-        var idx = parent.replies.findIndex(function(r) { return r.id === tempId; });
-        if (idx >= 0) {
-          parent.replies[idx] = card;
-          persistTree(O.debateId, _args);
-          render();
-          if (O.onReply) O.onReply(parentId, card);
-          toast('✓ Reply saved');
-        }
+        parent.replies = parent.replies || [];
+        parent.replies.push(card);
+        persistTree(O.debateId, _args);
+        render();
+        scrollToArg(card.id);
+        if (O.onReply) O.onReply(parentId, card);
+        toast('✓ Reply saved');
       })
       .catch(function(e) {
         console.error('Failed to post reply:', e);
-        // Remove the temp reply on failure
-        var idx = parent.replies.findIndex(function(r) { return r.id === tempId; });
-        if (idx >= 0) parent.replies.splice(idx, 1);
-        render();
         toast('✗ Failed to reply. Try again.');
+        if (sendBtn) {
+          sendBtn.disabled = false; sendBtn.classList.remove('busy');
+          sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        }
       });
     }
 
@@ -1133,26 +1150,18 @@
       if (!text) return;
       if (O.readOnly) { toast('This debate has closed — no new arguments.'); return; }
       if (O.requireSide && !O.userSide) { toast('\u{1F4CC} Pick a side first!'); return; }
-      
-      // Show optimistic UI with temp ID while backend processes
-      var tempId = 'a' + Date.now();
-      var arg = {
-        id: tempId,
-        name: O.currentUser.name || 'You',
-        avatar: O.currentUser.avatar,
-        verified: O.currentUser.verified,
-        side: O.userSide,
-        statusRing: 'none',
-        time: 'Just now',
-        text: text,
-        up: 0, down: 0, myVote: null,
-        replies: [],
-      };
-      _args.push(arg);
-      if (ci) ci.value = '';
-      render();
-      scrollToArg(tempId);
-      
+      if (lockedSide) { toast('You have already posted your argument on this side.'); return; }
+      if (_posting) return;
+
+      // No optimistic "You" card with a demo avatar: show only a spinner and
+      // render the real server card (real name/avatar) once it resolves.
+      _posting = true;
+      var send = rootEl.querySelector('#daComposerSend');
+      if (send) {
+        send.disabled = true; send.classList.add('busy');
+        send.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      }
+
       // Determine correct API endpoint based on debate type
       var url, body;
       if (O.debateType === 'post') {
@@ -1166,8 +1175,7 @@
         if (O.chapterId) url += (O.bookId ? '&' : '?') + 'ch=' + encodeURIComponent(O.chapterId);
         body = JSON.stringify({ text: text, side: O.userSide });
       }
-      
-      // Send to backend
+
       fetch(url, {
         method: 'POST',
         credentials: 'include',
@@ -1179,23 +1187,24 @@
         return res.json();
       })
       .then(function(card) {
-        // Replace temp ID with server-issued ID
-        var idx = _args.findIndex(function(a) { return a.id === tempId; });
-        if (idx >= 0) {
-          _args[idx] = card;
-          persistTree(O.debateId, _args);
-          render();
-          if (O.onPost) O.onPost(card);
-          toast('✓ Saved');
-        }
+        _args.push(card);
+        lockedSide = O.userSide; // permanent lock — no second argument
+        if (ci) ci.value = '';
+        _posting = false;
+        persistTree(O.debateId, _args);
+        render();
+        scrollToArg(card.id);
+        if (O.onPost) O.onPost(card);
+        toast('✓ Saved');
       })
       .catch(function(e) {
         console.error('Failed to post argument:', e);
-        // Remove the temp argument on failure
-        var idx = _args.findIndex(function(a) { return a.id === tempId; });
-        if (idx >= 0) _args.splice(idx, 1);
-        render();
+        _posting = false;
         toast('✗ Failed to post. Try again.');
+        if (send) {
+          send.disabled = false; send.classList.remove('busy');
+          send.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        }
       });
     }
 
@@ -1220,7 +1229,7 @@
         _args.push(arg); render(); scrollToArg(arg.id); return arg;
       },
       getArgs: function () { return _args; },
-      setUserSide: function (side) { O.userSide = side; render(); },
+      setUserSide: function (side) { if (lockedSide) return; O.userSide = side; render(); },
       setReadOnly: function (v) { var next = !!v; if (next === O.readOnly) return; O.readOnly = next; render(); },
       getUserSide: function () { return O.userSide; },
       startEdit: function (id, inThread) { startEdit(id, !!inThread); },
