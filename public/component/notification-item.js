@@ -184,6 +184,9 @@
       + (n.unread
         ? '<button data-act="read"><i class="fas fa-check"></i> Mark as read</button>'
         : '<button data-act="unread"><i class="fas fa-circle"></i> Mark as unread</button>')
+      + ((n.type === 'league_finish' || n.type === 'achievement')
+        ? '<button data-act="share"><i class="fas fa-share-nodes"></i> ' + (n.type === 'league_finish' ? 'Share my rank' : 'Share achievement') + '</button>'
+        : '')
       + '<button data-act="mute"><i class="fas fa-bell-slash"></i> Mute ' + _esc(n.typeLabel || n.type) + '</button>'
       + '<button class="danger" data-act="delete"><i class="fas fa-trash"></i> Delete</button></div>';
   }
@@ -219,6 +222,9 @@
         : '<div class="dn-title">' + _rich(n.title) + '</div>')
       + (n.desc ? '<div class="dn-desc">' + _rich(n.desc) + '</div>' : '')
       + _chips(n) + _link(n)
+      + ((n.type === 'league_finish' || n.type === 'achievement')
+        ? '<span class="dn-link dn-share" data-dn-share="1"><i class="fas fa-share-nodes"></i> ' + (n.type === 'league_finish' ? 'Share my rank' : 'Share achievement') + '</span>'
+        : '')
       + '<div class="dn-time">' + _esc(n.time) + '</div></div>'
       + '<button class="dn-more" data-dn-openmenu="' + _esc(n.id) + '" aria-label="More"><i class="fas fa-ellipsis"></i></button>'
       + _menu(n) + '</div>'
@@ -305,6 +311,14 @@
         const wasOpen = menu && menu.classList.contains('open');
         closeMenus(el);
         if (menu && !wasOpen) menu.classList.add('open');
+      });
+    });
+    el.querySelectorAll('[data-dn-share]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var card = btn.closest('.dn-card');
+        var item = card && h.findById ? h.findById(card.getAttribute('data-dn-id')) : null;
+        if (h.onAction) h.onAction(item, 'share');
       });
     });
     el.querySelectorAll('.dn-menu button').forEach(function (item) {

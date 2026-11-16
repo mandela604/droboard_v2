@@ -698,9 +698,6 @@
     const o = post.original || {};
     const sid = s.id || s.bookId || o.bookId || (o.id && !o.name ? o.id : '') || '';
     const pid = o.postId || (o.id && !sid && o.name ? o.id : '') || '';
-    if (sid && post.type === 'recommendation' && window.ReadingHistory && typeof ReadingHistory.guardRecommend === 'function') {
-      if (!ReadingHistory.guardRecommend(sid, s.title || o.title || 'Story')) return;
-    }
     if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
     if (o.link) { location.href = o.link; return; }
     if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }

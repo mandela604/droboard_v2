@@ -263,11 +263,13 @@
     return posts.map(p => `<div class="comm-slide">${DroboardGenreCard.renderCard(p)}</div>`).join('');
   }
 
-  function openStoryGuarded(ref, gate) {
+  // Navigation is not a recommendation gate: once a post exists on the feed,
+  // tapping its story card must always open the story. The reading bar applies
+  // to CREATING a recommendation, not to reading one.
+  function openStoryGuarded(ref) {
     const sid = ref && (ref.id || '');
     const pid = ref && (ref.postId || '');
     const ttl = (ref && (ref.title || '')) || 'Story';
-    if (gate && sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
     if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
     if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }
     toast('📖 ' + ttl);
@@ -489,10 +491,7 @@
       },
       onDots: (post, anchor) => { try { window._lastDotsAnchor = anchor || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
-      onOpenLink: (post) => openStoryGuarded(
-        storyRefFor(post) || (post && (post.storyRef || post.chapterRef)),
-        !!(post && post.type === 'recommendation')
-      ),
+      onOpenLink: (post) => openStoryGuarded(storyRefFor(post) || (post && (post.storyRef || post.chapterRef))),
       onPollVote: (post, i) => {
         if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; }
         api('POST', '/posts/' + encodeURIComponent(post.id) + '/poll/vote', { option: i })

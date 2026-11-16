@@ -60,6 +60,26 @@
     security: 'settings.html',
   };
 
+  function plain(s) {
+    return String(s == null ? '' : s)
+      .replace(/\{@[^|}]*\|([^}]*)\}/g, '$1')
+      .replace(/<[^>]*>/g, '').trim();
+  }
+  function shareNotification(n) {
+    if (!n || typeof window.openShareModal !== 'function') return;
+    if (n.type === 'league_finish' && window.DroboardLeagueShare) {
+      window.DroboardLeagueShare.open(n);
+      return;
+    }
+    const href = (n.link && n.link.href) || ROUTES[n.type] || 'notifications.html';
+    window.openShareModal({
+      title: plain(n.title) || 'A Droboard update',
+      sub: plain(n.desc) || (n.typeLabel || n.type),
+      img: n.cover || n.thumb || n.avatar || '',
+      url: (href.indexOf('http') === 0 ? href : location.origin + '/Pages/' + href.replace(/^\.\.\//, '').replace(/^\//, '')),
+    });
+  }
+
   function toast(m) {
     let t = document.getElementById('notifToast');
     if (!t) {
@@ -115,6 +135,7 @@
         if (act === 'unread') S.markUnread(id);
         if (act === 'delete') { S.remove(id); toast('Deleted'); }
         if (act === 'mute') { S.muteType(n.type, true); toast('Muted ' + (n.typeLabel || n.type)); }
+        if (act === 'share') shareNotification(n);
         render();
       },
     });
