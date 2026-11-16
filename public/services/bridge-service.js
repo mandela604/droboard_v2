@@ -85,10 +85,9 @@
     const cat = catOf(s);
     const genre = s.genre || cat.name;
 
-    // engagement: backend sends { polls[], predictions[], debates[] } — the
-    // book-level items when the book has them, the chapters' items when it
-    // does not (each one then carries its chapter key so the vote lands on
-    // the right chapter).
+    // engagement: BOOK level (the author creates these in the author
+    // workspace). Chapter-level engagement is a different layer and belongs
+    // to the chapter reader.
     const eng = s.engagement || {};
     const poll0 = (eng.polls || [])[0] || null;
     const pred0 = (eng.predictions || [])[0] || null;
@@ -178,9 +177,6 @@
           q: poll0.q || '',
           opts: (poll0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
           voted: poll0.myVote != null ? poll0.myVote : -1,
-          chapter: poll0.chapter != null ? poll0.chapter : null,
-          chapterKey: poll0.chapterKey || null,
-          source: poll0.source || 'book',
         } : null,
         debate: deb0 ? {
           id: deb0.id,
@@ -188,18 +184,12 @@
           dFor: deb0.forV || 0,
           dAg: deb0.agV || 0,
           voted: deb0.myVote != null ? deb0.myVote : -1,
-          chapter: deb0.chapter != null ? deb0.chapter : null,
-          chapterKey: deb0.chapterKey || null,
-          source: deb0.source || 'book',
         } : null,
         pred: pred0 ? {
           id: pred0.id,
           q: pred0.q || '',
           opts: (pred0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
           voted: pred0.myVote != null ? pred0.myVote : -1,
-          chapter: pred0.chapter != null ? pred0.chapter : null,
-          chapterKey: pred0.chapterKey || null,
-          source: pred0.source || 'book',
         } : null,
       },
       hubs: {
@@ -470,16 +460,12 @@
     renderPred();
   }
 
-  /* The engagement the reader sees may belong to a chapter (that is where
-     the create flow writes it) — say so, so the card never looks like it is
-     the whole book's poll when it is one chapter's. */
-  function engChapterLabel(item) {
-    return (item && item.chapter != null) ? ' · Ch ' + item.chapter : '';
-  }
-  function paintEngBadge(cardId, base, item) {
+  /* The engagement on the story page is the BOOK's engagement (created by
+     the author in the author workspace). */
+  function paintEngBadge(cardId, base) {
     const el = document.querySelector('#' + cardId + ' .ec-badge');
     if (!el) return;
-    el.innerHTML = base + engChapterLabel(item);
+    el.innerHTML = base;
   }
 
   function renderPoll() {
@@ -494,7 +480,7 @@
     }
     S.pollVoted = p.voted;
     document.getElementById('pollQ').textContent = p.q;
-    paintEngBadge('card-poll', '📊 Poll', p);
+    paintEngBadge('card-poll', '📊 Poll');
     const opts = p.opts;
     const tot = opts.reduce((s, o) => s + o.v, 0) || 1;
     el.innerHTML = opts.map((o, i) => {
@@ -519,7 +505,7 @@
     if (sides) sides.parentElement.style.display = '';
     S.debateVote = db.voted === 0 ? 'for' : db.voted === 1 ? 'against' : null;
     qEl.textContent = db.q;
-    paintEngBadge('card-debate', '<span class="live-dot"></span> Live Debate', db);
+    paintEngBadge('card-debate', '<span class="live-dot"></span> Live Debate');
     const tot = db.dFor + db.dAg || 1;
     const fp = Math.round(db.dFor / tot * 100);
     document.getElementById('forBar').style.width = fp + '%';
@@ -546,7 +532,7 @@
     }
     S.predVoted = p.voted;
     document.getElementById('predQ').textContent = p.q;
-    paintEngBadge('card-pred', '🔮 Prediction', p);
+    paintEngBadge('card-pred', '🔮 Prediction');
     const opts = p.opts;
     const tot = opts.reduce((s, o) => s + o.v, 0) || 1;
     el.innerHTML = opts.map((o, i) => {
@@ -794,34 +780,26 @@
     const poll0 = (eng.polls || [])[0] || null;
     const pred0 = (eng.predictions || [])[0] || null;
     const deb0  = (eng.debates || [])[0] || null;
-    const extra = (x) => ({
-      chapter: x.chapter != null ? x.chapter : null,
-      chapterKey: x.chapterKey || null,
-      source: x.source || 'book',
-    });
     DATA.engagement.poll = poll0 ? {
       id: poll0.id, q: poll0.q || '',
       opts: (poll0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
       voted: poll0.myVote != null ? poll0.myVote : -1,
-      ...extra(poll0),
     } : null;
     DATA.engagement.pred = pred0 ? {
       id: pred0.id, q: pred0.q || '',
       opts: (pred0.opts || []).map(o => ({ t: o.t, v: o.v || 0 })),
       voted: pred0.myVote != null ? pred0.myVote : -1,
-      ...extra(pred0),
     } : null;
     DATA.engagement.debate = deb0 ? {
       id: deb0.id, q: deb0.motion || '',
       dFor: deb0.forV || 0, dAg: deb0.agV || 0,
       voted: deb0.myVote != null ? deb0.myVote : -1,
-      ...extra(deb0),
     } : null;
     renderEngagement();
   }
 
-  /* The engagement can live on the book OR on one of its chapters. The vote
-     must land where the item lives, so the URL follows the item's source. */
+  /* The story page votes on the BOOK's engagement — the same layer the
+     author created in the author workspace. */
   function engItem(kind) {
     const e = DATA.engagement || {};
     if (kind === 'poll') return e.poll;
@@ -833,18 +811,9 @@
     if (window.RequireAuth && !RequireAuth.ensure(label)) return false;
     const item = engItem(kind);
     if (!item || !item.id) return false;
-    const chapterKey = item.chapterKey || null;
-    let url, body;
-    if (chapterKey) {
-      const path = kind === 'pred' ? 'prediction' : kind;
-      url = `${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/chapters/${encodeURIComponent(chapterKey)}/${path}/vote`;
-      body = payload;
-    } else {
-      url = `${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/engagement/vote`;
-      body = Object.assign({ id: item.id, kind: kind === 'pred' ? 'prediction' : kind }, payload);
-    }
+    const body = Object.assign({ id: item.id, kind: kind === 'pred' ? 'prediction' : kind }, payload);
     try {
-      await postJSON(url, body, 'Vote API');
+      await postJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/engagement/vote`, body, 'Vote API');
       await refreshEngagement();
       return true;
     } catch (e) {

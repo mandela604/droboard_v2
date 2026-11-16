@@ -186,7 +186,10 @@ async function getBookDetail(id, viewerId) {
   return Object.assign({}, book, {
     chapters,
     writer,
-    engagement: await engagement.storyEngagement(book, votes, chapters, viewer),
+    // Book-level engagement only. Chapter-level engagement (created per
+    // chapter in the create wizard) belongs to the chapter reader — the two
+    // layers stay separate instead of one standing in for the other.
+    engagement: engagement.shapeStoryEngagement(book, votes),
     stats: {
       comments, reads: book.reads || 0, shares,
       rating: book.rating || 0, ratingCount: book.ratingCount || 0,

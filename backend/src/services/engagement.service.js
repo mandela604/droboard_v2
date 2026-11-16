@@ -244,77 +244,6 @@ function optsTotal(item) {
   return (item.opts || []).reduce((a, o) => a + (o.v || 0), 0);
 }
 
-/* ── CHAPTER FALLBACK ────────────────────────────────────────────────
-   A book's own polls[]/predictions[]/debates[] are optional; most authors
-   put their engagement on a CHAPTER (that is where the create flow writes
-   it). The story page must still show the engagement that exists, so when
-   the book carries none we shape the chapters' items instead. They keep
-   `source: 'chapter'` + the chapter key so the reader votes against the
-   chapter endpoint, where the vote really lives. */
-async function chapterVotes(chapterIds, userId) {
-  const ids = (chapterIds || []).map(String).filter(Boolean);
-  if (!userId || !ids.length) return {};
-  // A chapter vote row carries the CHAPTER (not the book), so it is found by
-  // the chapter ids of this book.
-  const rows = await EngagementVote.find({ userId, chapterId: { $in: ids } })
-    .select('chapterId kind optionIdx').lean().catch(() => []);
-  const out = {};
-  rows.forEach(v => { out[String(v.chapterId) + ':' + v.kind] = v.optionIdx; });
-  return out;
-}
-
-function shapeChapterItem(kind, item, ch, myIdx) {
-  const shaped = {
-    id: item.id, kind,
-    chapter: ch.n, chapterId: String(ch.id), chapterKey: String(ch.id),
-    source: 'chapter',
-    expiresAt: item.expiresAt || null,
-    closed: !!(item.expiresAt && new Date(item.expiresAt) < new Date()),
-    myVote: myIdx === undefined ? null : myIdx,
-  };
-  if (kind === 'debate') {
-    shaped.motion = item.motion || '';
-    shaped.forText = item.forText || 'For';
-    shaped.againstText = item.againstText || 'Against';
-    shaped.forV = item.forV || 0;
-    shaped.agV = item.agV || 0;
-    shaped.totalVotes = shaped.forV + shaped.agV;
-  } else {
-    const total = optsTotal(item);
-    shaped.q = item.q || '';
-    shaped.opts = (item.opts || []).map((o, i) => ({
-      t: o.t, v: o.v || 0,
-      pct: total ? Math.round(((o.v || 0) / total) * 100) : 0,
-      picked: myIdx === i,
-    }));
-    shaped.totalVotes = total;
-  }
-  return shaped;
-}
-
-function shapeChapterEngagement(chapters, votes) {
-  const out = { polls: [], predictions: [], debates: [] };
-  const KINDS = [{ key: 'polls', kind: 'poll' }, { key: 'predictions', kind: 'prediction' }, { key: 'debates', kind: 'debate' }];
-  KINDS.forEach(k => {
-    (chapters || []).forEach(ch => {
-      const item = ch[k.kind];
-      if (!item || !item.id) return;
-      const myIdx = votes[String(ch.id) + ':' + k.kind];
-      out[k.key].push(shapeChapterItem(k.kind, item, ch, myIdx));
-    });
-  });
-  return out;
-}
-
-// Book-level engagement when the book has it, the chapters' engagement when
-// it does not. One shape for the reader either way.
-async function storyEngagement(book, myVotes, chapters, userId) {
-  const shaped = shapeStoryEngagement(book, myVotes);
-  const hasBookLevel = ['polls', 'predictions', 'debates'].some(k => (shaped[k] || []).length);
-  if (hasBookLevel) return shaped;
-  return shapeChapterEngagement(chapters, await chapterVotes((chapters || []).map(c => c.id), userId));
-}
-
 // Votes are stored as optionIdx (debate: 0=for, 1=against); readers want the
 // same spelling the vote body takes, so map debate back to its side word.
 function myVoteMap(rows) {
@@ -342,11 +271,9 @@ async function storyBook(id) {
 async function bookEngagement({ bookId, userId }) {
   const book = await storyBook(bookId);
   const votes = await storyVotes(book.id, userId);
-  // The same shape the story page gets: book-level items when the book has
-  // them, the chapters' items when it does not.
-  const chapters = await Chapter.find({ bookId: book.id, status: { $in: ['live', 'published'] } })
-    .sort({ n: 1 }).select('id n poll prediction debate').lean().catch(() => []);
-  return { bookId: book.id, engagement: await storyEngagement(book, votes, chapters, userId) };
+  // Book-level items only — the same layer the story page shows. Chapter
+  // engagement is a separate layer and lives with its chapter.
+  return { bookId: book.id, engagement: shapeStoryEngagement(book, votes) };
 }
 
 async function bookVote({ bookId, userId, kind, id, option }) {
@@ -789,7 +716,6 @@ module.exports = {
   // The story detail read builds the same engagement block, so it borrows the
   // mapper instead of growing a second one.
   shapeStoryEngagement, storyVotes, ENGAGEMENT_LISTS,
-  storyEngagement, shapeChapterEngagement,
   reactStory, unreactStory, storyReactionState, STORY_RX,
   chapterRxCounts, reactChapter, unreactChapter, chapterReactionState,
   chapterReactionTotals, syncBookLikes,
