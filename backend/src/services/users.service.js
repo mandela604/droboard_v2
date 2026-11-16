@@ -387,7 +387,7 @@ async function changePassword(userId, { oldPassword, newPassword }) {
       recipientId: String(u.id), type: 'security',
       title: 'Your password was changed',
       desc: 'If this was not you, secure your account now.',
-      link: 'Pages/settings.html', linkLabel: 'Account security',
+      link: '/Pages/settings.html', linkLabel: 'Account security',
       key: 'security:password:' + String(u._id) + ':' + String(u.updatedAt || Date.now()),
     });
   } catch (e) { /* notifications never block a security write */ }

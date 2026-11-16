@@ -108,7 +108,7 @@ async function submitRating(bookId, userId, { stars, text, spoiler }) {
         recipientId: String(book.authorId), actorId: String(userId), type: 'rating',
         title: '{@' + ((u && u.username) || '') + '|Someone} rated your story ' + stars + '★',
         desc: (book.title || '') + (text ? ' — "' + String(text).slice(0, 60) + '"' : ''),
-        link: 'Pages/full-reader.html?story=' + book.id, linkLabel: 'Read review',
+        link: '/Pages/full-reader.html?story=' + book.id, linkLabel: 'Read review',
         key: 'rating:' + String(userId) + ':' + book.id,
       });
     } catch (e) { /* non-fatal */ }

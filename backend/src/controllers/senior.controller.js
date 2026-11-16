@@ -325,7 +325,7 @@ async function notifyReviewDecision({ authorId, bookId, action, feedback, actorI
         + (action === 'approved'
           ? 'Your manuscript is now live on Droboard. Congratulations!'
           : 'Your editor sent feedback: ' + String(feedback || '').slice(0, 300)),
-      link: 'author/author-center.html', linkLabel: 'Read result',
+      link: '/author/author-center.html', linkLabel: 'Read result',
       key: 'review:' + String(bookId || '') + ':' + action,
     });
   } catch (e) { /* notifications never block a decision */ }
@@ -576,7 +576,7 @@ async function verificationDecide(req, res, decision) {
         desc: decision === 'approved'
           ? 'You can now sign contracts and carry the verified badge.'
           : 'Reason: ' + String(reason || '').trim().slice(0, 300),
-        link: 'author/verification.html', linkLabel: 'View verification',
+        link: '/author/verification.html', linkLabel: 'View verification',
         key: 'verification:' + String(updated.id) + ':' + decision,
       });
     } catch (e) { /* notifications never block a decision */ }
@@ -808,7 +808,7 @@ async function sendMessage(req, res) {
         await emit({
           recipientId: String(peer), actorId: String(req.user.id), type: 'direct_message',
           title: 'New message from your editor', desc: String(text).slice(0, 140),
-          link: 'Pages/chat.html?contact=' + encodeURIComponent(String(conv.id)),
+          link: '/Pages/chat.html?contact=' + encodeURIComponent(String(conv.id)),
           key, count, badge: 'chat',
         });
       } catch (e) {}

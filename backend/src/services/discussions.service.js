@@ -278,7 +278,7 @@ async function toggleLike({ id, user }) {
         recipientId: String(d.authorId), actorId: String(user.id), type: 'like',
         title: '{@|Someone} liked your discussion',
         desc: String(d.title || '').slice(0, 60),
-        link: 'Pages/discussion.html?id=' + String(d.id), linkLabel: 'View thread',
+        link: '/Pages/discussion.html?id=' + String(d.id), linkLabel: 'View thread',
         key: 'discussion-like:' + String(user.id) + ':' + String(d.id),
       });
     } catch (e) { /* non-fatal */ }
@@ -326,7 +326,7 @@ async function reactToDiscussion({ id, userId, rid }) {
         recipientId: String(d.authorId), actorId: uid, type: 'like',
         title: '{@' + ((u && u.username) || '') + '|Someone} reacted ' + (emoji[rid] || '') + ' to your discussion',
         desc: String(d.title || '').slice(0, 60),
-        link: 'Pages/discussion.html?id=' + String(d.id), linkLabel: 'View thread',
+        link: '/Pages/discussion.html?id=' + String(d.id), linkLabel: 'View thread',
         key: 'discussion-react:' + uid + ':' + String(d.id),
       });
     } catch (e) { /* non-fatal */ }

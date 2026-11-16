@@ -658,7 +658,10 @@
         if (window.RequireAuth && !RequireAuth.ensure('join this AMA')) return;
         _hooks.onJoinAma && _hooks.onJoinAma(post); return;
       }
-      if (e.target.closest('[data-pcc-open]')) { _hooks.onOpenLink && _hooks.onOpenLink(post); return; }
+      if (e.target.closest('[data-pcc-open]')) {
+        if (_hooks.onOpenLink) _hooks.onOpenLink(post); else defaultOpenLink(post);
+        return;
+      }
 
       const pollRow = e.target.closest('[data-pcc-poll-opt]');
       if (pollRow) {
@@ -678,7 +681,7 @@
       // Text tap → open the post reader (deliberate reading action only —
       // empty padding taps do nothing, links/inputs are never hijacked)
       if (!e.target.closest('a,button,input,textarea,select')) {
-        if (e.target.closest('[data-pcc-openpost]')) { _hooks.onOpenPost && _hooks.onOpenPost(post); return; }
+        if (e.target.closest('[data-pcc-openpost]')) { if (_hooks.onOpenPost) _hooks.onOpenPost(post); else if (post && post.id) location.href = '/Pages/discussion.html?id=' + encodeURIComponent(post.id); return; }
       }
     });
   }
@@ -686,6 +689,24 @@
   // ══════════════════════════════════════════════════════════════════════
   // Public API
   // ══════════════════════════════════════════════════════════════════════
+  // Embedded cards (repost / recommendation / review / chapter drop) must
+  // always open something. Surfaces that know better pass onOpenLink; this
+  // covers discussion page, genre hub and droboard page, which never did.
+  function defaultOpenLink(post) {
+    if (!post) return;
+    const s = post.storyRef || post.chapterRef || {};
+    const o = post.original || {};
+    const sid = s.id || s.bookId || o.bookId || (o.id && !o.name ? o.id : '') || '';
+    const pid = o.postId || (o.id && !sid && o.name ? o.id : '') || '';
+    if (sid && post.type === 'recommendation' && window.ReadingHistory && typeof ReadingHistory.guardRecommend === 'function') {
+      if (!ReadingHistory.guardRecommend(sid, s.title || o.title || 'Story')) return;
+    }
+    if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
+    if (o.link) { location.href = o.link; return; }
+    if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }
+    if (post.id) location.href = '/Pages/discussion.html?id=' + encodeURIComponent(post.id);
+  }
+
   function attach(rootEl, hooks) {
     if (!document.getElementById('pcc-style')) {
       const style = document.createElement('style');

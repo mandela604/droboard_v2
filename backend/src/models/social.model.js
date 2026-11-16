@@ -48,7 +48,7 @@ const postSchema = new mongoose.Schema({
   // post-card.js:403 reads post.original; without it a repost renders blank.
   // `time` is a pre-rendered relative label (the source may be on another
   // board), so it is stored as a string, not a Date.
-  original: { name: String, avatar: String, time: String, text: String, cover: String, title: String },
+  original: { id: String, bookId: String, storyId: String, postId: String, link: String, name: String, avatar: String, time: String, text: String, cover: String, title: String },
   // chapter-drop posts (feed composer): dropped-chapter story card
   chapterRef: { id: String, title: String, author: String, cover: String, ch: String, cat: String },
   storyRef: { id: String, title: String, cat: String, writer: String, cover: String },

@@ -178,7 +178,7 @@ async function notifyPeer({ peerId, sender, conv, preview }) {
   await notify({
     recipientId: peerId, actorId: String(sender.id), type: 'direct_message',
     title: sender.fullName || sender.username || 'User',
-    desc: preview, link: 'Pages/chat.html?contact=' + conv.id, linkLabel: 'Reply',
+    desc: preview, link: '/Pages/chat.html?contact=' + conv.id, linkLabel: 'Reply',
     key, count, badge: 'chat', avatar: sender.avatar || undefined,
   });
 }

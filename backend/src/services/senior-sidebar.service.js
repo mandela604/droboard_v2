@@ -966,7 +966,7 @@ async function messageSend(user, id, body) {
         recipientId: peer, actorId: self, type: 'direct_message',
         title: 'New message from your editor',
         desc: conv.preview || 'Open your inbox to reply.',
-        link: 'Pages/chat.html?contact=' + encodeURIComponent(String(conv.id)),
+        link: '/Pages/chat.html?contact=' + encodeURIComponent(String(conv.id)),
         key, count, badge: 'chat',
       });
     } catch (e) { /* notifications never block a message */ }

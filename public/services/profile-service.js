@@ -814,10 +814,13 @@
         onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onOpenLink: (post) => {
           const ref = (post && (post.storyRef || post.chapterRef)) || null;
-          const sid = ref && (ref.id || '');
-          const ttl = (ref && (ref.title || '')) || PROFILE.name;
-          if (sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
-          if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
+          const sid = ref && (ref.id || ref.bookId || '');
+          const pid = post && post.original && (post.original.postId || post.original.id);
+          const ttl = (ref && (ref.title || '')) || (post && post.original && post.original.title) || PROFILE.name;
+          if (sid && post.type === 'recommendation' && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
+          if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
+          if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }
+          if (post && post.id) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(post.id); return; }
           toast('📖 Opening story…');
         },
       });

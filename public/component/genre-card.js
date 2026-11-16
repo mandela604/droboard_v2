@@ -598,7 +598,11 @@
         if (story) {
           handled(() => {
             const p = _find(story.dataset.dgcStory);
-            if (p && typeof hooksNow.onStory === 'function') hooksNow.onStory(p);
+            if (!p) return;
+            if (typeof hooksNow.onStory === 'function') { hooksNow.onStory(p); return; }
+            const sid = p.story && (p.story.id || p.story.bookId);
+            if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
+            location.href = '/Pages/discussion.html?id=' + encodeURIComponent(p.id);
           });
           return;
         }

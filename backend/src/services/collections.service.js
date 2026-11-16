@@ -414,7 +414,7 @@ async function followCollection({ userId, id }) {
         recipientId: String(col.ownerId), actorId: String(userId), type: 'collection_follow',
         title: '{@|Someone} started following your collection',
         desc: plain.title || 'Your collection',
-        link: 'Pages/collection.html?id=' + encodeURIComponent(String(cid)), linkLabel: 'View collection',
+        link: '/Pages/collection.html?id=' + encodeURIComponent(String(cid)), linkLabel: 'View collection',
         key: 'collection-follow:' + String(userId) + ':' + String(cid),
       });
     } catch (e) { /* non-fatal */ }
@@ -461,7 +461,7 @@ async function shareCollection({ userId, id, channel }) {
         recipientId: String(col.ownerId), type: 'share',
         title: 'Someone shared your collection',
         desc: plain.title || 'Your collection',
-        link: 'Pages/collection.html?id=' + encodeURIComponent(String(cid)), linkLabel: 'View collection',
+        link: '/Pages/collection.html?id=' + encodeURIComponent(String(cid)), linkLabel: 'View collection',
         key: 'collection-share:' + String(cid) + ':' + String(userId || 'anon'),
       });
     } catch (e) { /* non-fatal */ }

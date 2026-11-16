@@ -774,6 +774,9 @@
               type: 'repost',
               note: caption,
               original: {
+                id: _data.contentType === 'posts' ? String(_data.contentId || '') : '',
+                postId: _data.contentType === 'posts' ? String(_data.contentId || '') : '',
+                link: _data.url || '',
                 name: authorName,
                 avatar: _data.img || '',
                 time: 'Just now',

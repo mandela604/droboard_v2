@@ -263,11 +263,13 @@
     return posts.map(p => `<div class="comm-slide">${DroboardGenreCard.renderCard(p)}</div>`).join('');
   }
 
-  function openStoryGuarded(ref) {
+  function openStoryGuarded(ref, gate) {
     const sid = ref && (ref.id || '');
+    const pid = ref && (ref.postId || '');
     const ttl = (ref && (ref.title || '')) || 'Story';
-    if (sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
-    if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
+    if (gate && sid && window.ReadingHistory && !ReadingHistory.guardRecommend(sid, ttl)) return;
+    if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
+    if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }
     toast('📖 ' + ttl);
   }
   function openHubDiscussion(post) {
@@ -423,9 +425,9 @@
   }
 
   function storyRefFor(post) {
-    if (post.type === 'chapter-drop' && post.chapterRef) return { title: post.chapterRef.title, cover: post.chapterRef.cover, author: post.name };
-    if ((post.type === 'review' || post.type === 'recommendation') && post.storyRef) return { title: post.storyRef.title, cover: post.storyRef.cover, author: post.storyRef.author };
-    if (post.type === 'repost' && post.original) return { title: post.original.title, cover: post.original.cover, author: post.original.name };
+    if (post.type === 'chapter-drop' && post.chapterRef) return { id: post.chapterRef.id || post.chapterRef.bookId, title: post.chapterRef.title, cover: post.chapterRef.cover, author: post.name };
+    if ((post.type === 'review' || post.type === 'recommendation') && post.storyRef) return { id: post.storyRef.id, title: post.storyRef.title, cover: post.storyRef.cover, author: post.storyRef.author || post.storyRef.writer };
+    if (post.type === 'repost' && post.original) return { id: post.original.bookId || post.original.storyId || (post.original.id && !post.original.name ? post.original.id : ''), postId: post.original.postId, title: post.original.title || post.original.text, cover: post.original.cover, author: post.original.name };
     return null;
   }
 
@@ -487,7 +489,10 @@
       },
       onDots: (post, anchor) => { try { window._lastDotsAnchor = anchor || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
-      onOpenLink: (post) => openStoryGuarded(storyRefFor(post) || (post && (post.storyRef || post.chapterRef))),
+      onOpenLink: (post) => openStoryGuarded(
+        storyRefFor(post) || (post && (post.storyRef || post.chapterRef)),
+        !!(post && post.type === 'recommendation')
+      ),
       onPollVote: (post, i) => {
         if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; }
         api('POST', '/posts/' + encodeURIComponent(post.id) + '/poll/vote', { option: i })

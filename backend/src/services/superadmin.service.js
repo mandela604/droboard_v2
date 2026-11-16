@@ -784,7 +784,7 @@ async function removeUser(id) {
       recipientId: String(u.id), type: 'security',
       title: 'Your account was suspended',
       desc: 'Access to Droboard has been paused by an administrator. Contact support if you think this is a mistake.',
-      link: 'Pages/settings.html', linkLabel: 'Account security',
+      link: '/Pages/settings.html', linkLabel: 'Account security',
       key: 'security:suspended:' + String(u.id) + ':' + String(u.deletedAt),
     });
   } catch (e) { /* non-fatal */ }
@@ -1305,7 +1305,7 @@ async function removeWriter(id) {
       recipientId: String(u.id), type: 'security',
       title: 'Your account was suspended',
       desc: 'Access to Droboard has been paused by an administrator. Contact support if you think this is a mistake.',
-      link: 'Pages/settings.html', linkLabel: 'Account security',
+      link: '/Pages/settings.html', linkLabel: 'Account security',
       key: 'security:suspended:' + String(u.id) + ':' + String(u.deletedAt),
     });
   } catch (e) { /* non-fatal */ }

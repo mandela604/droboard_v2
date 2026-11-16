@@ -57,6 +57,10 @@ function normContent(data) {
   if (data.original) {
     const o = data.original;
     data.original = {
+      id: o.id || o.bookId || o.storyId || '',
+      bookId: o.bookId || o.storyId || o.id || '',
+      postId: o.postId || (o.type === 'post' ? o.id : '') || '',
+      link: o.link || '',
       name: o.name || '', avatar: o.avatar || '', time: o.time || '',
       text: o.text || '', cover: o.cover || '', title: o.title || '',
     };
@@ -70,7 +74,7 @@ const RECOMMEND_MIN_CHAPTERS = 3;
 
 async function createPost({ authorId, data }) {
   if (data.type === 'recommendation' && data.storyRef && data.storyRef.id) {
-    const { ReadingProgress } = require('./social.model');
+    const { ReadingProgress } = require('../models/social.model');
     const read = await ReadingProgress.countDocuments({ userId: String(authorId), storyId: String(data.storyRef.id) });
     if (read < RECOMMEND_MIN_CHAPTERS) {
       const e = new Error('not_enough_reading'); e.status = 403; throw e;

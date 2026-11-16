@@ -195,7 +195,7 @@ async function creditInviter({ inviterId, inviteeId, stage, coins }) {
       recipientId, actorId: String(inviteeId),
       type: 'coins', title: '+' + coins + ' referral coins',
       desc: stage === 'stage1' ? 'A friend joined with your link (+3 now, +2 when they read 30 min).' : 'Your referral hit 30 min of reading — bonus unlocked.',
-      link: 'Pages/refer.html',
+      link: '/Pages/refer.html',
       key: 'referral-coins:' + stage + ':' + String(inviteeId),
     });
   } catch (e) { /* notifications never block rewards */ }

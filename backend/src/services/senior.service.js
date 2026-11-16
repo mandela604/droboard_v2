@@ -224,7 +224,7 @@ async function notifyProposalDecision({ authorId, bookId, chapterN, kind, approv
       desc: (b && b.title ? '"' + String(b.title).slice(0, 60) + '" — ' : '')
         + (chapterN ? 'Ch.' + chapterN + ' · ' : '')
         + (approved ? 'Your change is now live.' : 'Reason: ' + String(note || '').slice(0, 300)),
-      link: 'author/book-workspace.html', linkLabel: 'Track requests',
+      link: '/author/book-workspace.html', linkLabel: 'Track requests',
       key: 'proposal:' + String(kind) + ':' + String(authorId) + ':' + String(bookId || '') + ':' + String(chapterN || '') + ':' + (approved ? 'approved' : 'rejected'),
     });
   } catch (e) { /* notifications never block a decision */ }

@@ -151,7 +151,7 @@ async function verifyEmail(token) {
       recipientId: String(user.id), type: 'security',
       title: 'Email verified',
       desc: 'Your email address is now confirmed on your account.',
-      link: 'Pages/settings.html', linkLabel: 'Account security',
+      link: '/Pages/settings.html', linkLabel: 'Account security',
       key: 'security:email-verified:' + String(user.id),
     });
   } catch (e) { /* non-fatal */ }
@@ -201,7 +201,7 @@ async function resetPassword(token, password) {
       recipientId: String(user.id), type: 'security',
       title: 'Your password was reset',
       desc: 'A new password was set for your account. All sessions were signed out.',
-      link: 'Pages/settings.html', linkLabel: 'Account security',
+      link: '/Pages/settings.html', linkLabel: 'Account security',
       key: 'security:reset:' + String(user._id) + ':' + String(user.updatedAt || Date.now()),
     });
   } catch (e) { /* non-fatal */ }
