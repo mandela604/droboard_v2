@@ -24,9 +24,7 @@
     ];
     var sections = [
       { title: 'Author Center', items: [
-        { label: 'Dashboard', icon: 'fa-gauge', href: 'author-center.html' },
-        { label: 'Verification', icon: 'fa-id-card-clip', href: 'author-center.html#verification' },
-        { label: 'Flyer Templates', icon: 'fa-images', href: 'flyer-templates.html' }
+        { label: 'Dashboard', icon: 'fa-gauge', href: 'author-center.html' }
       ] },
       { title: 'Applications', items: [
         { label: 'Contracts', icon: 'fa-file-signature', href: 'apply-contract.html' },
@@ -48,8 +46,8 @@
     if (bookId) sections.splice(1, 0, { title: 'Book Workspace', items: BOOK_WORKSPACE_ITEMS.map(function (it) { return { label: it.label, icon: it.icon, href: it.href + '?book=' + bookId }; }) });
     if (activeHref) sections.forEach(function (s) { s.items.forEach(function (it) {
       if (it.href.split(/[?#]/)[0] !== activeHref) return;
-      /* Dashboard and Verification are two stops on one page — only the one the
-         URL actually points at lights up. */
+      /* Two stops can share one page — only the one the URL actually points
+         at lights up. */
       var hash = it.href.split('#')[1] || '';
       it.active = hash ? (location.hash === '#' + hash) : !location.hash;
     }); });

@@ -17,10 +17,10 @@
     var earnings = await window.AuthorFinance.getEarnings();
     methods = await window.AuthorFinance.getPaymentMethods();
     balance = earnings.balance;
-    minWithdrawal = (earnings.minWithdrawal) || 100;
+    minWithdrawal = Number(earnings.minWithdrawal) || 0;
 
     document.getElementById('balanceMini').innerHTML =
-      '<div><div class="bal-label">Available Balance</div><div class="bal-amount">'+window.AuthorFinance.fmtCurrency(balance)+'</div><div class="bal-min">Minimum withdrawal: '+window.AuthorFinance.fmtCurrency(minWithdrawal)+'</div></div>'+
+      '<div><div class="bal-label">Available Balance</div><div class="bal-amount">'+window.AuthorFinance.fmtCurrency(balance)+'</div>'+(minWithdrawal > 0 ? '<div class="bal-min">Minimum withdrawal: '+window.AuthorFinance.fmtCurrency(minWithdrawal)+'</div>' : '')+'</div>'+
       '<a href="payment-details.html" style="color:#fff;font-size:12px;font-weight:700;opacity:.8"><i class="fas fa-credit-card"></i> Manage</a>';
 
     renderMethods();

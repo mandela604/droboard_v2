@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debate Endpoints Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f1419; color: #e0e6ed; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { margin-bottom: 20px; color: #4fc3f7; }
+    .test-group { background: #1a1f26; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .test-item { margin: 15px 0; }
+    .test-title { font-weight: 600; color: #e0e6ed; margin-bottom: 8px; }
+    .test-status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 10px; }
+    .pass { background: #4caf50; color: white; }
+    .fail { background: #f44336; color: white; }
+    .pending { background: #ff9800; color: white; }
+    .loading { background: #2196f3; color: white; }
+    .test-url { font-family: 'Courier New', monospace; background: #0f1419; padding: 8px 12px; border-radius: 4px; color: #4fc3f7; font-size: 12px; margin: 8px 0; }
+    .test-response { font-family: 'Courier New', monospace; background: #0f1419; padding: 12px; border-radius: 4px; color: #a0a0a0; font-size: 11px; margin: 8px 0; max-height: 200px; overflow-y: auto; }
+    .error { color: #ff6b6b; }
+    .success { color: #51cf66; }
+    button { background: #4fc3f7; color: #0f1419; border: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 20px; }
+    button:hover { background: #29b6f6; }
+    button:disabled { background: #666; cursor: not-allowed; }
+    .summary { background: #1a1f26; border: 2px solid #4fc3f7; border-radius: 8px; padding: 20px; margin-top: 20px; }
+    .summary h2 { color: #4fc3f7; margin-bottom: 15px; }
+    .summary-stat { display: flex; justify-content: space-between; margin: 10px 0; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #666; border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Debate Endpoints Integration Test</h1>
+    <button id="runTests" onclick="runTests()">Run Tests</button>
+    <button id="stopTests" onclick="stopTests()" disabled style="background: #f44336; margin-left: 10px;">Stop</button>
+
+    <div id="tests"></div>
+    <div id="summary" class="summary" style="display: none;"></div>
+  </div>
+
+  <script>
+    const BASE_URL = 'http://127.0.0.1:4001';
+    let isRunning = false;
+    let testResults = [];
+
+    async function logTest(name, status, details = {}) {
+      const container = document.getElementById('tests');
+      const testDiv = document.createElement('div');
+      testDiv.className = 'test-group';
+      
+      let html = `
+        <div class="test-item">
+          <div class="test-title">
+            ${name}
+            <span class="test-status ${status.toLowerCase()}">${status}</span>
+          </div>
+      `;
+
+      if (details.url) {
+        html += `<div class="test-url">${details.method} ${details.url}</div>`;
+      }
+
+      if (details.response) {
+        const responseStr = typeof details.response === 'string' ? details.response : JSON.stringify(details.response, null, 2);
+        html += `<div class="test-response"><span class="${details.status === 200 || details.status === 201 ? 'success' : 'error'}">Status: ${details.status}</span>\n${responseStr}</div>`;
+      }
+
+      if (details.error) {
+        html += `<div class="test-response error">Error: ${details.error}</div>`;
+      }
+
+      html += `</div>`;
+      testDiv.innerHTML = html;
+      container.appendChild(testDiv);
+      
+      testResults.push({ name, status, ...details });
+      return status === 'PASS';
+    }
+
+    async function request(method, path, body = null) {
+      try {
+        const options = {
+          method,
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        };
+        if (body) options.body = JSON.stringify(body);
+        
+        const res = await fetch(BASE_URL + path, options);
+        const contentType = res.headers.get('content-type');
+        let data = null;
+        if (contentType && contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          data = await res.text();
+        }
+        
+        return { status: res.status, body: data };
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    async function runTests() {
+      isRunning = true;
+      testResults = [];
+      document.getElementById('tests').innerHTML = '';
+      document.getElementById('summary').style.display = 'none';
+      document.getElementById('runTests').disabled = true;
+      document.getElementById('stopTests').disabled = false;
+
+      try {
+        // 1. LOGIN
+        await logTest('1️⃣ LOGIN as adawriter', 'LOADING', { url: '/api/auth/login' });
+        let res = await request('POST', '/api/auth/login', {
+          emailOrUsername: 'adawriter',
+          password: 'Memory1234!'
+        });
+        if (res.status === 200) {
+          await logTest('1️⃣ LOGIN as adawriter', 'PASS', { status: res.status, response: 'Logged in successfully' });
+        } else {
+          throw new Error(`Login failed: ${res.status}`);
+        }
+
+        // 2. GET CHAPTER (with embedded debate)
+        await logTest('2️⃣ GET CHAPTER (Nine Lives, Twice - Chapter 1)', 'LOADING', { url: '/api/books/{bookId}/chapters/1', method: 'GET' });
+        const bookId = '000001a1-e486-773a-93b4-358a51fba1c2';
+        const chapterKey = '1';
+        res = await request('GET', `/api/books/${bookId}/chapters/${chapterKey}`);
+        if (res.status === 200 && res.body.debate) {
+          const debateId = res.body.debate.id;
+          await logTest('2️⃣ GET CHAPTER (Nine Lives, Twice - Chapter 1)', 'PASS', { 
+            status: res.status,
+            response: `Got chapter: "${res.body.title}"\nDebate: "${res.body.debate.motion}"\nDebate ID: ${debateId}`
+          });
+
+          // 3. FETCH DEBATE METADATA via /api/stories/:debateId (CRITICAL TEST)
+          await logTest('3️⃣ FETCH DEBATE METADATA (Critical Test)', 'LOADING', { 
+            url: `/api/stories/${debateId}?book=${bookId}&ch=${chapterKey}`, 
+            method: 'GET' 
+          });
+          res = await request('GET', `/api/stories/${debateId}?book=${bookId}&ch=${chapterKey}`);
+          if (res.status === 200) {
+            await logTest('3️⃣ FETCH DEBATE METADATA (Critical Test)', 'PASS', { 
+              status: res.status,
+              response: `✅ ENDPOINT WORKS\nMotion: "${res.body.motion}"\nFor: ${res.body.forV} votes, Against: ${res.body.agV} votes\nUser Vote: ${res.body.userVote || '(none)'}`
+            });
+          } else {
+            await logTest('3️⃣ FETCH DEBATE METADATA (Critical Test)', 'FAIL', { 
+              status: res.status,
+              response: JSON.stringify(res.body),
+              error: 'Endpoint returned non-200'
+            });
+            throw new Error('Debate metadata endpoint failed');
+          }
+
+          // 4. FETCH ARGUMENTS
+          await logTest('4️⃣ FETCH ARGUMENTS', 'LOADING', { 
+            url: `/api/debates/${debateId}/args?book=${bookId}&ch=${chapterKey}`, 
+            method: 'GET' 
+          });
+          res = await request('GET', `/api/debates/${debateId}/args?book=${bookId}&ch=${chapterKey}`);
+          if (res.status === 200) {
+            const argCount = (res.body.items || []).length;
+            await logTest('4️⃣ FETCH ARGUMENTS', 'PASS', { 
+              status: res.status,
+              response: `Got ${argCount} arguments`
+            });
+
+            // 5. CREATE ARGUMENT
+            await logTest('5️⃣ CREATE ARGUMENT', 'LOADING', { 
+              url: `/api/debates/${debateId}/args?book=${bookId}&ch=${chapterKey}`, 
+              method: 'POST' 
+            });
+            res = await request('POST', `/api/debates/${debateId}/args?book=${bookId}&ch=${chapterKey}`, {
+              text: 'Test argument: Honesty is the foundation of any real relationship.',
+              side: 'for'
+            });
+            if (res.status === 201 || res.status === 200) {
+              const argId = res.body.id;
+              await logTest('5️⃣ CREATE ARGUMENT', 'PASS', { 
+                status: res.status,
+                response: `Argument created: ${argId}`
+              });
+
+              // 6. VOTE ON ARGUMENT
+              await logTest('6️⃣ VOTE ON ARGUMENT (thumbs up)', 'LOADING', { 
+                url: `/api/debate/args/${argId}/vote`, 
+                method: 'POST' 
+              });
+              res = await request('POST', `/api/debate/args/${argId}/vote`, { vote: 1 });
+              if (res.status === 200) {
+                await logTest('6️⃣ VOTE ON ARGUMENT (thumbs up)', 'PASS', { 
+                  status: res.status,
+                  response: 'Vote recorded'
+                });
+              } else {
+                throw new Error(`Vote failed: ${res.status}`);
+              }
+
+              // 7. VOTE ON DEBATE SIDE
+              await logTest('7️⃣ VOTE ON DEBATE SIDE (pick for)', 'LOADING', { 
+                url: `/api/stories/${bookId}/chapters/${chapterKey}/debate/vote`, 
+                method: 'POST' 
+              });
+              res = await request('POST', `/api/stories/${bookId}/chapters/${chapterKey}/debate/vote`, {
+                side: 'for'
+              });
+              if (res.status === 200) {
+                await logTest('7️⃣ VOTE ON DEBATE SIDE (pick for)', 'PASS', { 
+                  status: res.status,
+                  response: 'Debate side vote recorded'
+                });
+              } else {
+                throw new Error(`Debate vote failed: ${res.status}`);
+              }
+
+              // 8. VERIFY - Re-fetch debate metadata
+              await logTest('8️⃣ VERIFY - Re-fetch debate metadata', 'LOADING', { 
+                url: `/api/stories/${debateId}?book=${bookId}&ch=${chapterKey}`, 
+                method: 'GET' 
+              });
+              res = await request('GET', `/api/stories/${debateId}?book=${bookId}&ch=${chapterKey}`);
+              if (res.status === 200 && res.body.userVote === 'for') {
+                await logTest('8️⃣ VERIFY - Re-fetch debate metadata', 'PASS', { 
+                  status: res.status,
+                  response: `✅ User vote persisted: "${res.body.userVote}"`
+                });
+              } else {
+                await logTest('8️⃣ VERIFY - Re-fetch debate metadata', 'FAIL', { 
+                  status: res.status,
+                  response: `userVote is ${res.body.userVote}, expected "for"`
+                });
+              }
+
+              showSummary();
+            } else {
+              throw new Error(`Argument create failed: ${res.status}`);
+            }
+          } else {
+            throw new Error(`Arguments fetch failed: ${res.status}`);
+          }
+        } else {
+          await logTest('2️⃣ GET CHAPTER', 'FAIL', { 
+            status: res.status,
+            response: JSON.stringify(res.body),
+            error: 'Chapter has no debate'
+          });
+          throw new Error('Chapter has no debate');
+        }
+
+      } catch (error) {
+        console.error('Test error:', error);
+        if (testResults.length === 0 || testResults[testResults.length - 1].status !== 'PASS') {
+          await logTest('❌ Test Suite', 'FAIL', { error: error.message });
+        }
+        showSummary();
+      } finally {
+        isRunning = false;
+        document.getElementById('runTests').disabled = false;
+        document.getElementById('stopTests').disabled = true;
+      }
+    }
+
+    function stopTests() {
+      isRunning = false;
+      document.getElementById('runTests').disabled = false;
+      document.getElementById('stopTests').disabled = true;
+    }
+
+    function showSummary() {
+      const passed = testResults.filter(t => t.status === 'PASS').length;
+      const failed = testResults.filter(t => t.status === 'FAIL').length;
+      const total = testResults.length;
+
+      const summaryDiv = document.getElementById('summary');
+      summaryDiv.innerHTML = `
+        <h2>📊 Test Summary</h2>
+        <div class="summary-stat">
+          <span>Total Tests:</span>
+          <strong>${total}</strong>
+        </div>
+        <div class="summary-stat">
+          <span>Passed:</span>
+          <strong style="color: #51cf66;">${passed}</strong>
+        </div>
+        <div class="summary-stat">
+          <span>Failed:</span>
+          <strong style="color: #ff6b6b;">${failed}</strong>
+        </div>
+        <div class="summary-stat">
+          <span>Success Rate:</span>
+          <strong>${((passed / total) * 100).toFixed(0)}%</strong>
+        </div>
+        ${failed === 0 ? '<p style="margin-top: 15px; color: #51cf66; font-weight: 600;">✅ ALL TESTS PASSED - ENDPOINTS ARE WORKING!</p>' : '<p style="margin-top: 15px; color: #ff6b6b; font-weight: 600;">❌ Some tests failed - check details above</p>'}
+      `;
+      summaryDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

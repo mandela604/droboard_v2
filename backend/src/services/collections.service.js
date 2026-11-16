@@ -406,6 +406,19 @@ async function followCollection({ userId, id }) {
   } catch (e) { if (e.code !== 11000) throw e; }
   const n = await CollectionFollow.countDocuments({ collectionId: String(cid) });
   await Collection.updateOne({ id: cid }, { $set: { followers: n } }).catch(() => {});
+  // The collection owner is told they gained a follower.
+  if (String(col.ownerId) !== String(userId)) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
+        recipientId: String(col.ownerId), actorId: String(userId), type: 'collection_follow',
+        title: '{@|Someone} started following your collection',
+        desc: plain.title || 'Your collection',
+        link: 'Pages/collection.html?id=' + encodeURIComponent(String(cid)), linkLabel: 'View collection',
+        key: 'collection-follow:' + String(userId) + ':' + String(cid),
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return { ok: true, following: true, followers: n };
 }
 

@@ -250,19 +250,51 @@ async function deletePost({ post }) {
 }
 
 async function toggleLike({ post, userId }) {
-  const i = (post.likedBy || []).map(String).indexOf(String(userId));
-  if (i === -1) { post.likedBy.push(userId); post.likesCount += 1; }
-  else { post.likedBy.splice(i, 1); post.likesCount = Math.max(0, post.likesCount - 1); }
+  const uid = String(userId);
+  const i = (post.likedBy || []).map(String).indexOf(uid);
+  const liked = i === -1;
+  if (liked) { post.likedBy.push(userId); post.likesCount = (post.likesCount || 0) + 1; }
+  else { post.likedBy.splice(i, 1); post.likesCount = Math.max(0, (post.likesCount || 0) - 1); }
   await post.save();
-  return { liked: i === -1, likesCount: post.likesCount };
+  // The author is told when someone likes their post (first like only, never self).
+  if (liked && String(post.authorId) !== uid) {
+    try {
+      const actor = await User.findOne({ id: uid }).select('username').lean();
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
+        recipientId: String(post.authorId), actorId: uid, type: 'like',
+        title: '{@' + ((actor && actor.username) || '') + '|Someone} liked your post',
+        desc: (post.text || post.quote || post.note || '').slice(0, 60),
+        link: '/Pages/discussion.html?id=' + post.id, linkLabel: 'View post',
+        key: 'like:' + uid + ':' + post.id,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
+  return { liked, likesCount: post.likesCount };
 }
 
 async function toggleSave({ post, userId }) {
-  const i = (post.savedBy || []).map(String).indexOf(String(userId));
-  if (i === -1) post.savedBy.push(userId);
+  const uid = String(userId);
+  const i = (post.savedBy || []).map(String).indexOf(uid);
+  const saved = i === -1;
+  if (saved) post.savedBy.push(userId);
   else post.savedBy.splice(i, 1);
   await post.save();
-  return { saved: i === -1 };
+  // "Someone saved your post" — a save is private, so only the count matters
+  // and it dedupes per user for the day.
+  if (saved && String(post.authorId) !== uid) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
+        recipientId: String(post.authorId), actorId: uid, type: 'save',
+        title: '{@|Someone} saved your post',
+        desc: (post.text || post.quote || post.note || '').slice(0, 60),
+        link: '/Pages/discussion.html?id=' + post.id, linkLabel: 'View post',
+        key: 'save:' + uid + ':' + post.id,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
+  return { saved };
 }
 
 // "See less of this" — the reader's own hide list. The post row keeps the
@@ -369,18 +401,16 @@ async function reactToPost({ post, userId, rid }) {
     try {
       const actor = await User.findOne({ id: uid }).select('username fullName avatar').lean();
       const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
-      const postSnippet = (post.text || post.quote || post.note || '').slice(0, 60);
       const actorHandle = (actor && actor.username) || '';
-      const { notify } = require('./notifications.service');
-      await notify({
+      const postSnippet = (post.text || post.quote || post.note || '').slice(0, 60);
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
         recipientId: String(post.authorId), actorId: uid, type: 'like',
         title: `{@${actorHandle}|${actorName}} reacted to your post`,
         desc: postSnippet ? `"${postSnippet}${postSnippet.length === 60 ? '…' : ''}"` : '',
         link: '/Pages/discussion.html?id=' + post.id,
         linkLabel: 'View post',
         key: 'like:' + uid + ':' + post.id,
-        avatar: actor && actor.avatar,
-        thumb: actor && actor.avatar,
       });
     } catch (e) {}
   }
@@ -413,6 +443,21 @@ async function sharePost({ post, channel, userId }) {
   const ch = post.sharesByChannel || (post.sharesByChannel = new Map());
   ch.set(channel, (ch.get(channel) || 0) + 1);
   await post.save();
+  // The author is told their post was shared to a channel. Shares are
+  // anonymous in the UI, so the row names no one and dedupes per channel.
+  if (String(post.authorId) !== String(userId || '')) {
+    try {
+      const { notify } = require('./notifications.service');
+      const LABELS = { whatsapp: 'WhatsApp', twitter: 'X', instagram: 'Instagram', telegram: 'Telegram', facebook: 'Facebook', threads: 'Threads', reddit: 'Reddit', copy: 'a link', status: 'their status', profile: 'their profile' };
+      await notify({
+        recipientId: String(post.authorId), type: 'share',
+        title: 'Someone shared your post',
+        desc: 'Shared to ' + (LABELS[channel] || channel) + ' · ' + (post.text || post.quote || post.note || '').slice(0, 60),
+        link: '/Pages/discussion.html?id=' + post.id, linkLabel: 'View post',
+        key: 'share:' + String(post.id) + ':' + channel,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   if (userId) {
     try {
       await ShareEvent.updateOne(

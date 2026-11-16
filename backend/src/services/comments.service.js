@@ -129,14 +129,16 @@ async function createComment({ authorId, user, data }) {
   // ── Notifications ──────────────────────────────────────────────────────
   // Rules:
   //   1. If this is a REPLY → notify the person whose comment was replied to
-  //   2. ALWAYS → notify the post/story owner (every comment is activity on their content)
+  //   2. ALWAYS → notify the content owner (every comment is activity on their content)
   //   3. Never notify yourself
   //   4. If the parent comment author IS the content owner → only send one notification
+  //   5. A comment on a DISCUSSION thread notifies the thread author too
+  //      (a debate/story thread is someone's content, same as a post).
   try {
     const actor = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
     const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
     const snippet = text.slice(0, 60);
-    const { notify } = require('./notifications.service');
+    const { notifyActor } = require('./notifications.service');
 
     // Build the link once — scope-aware
     let link = '';
@@ -147,12 +149,12 @@ async function createComment({ authorId, user, data }) {
 
     const descSnippet = snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '';
     const actorHandle = (actor && actor.username) || '';
-    const notifyOpts = { actorId: String(authorId), avatar: actor && actor.avatar, thumb: actor && actor.avatar, link, linkLabel: 'View' };
+    const notifyOpts = { actorId: String(authorId), link, linkLabel: 'View' };
 
     // 1. Notify parent comment author (reply notification)
     const parentAuthorId = parent ? String(parent.authorId) : null;
     if (parentAuthorId && parentAuthorId !== String(authorId)) {
-      await notify({
+      await notifyActor({
         ...notifyOpts,
         recipientId: parentAuthorId,
         type: 'reply',
@@ -163,8 +165,10 @@ async function createComment({ authorId, user, data }) {
       }).catch(() => {});
     }
 
-    // 2. Notify content owner (post/story author) — for every comment at any depth
+    // 2. Notify the content owner — post author, story author, or the thread
+    //    author for a discussion (the debate/story thread owner).
     let ownerId = null;
+    let ownerKind = scope === 'post' ? 'post' : 'story';
     if (scope === 'post' && postId) {
       const { Post } = require('../models/social.model');
       const p = await Post.findOne({ id: postId }).select('authorId').lean();
@@ -173,14 +177,18 @@ async function createComment({ authorId, user, data }) {
       const { Book } = require('../models/content.model');
       const b = await Book.findOne({ id: storyId }).select('authorId').lean();
       if (b) ownerId = String(b.authorId);
+    } else if (scope === 'discussion' && (discussionId || postId)) {
+      const { Discussion } = require('../models/social.model');
+      const d = await Discussion.findOne({ id: String(discussionId || postId) }).select('authorId').lean();
+      if (d) { ownerId = String(d.authorId); ownerKind = 'discussion'; }
     }
     if (ownerId && ownerId !== String(authorId) && ownerId !== parentAuthorId) {
       // Different person from the parent comment author — send separate notification
-      await notify({
+      await notifyActor({
         ...notifyOpts,
         recipientId: ownerId,
         type: 'comment',
-        title: `{@${actorHandle}|${actorName}} commented on your ${scope === 'post' ? 'post' : 'story'}`,
+        title: `{@${actorHandle}|${actorName}} commented on your ${ownerKind === 'post' ? 'post' : ownerKind === 'discussion' ? 'discussion' : 'story'}`,
         desc: descSnippet,
         key: 'comment:' + authorId + ':' + comment.id,
       }).catch(() => {});
@@ -326,18 +334,16 @@ async function reactToComment({ comment, userId, rid }) {
       } else if (comment.scope === 'discussion' && comment.discussionId) {
         link = '/Pages/discussion.html?id=' + comment.discussionId;
       }
-      const { notify } = require('./notifications.service');
-      await notify({
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
         recipientId: String(comment.authorId),
         actorId: uid,
         type: 'like',
-        title: `<b>${actorName}</b> reacted to your comment`,
+        title: `{@${actorHandle}|${actorName}} reacted to your comment`,
         desc: commentSnippet ? `"${commentSnippet}${commentSnippet.length === 60 ? '…' : ''}"` : '',
         link,
         linkLabel: 'View',
         key: 'comment-react:' + uid + ':' + comment.id,
-        avatar: actor && actor.avatar,
-        thumb: actor && actor.avatar,
       });
     } catch (e) { /* non-fatal */ }
   }

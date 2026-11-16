@@ -1,6 +1,7 @@
 'use strict';
 const { AuthorTransaction, Withdrawal, PaymentMethod, PaymentDispute } = require('../models/money.model');
 const { Wallet } = require('../models/money.model');
+const revenue = require('../services/revenue.service');
 const base = require('./base.controller');
 
 function mine(req) {
@@ -28,7 +29,7 @@ async function earnings(req, res) {
     const thisStart = monthStart(0);
     const lastStart = monthStart(-1);
     const histStart = monthStart(-11); // trailing 12 buckets incl. this month
-    const [completed, pendingAgg, wallet, lifetimeAgg, bookAgg] = await Promise.all([
+    const [completed, pendingAgg, wallet, lifetimeAgg, bookAgg, coinRate] = await Promise.all([
       AuthorTransaction.find({
         authorId, status: 'completed', type: { $in: ['earned', 'bonus'] },
         createdAt: { $gte: histStart },
@@ -48,6 +49,7 @@ async function earnings(req, res) {
         { $match: { authorId, status: 'completed', type: 'earned', bookId: { $ne: null } } },
         { $group: { _id: '$bookId', earnings: { $sum: '$amount' } } },
       ]),
+      revenue.coinRateGet().catch(() => null),
     ]);
 
     const sum = (rows) => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
@@ -88,6 +90,8 @@ async function earnings(req, res) {
       lastMonth: Math.round(sum(lastMonthRows) * 100) / 100,
       monthlyHistory,
       pending: Math.round((Number(pendingAgg[0] && pendingAgg[0].t) || 0) * 100) / 100,
+      // Platform payout policy (Super Admin coin-rate console), not a UI guess.
+      minWithdrawal: Math.max(0, Number(coinRate && coinRate.minWithdrawal) || 0),
       byBook,
     };
   });

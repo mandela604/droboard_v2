@@ -90,6 +90,53 @@ async function getSettings(userId) {
   return { settings: (u && u.settings && u.settings.notificationChannels) || null };
 }
 
+// The recipient's own channel matrix (DroboardNotifStore.settings()) decides
+// whether an IN-APP row is allowed at all. A muted type, all=false, or a
+// category switched off in-app suppresses the row the same way the client
+// store would have — the server is the only writer now, so the gate has to
+// live here too. Unknown shapes fail open (a row is better than silence).
+async function inAppAllowed(recipientId, type) {
+  const { User } = require('../models/user.model');
+  const u = await User.findOne({ id: recipientId }).select('settings.notificationChannels').lean();
+  const raw = u && u.settings && u.settings.notificationChannels;
+  if (!raw || typeof raw !== 'object') return true;
+  const t = TYPES[type] || {};
+  if (Array.isArray(raw.mutedTypes) && raw.mutedTypes.indexOf(type) !== -1) return false;
+  if (raw.all === false) return false;
+  const chan = raw[t.cat || 'system'];
+  if (chan && typeof chan === 'object' && chan.inapp === false) return false;
+  return true;
+}
+
+// Resolve the display fields for an actor so a server-raised row renders with
+// the actor's name/avatar exactly like a client one. Falls back to empty.
+async function actorCard(actorId) {
+  if (!actorId) return {};
+  try {
+    const { User } = require('../models/user.model');
+    const u = await User.findOne({ id: String(actorId) }).select('username fullName avatar').lean();
+    if (!u) return {};
+    return { avatar: u.avatar || undefined, handle: u.username || '', name: u.fullName || u.username || '' };
+  } catch (e) { return {}; }
+}
+
+// A server-raised row: { actorId, ... } resolves the actor's name/avatar and
+// interpolates {@handle|Name} tokens in the title. This is the one helper
+// every new notification call site uses, so titles read identically whether
+// they were raised here or by the client store.
+async function notifyActor({ actorId, title, ...rest }) {
+  const a = await actorCard(actorId);
+  const fill = (s) => String(s == null ? '' : s)
+    .replace(/\{@([^}|]*)\|([^}]*)\}/g, (m, handle, label) => '{@' + (handle || a.handle || '') + '|' + (label || a.name || 'Someone') + '}');
+  return notify({
+    ...rest,
+    actorId: actorId ? String(actorId) : undefined,
+    title: fill(title),
+    avatar: rest.avatar || a.avatar,
+    thumb: rest.thumb || a.avatar,
+  });
+}
+
 // A server cron owns the same `key` dedupe the client store uses, so emit() is
 // idempotent: re-running a milestone backfill cannot create a second row.
 async function notify({ recipientId, actorId, type, title, desc, link, key, audience, metrics, chips, icon, badge, medal, cover, avatar, rank, rankNote, iconName, tier, tierClass, color, count, linkLabel, thumb }) {
@@ -99,6 +146,7 @@ async function notify({ recipientId, actorId, type, title, desc, link, key, audi
   if (recipient && recipient.settings && recipient.settings.notifications === false) {
     return { skipped: true };
   }
+  if (!(await inAppAllowed(recipientId, type))) return { skipped: true, reason: 'channel_off' };
   if (key) {
     const dup = await Notification.findOne({ recipientId, key });
     if (dup) return dup.toJSON();
@@ -145,7 +193,7 @@ const SELF_TYPES = new Set([
   'trending_enter', 'top_ten', 'editor_pick', 'featured',
   'new_chapter', 'chapter_live', 'schedule_failed',
   'payout', 'tip', 'coins', 'save', 'share', 'repost',
-  'achievement', 'security', 'announcement',
+  'achievement', 'security', 'announcement', 'status_expired',
   'contract_update', 'book_change_result', 'review_result', 'verification',
 ]);
 const URL_OK = /^https?:\/\//i;
@@ -178,4 +226,4 @@ async function createSelf({ userId, body }) {
   });
 }
 
-module.exports = { list, unreadCount, markRead, patchOne, saveSettings, getSettings, notify, createSelf };
+module.exports = { list, unreadCount, markRead, patchOne, saveSettings, getSettings, inAppAllowed, actorCard, notifyActor, notify, createSelf };

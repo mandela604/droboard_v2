@@ -168,7 +168,7 @@
         thisMonth: Number(data.thisMonth) || 0,
         lastMonth: Number(data.lastMonth) || 0,
         pending: Number(data.pending) || 0,
-        minWithdrawal: 100,
+        minWithdrawal: data.minWithdrawal != null ? Number(data.minWithdrawal) : 0,
         byBook: byBook,
       });
     },

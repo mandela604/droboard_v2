@@ -376,6 +376,22 @@ async function reactStory({ bookId, userId, rid }) {
   book.reactions.set(rid, (book.reactions.get(rid) || 0) + 1);
   const counts = rxCounts(book);
   await book.save();
+  // Tell the author someone reacted to their story (first reaction per user).
+  if (String(book.authorId) !== String(userId)) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      const { User } = require('../models/user.model');
+      const u = await User.findOne({ id: String(userId) }).select('username').lean();
+      const emoji = { love: '❤️', crying: '😭', angry: '😠', shocked: '😱', broken: '💔', emotional: '🥹', savage: '😈', sus: '👀', twist: '🌀', laughing: '😂' };
+      await notifyActor({
+        recipientId: String(book.authorId), actorId: String(userId), type: 'like',
+        title: '{@' + ((u && u.username) || '') + '|Someone} reacted ' + (emoji[rid] || '') + ' to your story',
+        desc: book.title || '',
+        link: '/Pages/full-reader.html?story=' + book.id, linkLabel: 'View story',
+        key: 'story-react:' + String(userId) + ':' + book.id,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   // Book.likes means "reactions across this book's chapters" — the story-level
   // map is a separate legacy counter and must not overwrite that number.
   const totals = await syncBookLikes(book.id);
@@ -475,6 +491,26 @@ async function reactChapter({ bookId, key, userId, rid }) {
   const counts = chapterRxCounts(ch);
   ch.likes = rxTotal(counts);
   await ch.save();
+  // Tell the author someone reacted to a chapter of their story.
+  if (String(ch.bookId) && true) {
+    try {
+      const bookRow = await Book.findOne({ id: String(ch.bookId) }).select('authorId title').lean();
+      if (bookRow && String(bookRow.authorId) !== String(userId)) {
+        const { notifyActor } = require('./notifications.service');
+        const { User } = require('../models/user.model');
+        const u = await User.findOne({ id: String(userId) }).select('username').lean();
+        const emoji = { love: '❤️', crying: '😭', angry: '😠', shocked: '😱', broken: '💔', emotional: '🥹', savage: '😈', sus: '👀', twist: '🌀', laughing: '😂' };
+        await notifyActor({
+          recipientId: String(bookRow.authorId), actorId: String(userId), type: 'like',
+          title: '{@' + ((u && u.username) || '') + '|Someone} reacted ' + (emoji[rid] || '') + ' to your chapter',
+          desc: bookRow.title || '',
+          link: '/Pages/full-reader.html?story=' + String(ch.bookId) + '&ch=' + (ch.n || ''),
+          linkLabel: 'View chapter',
+          key: 'chapter-react:' + String(userId) + ':' + ch.id,
+        });
+      }
+    } catch (e) { /* non-fatal */ }
+  }
   const totals = await syncBookLikes(ch.bookId);
   return { counts, userRx: rid, likes: ch.likes, bookLikes: totals.total };
 }
@@ -542,6 +578,20 @@ async function shareStory({ bookId, userId, channel }) {
   const byCh = book.sharesByChannel.get(channel) || 0;
   book.sharesByChannel.set(channel, byCh + 1);
   await book.save();
+  // The author is told their story was shared (anonymous, one row per channel).
+  if (String(book.authorId) !== String(userId || '')) {
+    try {
+      const { notify } = require('./notifications.service');
+      const LABELS = { whatsapp: 'WhatsApp', twitter: 'X', instagram: 'Instagram', telegram: 'Telegram', facebook: 'Facebook', threads: 'Threads', reddit: 'Reddit', copy: 'a link', status: 'their status', profile: 'their profile' };
+      await notify({
+        recipientId: String(book.authorId), type: 'share',
+        title: 'Someone shared your story',
+        desc: (book.title || 'Your story') + ' · shared to ' + (LABELS[channel] || channel),
+        link: '/Pages/full-reader.html?story=' + book.id, linkLabel: 'View story',
+        key: 'story-share:' + String(book.id) + ':' + channel,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   // Upsert (not create) so the unique per-user trail row never 500s the share.
   await ShareEvent.updateOne(
     { userId: String(userId), targetType: 'story', targetId: String(book.id) },

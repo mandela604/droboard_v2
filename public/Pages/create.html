@@ -651,11 +651,11 @@ button{font-family:inherit}
   <div class="stage" data-key="review">
     <div class="stage-hd">
       <div class="stage-eyebrow">Step</div>
-      <div class="stage-title">Review & submit</div>
-      <div class="stage-desc">Double-check everything below, then send it to our editors.</div>
+      <div class="stage-title" id="reviewStageTitle">Review & submit</div>
+      <div class="stage-desc" id="reviewStageDesc">Double-check everything below, then send it to our editors.</div>
     </div>
 
-    <div class="warn-box"><i class="fas fa-circle-info"></i><span>Submissions are typically reviewed within 24–48 hours.</span></div>
+    <div class="warn-box" id="reviewWarn"><i class="fas fa-circle-info"></i><span>Submissions are typically reviewed within 24–48 hours.</span></div>
 
     <div class="review-card">
       <div class="review-hero">
@@ -693,7 +693,7 @@ button{font-family:inherit}
 
     <div class="agree-row">
       <input type="checkbox" id="agreeCheck" onchange="updateNavButtons()"/>
-      <label for="agreeCheck">I confirm this is my original work and I agree to Droboard's <a href="#">Content Guidelines</a> and <a href="#">Submission Terms</a>.</label>
+      <label for="agreeCheck" id="agreeLabel">I confirm this is my original work and I agree to Droboard's <a href="#">Content Guidelines</a> and <a href="#">Submission Terms</a>.</label>
     </div>
   </div>
 
@@ -719,7 +719,7 @@ button{font-family:inherit}
 <div class="toast" id="toast"></div>
 
 <script src="../component/expiry-chips.js?v=8"></script>
-<script src="../services/create-service.js?v=26"></script>
+<script src="../services/create-service.js?v=30"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

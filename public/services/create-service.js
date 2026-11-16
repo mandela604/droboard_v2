@@ -149,6 +149,7 @@ function recordSubmission(){
 let state = {
   type: null, uploadedText: '',
   isContinuing: false, chosenBookId: null,
+  bookMeta: null, bookPlot: null,
   chapterNum: 1,
   category: null, genres: [], tropes: [], tags: [],
   coverData: '', title: '', synopsis: '', plot: '',
@@ -182,6 +183,58 @@ function isNewChapterMode(){
 }
 function getNewChapterBookId(){
   try { return new URLSearchParams(location.search).get('book') || ''; } catch(e){ return ''; }
+}
+/* Load the real book so the review step shows its title, cover, synopsis and
+   saved plot instead of the empty wizard state. Also reads the chapter count
+   across all statuses so the "Chapter N" label is right. */
+function loadNewChapterBook(bid){
+  const get = url => fetch(url, { credentials: 'include' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  return Promise.all([
+    get(API_BASE + '/author/books/' + encodeURIComponent(bid)),
+    get(API_BASE + '/author/books/' + encodeURIComponent(bid) + '/chapters?page=1&limit=100'),
+    get(API_BASE + '/author/books/' + encodeURIComponent(bid) + '/plot'),
+  ]).then(([book, chs, plot]) => {
+    if (!book || !book.id) {
+      showNewChapterLoadError(bid, "Couldn't load this book's details.");
+      document.getElementById('tbSub').textContent = 'Chapter —';
+      return;
+    }
+    const box = document.getElementById('ncLoadError');
+    if (box) box.remove();
+    state.bookMeta = book;
+    state.coverData = state.coverData || book.cover || '';
+    if (plot) state.bookPlot = plot;
+    const total = chs && Number.isInteger(chs.total) ? chs.total
+      : (chs && Array.isArray(chs.items) ? chs.items.length : null);
+    if (Number.isInteger(total)) state.chapterNum = total + 1;
+    document.getElementById('tbSub').textContent =
+      book.title + ' · Chapter ' + state.chapterNum;
+    const review = document.querySelector('.stage[data-key="review"]');
+    if (review && review.classList.contains('active')) renderReview();
+    else applyNewChapterReviewCopy();
+  });
+}
+/* A failed book fetch must surface, not fall back to the empty wizard. */
+function showNewChapterLoadError(bid, msg){
+  let box = document.getElementById('ncLoadError');
+  if (!box){
+    box = document.createElement('div');
+    box.id = 'ncLoadError';
+    box.className = 'warn-box';
+    box.style.cssText = 'margin:0 16px 14px;border-color:rgba(255,45,85,.5);background:rgba(255,45,85,.08);color:#ff6b8a';
+    const wrap = document.getElementById('stageWrap');
+    if (wrap) wrap.insertBefore(box, wrap.firstChild);
+  }
+  box.innerHTML = '<i class="fas fa-triangle-exclamation"></i><span>' + esc(msg)
+    + ' Check your connection and try again.'
+    + ' <button type="button" id="ncLoadRetry" style="margin-left:6px;background:none;border:none;color:inherit;font-weight:800;text-decoration:underline;cursor:pointer">Retry</button></span>';
+  const retry = document.getElementById('ncLoadRetry');
+  if (retry) retry.onclick = () => {
+    box.remove();
+    document.getElementById('tbSub').textContent = 'Loading book…';
+    loadNewChapterBook(bid);
+  };
 }
 function stageOrder(){
   if (isNewChapterMode()) return ['chapters','review'];
@@ -273,7 +326,9 @@ function updateNavButtons(){
   backBtn.style.visibility = currentIdx===0 ? 'hidden' : 'visible';
   if (key === 'review'){
     nextBtn.className = 'wnav-btn submit';
-    nextBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Review';
+    nextBtn.innerHTML = isNewChapterMode()
+      ? '<i class="fas fa-plus"></i> Add chapter'
+      : '<i class="fas fa-paper-plane"></i> Submit for Review';
   } else {
     nextBtn.className = 'wnav-btn next';
     nextBtn.innerHTML = 'Continue <i class="fas fa-arrow-right" style="font-size:11px"></i>';
@@ -289,12 +344,18 @@ function stageIsValid(key){
   }
   if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4 && (!state.extPlatform || validExtUrl(document.getElementById('extUrlInp').value.trim()));
   if (key==='plot') return plotWords()>=15;
-  if (key==='chapters') return state.chapters.length>0 && state.chapters.every(c=>{
-    const wa = document.getElementById('wa'+c.id);
-    const text = (wa ? wa.innerText : (c.content||'').replace(/<[^>]+>/g,' ')) || '';
-    return c.title.trim() && text.trim().length>20;
-  });
-  if (key==='review') return document.getElementById('agreeCheck')?.checked;
+  if (key==='chapters'){
+    if (isNewChapterMode() && !state.bookMeta) return false;
+    return state.chapters.length>0 && state.chapters.every(c=>{
+      const wa = document.getElementById('wa'+c.id);
+      const text = (wa ? wa.innerText : (c.content||'').replace(/<[^>]+>/g,' ')) || '';
+      return c.title.trim() && text.trim().length>20;
+    });
+  }
+  if (key==='review'){
+    if (isNewChapterMode() && !state.bookMeta) return false;
+    return document.getElementById('agreeCheck')?.checked;
+  }
   return true;
 }
 function flagInvalid(key){
@@ -305,8 +366,12 @@ function flagInvalid(key){
       ? '⚠️ Add a valid URL for your book on the other platform'
       : '⚠️ Add a title, category, at least one genre, and a synopsis',
     plot:'⚠️ Summarise your plot across the acts (15+ words)',
-    chapters:'⚠️ Every chapter needs a title and some content (20+ characters)',
-    review:'⚠️ Please confirm the agreement checkbox',
+    chapters: isNewChapterMode() && !state.bookMeta
+      ? "⚠️ This book's details haven't loaded yet — check your connection and retry"
+      : '⚠️ Every chapter needs a title and some content (20+ characters)',
+    review: isNewChapterMode() && !state.bookMeta
+      ? "⚠️ This book's details haven't loaded yet — check your connection and retry"
+      : '⚠️ Please confirm the agreement checkbox',
   };
   toast(msgs[key] || '⚠️ Please complete this step');
 }
@@ -1028,23 +1093,80 @@ function plotReviewHtml(){
     return `<div style="margin-bottom:8px"><b style="color:var(--tx-high)">${esc(a.name)}</b> <span style="color:var(--tx-faint);font-size:11px">(Ch. ${a.from} – ${a.to})</span><div style="margin-top:2px">${esc(s)}</div></div>`;
   }).join('');
 }
+/* The book's saved plot (Plot.acts) rather than the wizard's blank template. */
+function bookPlotHtml(){
+  const acts = (state.bookPlot && state.bookPlot.acts) || [];
+  return acts.map(a=>{
+    const summary = (a.summary||'').trim();
+    const beats = (a.beats||[]).filter(Boolean);
+    if (!summary && !beats.length) return '';
+    return `<div style="margin-bottom:8px"><b style="color:var(--tx-high)">${esc(a.name||'Untitled act')}</b>`
+      + (a.range?` <span style="color:var(--tx-faint);font-size:11px">${esc(a.range)}</span>`:'')
+      + (summary?`<div style="margin-top:2px">${esc(summary)}</div>`:'')
+      + (beats.length?`<div style="margin-top:2px;color:var(--tx-muted);font-size:11px">${beats.map(b=>esc(b)).join(' · ')}</div>`:'')
+      + '</div>';
+  }).join('');
+}
+function bookIsLive(meta){
+  return !!meta && ['ongoing','published','completed'].includes(meta.status);
+}
+/* New-chapter mode is not a submission — the chapter is added to an existing
+   book. Live books publish it immediately; drafts keep it until the book goes
+   live. Rewrite the review copy so the page never promises an editor review. */
+function applyNewChapterReviewCopy(){
+  if (!isNewChapterMode()) return;
+  const live = bookIsLive(state.bookMeta);
+  const title = document.getElementById('reviewStageTitle');
+  const desc = document.getElementById('reviewStageDesc');
+  const warn = document.getElementById('reviewWarn');
+  if (title) title.textContent = 'Review & add';
+  if (desc) desc.textContent = 'Check the chapter below, then add it to your book.';
+  if (warn){
+    if (state.bookMeta){
+      warn.innerHTML = '<i class="fas fa-circle-info"></i><span>'
+        + (live
+            ? 'This book is live, so the chapter is published the moment you add it.'
+            : 'This chapter is saved to the book now and goes live when the book is published.')
+        + '</span>';
+      warn.style.display = '';
+    } else {
+      warn.style.display = 'none';
+    }
+  }
+  const label = document.getElementById('agreeLabel');
+  if (label) label.innerHTML = 'I confirm this chapter is my original work and follows Droboard\'s <a href="#">Content Guidelines</a>.';
+}
 function renderReview(){
   applyFirstBookRules();
+  const newChapter = isNewChapterMode();
+  const meta = state.bookMeta || {};
   // Continuing an existing book: no publish options — the chapter just appends.
-  if (isNewChapterMode()){
+  if (newChapter){
     state.pubMode = 'now'; state.schedAt = '';
     document.querySelectorAll('.pub-opts').forEach(el=>el.style.display='none');
     const sr = document.getElementById('schedRow'); if (sr) sr.classList.remove('show');
+    applyNewChapterReviewCopy();
   }
   state.chapters.forEach(ch=>syncChapterContent(ch.id));
-  document.getElementById('reviewCover').style.backgroundImage = state.coverData ? `url('${state.coverData}')` : 'none';
-  document.getElementById('reviewTitle').textContent = getActiveTitle() || 'Untitled Story';
+  const cover = state.coverData || meta.cover || '';
+  document.getElementById('reviewCover').style.backgroundImage = cover ? `url('${cover}')` : 'none';
+  document.getElementById('reviewTitle').textContent =
+    (newChapter ? (meta.title || getActiveTitle()) : getActiveTitle()) || 'Untitled Story';
   state.extUrl = (document.getElementById('extUrlInp').value||'').trim();
-  document.getElementById('reviewBadges').innerHTML = [
-    state.type === 'short' ? '📄 Short Story' : '📖 Long Story',
-    state.ageRating ? state.ageRating + '+' : '',
-    state.category || '', ...state.genres, ...state.tropes
-  ].filter(Boolean).map(b=>`<span class="review-badge">${b}</span>`).join('');
+  const badges = newChapter
+    ? [
+        meta.kind === 'short' ? '📄 Short Story' : '📖 Long Story',
+        meta.ageRating ? meta.ageRating + '+' : '',
+        meta.genre || meta.category || '',
+        ...(Array.isArray(meta.tags) ? meta.tags : [])
+      ]
+    : [
+        state.type === 'short' ? '📄 Short Story' : '📖 Long Story',
+        state.ageRating ? state.ageRating + '+' : '',
+        state.category || '', ...state.genres, ...state.tropes
+      ];
+  document.getElementById('reviewBadges').innerHTML = badges.filter(Boolean)
+    .map(b=>`<span class="review-badge">${b}</span>`).join('');
   const extRow = document.getElementById('extReviewRow');
   if (extRow){
     const showExt = state.extPlatform && validExtUrl(state.extUrl);
@@ -1052,8 +1174,13 @@ function renderReview(){
     const a = document.getElementById('extReviewUrl');
     if (showExt && a){ a.textContent = state.extUrl; a.href = state.extUrl; }
   }
-  document.getElementById('reviewSynopsis').textContent = document.getElementById('synopsisInput').value.trim() || '—';
-  document.getElementById('reviewPlot').innerHTML = plotReviewHtml() || '—';
+  const synopsis = newChapter
+    ? (String(meta.synopsis || '').trim() || 'Not added yet.')
+    : (document.getElementById('synopsisInput').value.trim() || '—');
+  document.getElementById('reviewSynopsis').textContent = synopsis;
+  document.getElementById('reviewPlot').innerHTML = newChapter
+    ? (bookPlotHtml() || 'Not added yet.')
+    : (plotReviewHtml() || '—');
   const castRow = document.getElementById('castReviewRow');
   const castEl = document.getElementById('reviewCast');
   if (castEl){
@@ -1159,8 +1286,11 @@ function showSuccess(){
   const ghost = document.getElementById('successGhostBtn');
   if (isNewChapterMode()){
     const bid = getNewChapterBookId();
+    const bookName = state.bookMeta ? state.bookMeta.title : 'your book';
     document.getElementById('successTitle').textContent = 'Chapter added!';
-    document.getElementById('successSub').textContent = `Chapter ${state.chapterNum} has been added to your book. It's live with the rest of the story.`;
+    document.getElementById('successSub').textContent = bookIsLive(state.bookMeta)
+      ? `Chapter ${state.chapterNum} is live on ${bookName}.`
+      : `Chapter ${state.chapterNum} has been added to ${bookName}. It will go live when the book is published.`;
     document.getElementById('tbSub').textContent = 'Chapter added ✓';
     if (primary){ primary.textContent = 'Back to book workspace'; primary.onclick = ()=>{ location.href = '../author/book-workspace.html?book=' + encodeURIComponent(bid); }; }
     if (ghost){ ghost.textContent = 'Write another chapter'; ghost.onclick = ()=>{ location.reload(); }; }
@@ -1194,7 +1324,11 @@ async function submitStory(){
     if (isNewChapterMode()) {
       const bid = getNewChapterBookId();
       const ch = state.chapters[0] || { title:'', content:'' };
-      await postJSON(`/books/${encodeURIComponent(bid)}/chapters`, buildChapterPayload(ch, state.chapterNum - 1));
+      const payload = buildChapterPayload(ch, state.chapterNum - 1);
+      // Let the server append after the real last chapter. Sending n ourselves
+      // risks overwriting an existing chapter when the local count is stale.
+      delete payload.n;
+      await postJSON(`/books/${encodeURIComponent(bid)}/chapters`, payload);
     } else {
       const out = await postJSON('/books/batch', {
         book: buildBookPayload(),
@@ -1248,21 +1382,15 @@ if (isNewChapterMode()) {
   state.type = 'long';
   state.isContinuing = true;
   state.chosenBookId = bid;
-  // Demo number = that book's last chapter + 1; live replaces it with the real count below.
-  const demoBook = MY_BOOKS.find(x=>x.id===bid);
-  state.chapterNum = demoBook ? demoBook.lastChapter+1 : 1;
-  document.querySelector('.tb-h').textContent = 'Add New Chapter';
-  document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Ch.' + state.chapterNum;
+  // Prefer the count the books list already returned; the loader below
+  // replaces it with the exact total once the API answers.
+  const known = MY_BOOKS.find(x=>x.id===bid);
+  state.chapterNum = (known && known.lastChapter ? known.lastChapter : 0) + 1;
+  document.querySelector('.tb-h').textContent = 'Add Chapter';
+  document.getElementById('tbSub').textContent = 'Chapter ' + state.chapterNum;
   goToStage(0); // chapters (order is [chapters, review] in this mode)
   if (state.chapters.length === 0) addChapter();
-  if (USE_API) {
-    // Live: next number = current chapter count + 1.
-    fetch(API_BASE + '/books/' + encodeURIComponent(bid) + '/chapters', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null).then(list => {
-        const n = Array.isArray(list) ? list.length : (list && list.length);
-        if (Number.isInteger(n)) { state.chapterNum = n + 1; document.getElementById('tbSub').textContent = 'Book ' + bid + ' · Chapter ' + state.chapterNum; }
-      }).catch(()=>{});
-  }
+  if (USE_API) loadNewChapterBook(bid);
 } else {
   goToStage(0);
 }
