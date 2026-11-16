@@ -120,7 +120,8 @@
       var queryStr = '?book=' + encodeURIComponent(bookId);
       if (chapterId) queryStr += '&ch=' + encodeURIComponent(chapterId);
       
-      var debateRes = await fetch('/api/debates/' + encodeURIComponent(debateId) + queryStr, { credentials: 'include' });
+      // Debate endpoint is under /api/stories, not /api/debates
+      var debateRes = await fetch('/api/stories/' + encodeURIComponent(debateId) + queryStr, { credentials: 'include' });
       if (!debateRes.ok) throw new Error('Debate API failed: ' + debateRes.status);
       var debate = await debateRes.json();
       
