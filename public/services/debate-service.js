@@ -154,13 +154,19 @@
         try {
           var argsUrl = '/api/debates/' + encodeURIComponent(debateId) + '/args?book=' + encodeURIComponent(bookId);
           if (chapterId) argsUrl += '&ch=' + encodeURIComponent(chapterId);
+          console.log('[debate-service] Fetching arguments from:', argsUrl);
           var argsRes = await fetch(argsUrl, { credentials: 'include' });
+          console.log('[debate-service] Arguments response status:', argsRes.status);
           if (argsRes.ok) {
             var argsData = await argsRes.json();
+            console.log('[debate-service] Arguments fetched:', argsData);
             debateObj.args = (argsData && argsData.items) || [];
+            console.log('[debate-service] Passing', debateObj.args.length, 'arguments to component');
+          } else {
+            console.error('[debate-service] Arguments fetch failed:', argsRes.status, argsRes.statusText);
           }
         } catch (e) {
-          console.error('Failed to fetch debate arguments:', e);
+          console.error('[debate-service] Failed to fetch debate arguments:', e);
           // Fall back to empty args
         }
       }

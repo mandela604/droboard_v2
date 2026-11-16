@@ -227,6 +227,8 @@
       onProfileClick: opts.onProfileClick || null,
     };
 
+    console.log('[debate-args] Attached with options:', { debateType: O.debateType, debateId: O.debateId, argsCount: (opts.args || []).length });
+
     let _args = ((O.debateId && loadStoredTree(O.debateId)) || (opts.args || [])).slice().map(_canonStatuses);
     let _filter = 'all';
     let _replyTo = null;
