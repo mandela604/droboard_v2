@@ -55,8 +55,15 @@ async function main() {
   check('first chapter open credits chapter views', (await views(c1.id)) === 1, await views(c1.id));
   await progress(c1.id);
   check('reopening the same chapter does not double-count', (await reads()) === 1, await reads());
+  const { ReadingProgress } = require('../src/models/social.model');
+  await ReadingProgress.updateOne(
+    { userId: String(user.id), storyId: String(book.id), chapterId: String(c1.id) },
+    { $set: { viewCreditedAt: new Date(Date.now() - 1 * 60 * 1000) } }
+  );
+  await progress(c1.id);
+  check('a new view is credited once the 1-minute window has passed', (await reads()) === 2, await reads());
   await progress(c2.id);
-  check('opening a second chapter credits another read', (await reads()) === 2, await reads());
+  check('opening a second chapter credits another read', (await reads()) === 3, await reads());
 
   const post = async (body) => fetch(BASE + '/api/comments', {
     method: 'POST', headers: hdr, body: JSON.stringify(body),

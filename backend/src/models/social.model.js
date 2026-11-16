@@ -284,6 +284,10 @@ const readingProgressSchema = new mongoose.Schema({
   // True once this reader's first open of the chapter has been credited to
   // Chapter.views / Book.reads. Guarantees one read per reader per chapter.
   readCredited: { type: Boolean, default: false },
+  // Last time this reader's open earned a real view for the chapter. The
+  // credit window (env.readerViewCreditWindowMs) decides when another open
+  // counts again; legacy rows fall back to their last read time.
+  viewCreditedAt: { type: Date, default: null },
   wordsRead: { type: Number, default: 0 },
   secondsSpent: { type: Number, default: 0, min: 0 }, // accumulated read time
   lastReadAt: { type: Date, default: Date.now, index: true },

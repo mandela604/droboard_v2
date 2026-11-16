@@ -24,7 +24,9 @@ module.exports = {
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
   isProd: process.env.NODE_ENV === 'production',
-  appUrl: (process.env.APP_URL || '').replace(/\/$/, ''),
+  // Reader view crediting. ONE tunable knob + ONE helper so the rule can be
+  // changed later without touching the tracking write path.
+  readerViewCreditWindowMs: Math.max(1000, parseInt(process.env.READER_VIEW_CREDIT_WINDOW_MS, 10) || 60000),
   backendUrl: (process.env.BACKEND_URL || '').replace(/\/$/, ''),
   mailProvider: process.env.MAIL_PROVIDER || 'log',
   mailFrom: process.env.MAIL_FROM || 'Droboard <noreply@droboard.com>',

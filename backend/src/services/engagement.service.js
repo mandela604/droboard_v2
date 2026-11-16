@@ -1,6 +1,18 @@
 'use strict';
 const { Chapter, Book, EngagementVote } = require('../models/content.model');
 const { ReadingProgress } = require('../models/social.model');
+const env = require('../config/env');
+
+/* ── VIEW CREDIT RULE (single source of truth) ──────────────────────────
+   A reader's open earns a view once per window per chapter. To change the
+   rule later, edit env.readerViewCreditWindowMs (READER_VIEW_CREDIT_WINDOW_MS)
+   or this helper — nothing in trackProgress needs to change. */
+function viewCreditDue(prev, now) {
+  if (!prev) return true;
+  const at = prev.viewCreditedAt || prev.lastReadAt || prev.createdAt || prev.updatedAt;
+  if (!at) return true;
+  return (now.getTime() - new Date(at).getTime()) >= env.readerViewCreditWindowMs;
+}
 
 async function loadChapter(bookId, key) {
   const q = /^\d+$/.test(String(key)) ? { bookId, n: parseInt(key, 10) } : { bookId, id: key };
@@ -106,22 +118,23 @@ async function readState({ userId, bookId }) {
 }
 
 // Record reading time. Upserts per (user, story, chapter), clamps deltas to
-// stop clock abuse. The FIRST time this reader opens a chapter credits it as a
-// read (Chapter.views +1, Book.reads +1, today's BookDailyStat.reads +1) —
-// opens and finishes used to credit separately, which meant a reader who
-// viewed a chapter but never scrolled to the end left Reads at zero. The
-// readCredited flag guarantees exactly one read per reader per chapter.
+// stop clock abuse. An open credits a view when viewCreditDue() says the
+// window has elapsed (Chapter.views +1, Book.reads +1, today's BookDailyStat
+// .reads +1). Opens and finishes credit separately so a reader who scrolls to
+// the end is not lost. The rule lives in viewCreditDue() above.
 async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent, pct, finished, wordsRead }) {
   const secs = Math.min(3600, Math.max(0, parseInt(secondsSpent, 10) || 0));
   const sid = String(storyId || bookId);
   const cid = String(chapterId || '');
-  const prev = await ReadingProgress.findOne({ userId: String(userId), storyId: sid, chapterId: cid }).select('finished readCredited pct').lean();
-  const creditRead = !!cid && (!prev || !prev.readCredited);
+  const now = new Date();
+  const prev = await ReadingProgress.findOne({ userId: String(userId), storyId: sid, chapterId: cid })
+    .select('finished readCredited pct viewCreditedAt lastReadAt createdAt updatedAt').lean();
+  const creditRead = !!cid && viewCreditDue(prev, now);
   const update = {
     $inc: { secondsSpent: secs, wordsRead: Math.max(0, parseInt(wordsRead, 10) || 0) },
-    $set: { lastReadAt: new Date() },
+    $set: { lastReadAt: now },
   };
-  if (creditRead) update.$set.readCredited = true;
+  if (creditRead) { update.$set.readCredited = true; update.$set.viewCreditedAt = now; }
   if (pct !== undefined) {
     const nextPct = Math.min(100, Math.max(0, Number(pct) || 0));
     // Progress only moves forward. A scroll-back, a stale heartbeat or a
@@ -136,7 +149,7 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
     update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).lean();
-  // First open of this chapter by this user = one read.
+  // One view per reader per chapter per window (rule in viewCreditDue).
   if (creditRead) {
     try {
       const { Book, Chapter, BookDailyStat } = require('../models/content.model');
