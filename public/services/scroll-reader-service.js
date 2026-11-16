@@ -21,14 +21,6 @@
   const params = new URLSearchParams(location.search);
   const STORY_ID = params.get('story') || '';
 
-  /* ══ TEAMS ══ */
-  const TEAMS = [
-    { id: "a", icon: "\u{1F494}", name: "Team Ada", col: "#ff0050" },
-    { id: "b", icon: "\u{1F525}", name: "Team Emeka", col: "#60a5fa" },
-    { id: "c", icon: "\u{1F54A}\uFE0F", name: "Team Forgive", col: "#34d399" },
-    { id: "d", icon: "\u{1F440}", name: "Team Watching", col: "#a78bfa" },
-  ];
-
   /* ══ FALLBACK ══ — removed, no demo fallback */
 
   let DATA = null;
@@ -156,7 +148,10 @@
   /* ══════════════════════════════════════════════════════════════════
      STATE
      ══════════════════════════════════════════════════════════════════ */
-  const ST = { unlockedThrough: 0, saved: false, currentCh: 1, unlockMode: {}, paidUnlockAdsOn: false, adsEnabled: true, slots: {} };
+  // 0, not 1: the first sync must count as entering chapter 1 so its reading
+  // session (and therefore its real view) starts. Starting at 1 silently
+  // skipped the opening chapter — the bridge reads never moved.
+  const ST = { unlockedThrough: 0, saved: false, currentCh: 0, unlockMode: {}, paidUnlockAdsOn: false, adsEnabled: true, slots: {} };
 
   /* ══ MANAGED AD SLOTS — inventory format picked in marketing ══
      Three slots per unlocked chapter: top edge, per-N-words inline,
@@ -544,8 +539,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
             chapterId: chapterId,
             title: fmtN(trueTotal) + " comments",
             comments: comments,
-            teams: TEAMS,
-            currentUser: { name: "You", avatar: null, team: null },
+            currentUser: { name: "You", avatar: null },
             requireTeam: false,
             collapsible: true,
             startOpen: false,
@@ -555,8 +549,11 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
             fullCommentsUrl: 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + (ch.liveId || ch.n),
             ads: (ST.adsEnabled === false || chapterAdFree(ch.n)) ? false : undefined, // paid unlock / page-off = ad-free thread
             getCommentUrl: (c) => 'comments.html?story=' + encodeURIComponent(STORY_ID) + '&ch=' + (ch.liveId || ch.n) + '#comment-' + (c && c.id),
-            onPost: (c) => API.postComment({ storyId: STORY_ID, chapterId: chapterId, text: c.text, team: c.team }),
-            onReply: (parentId, c) => API.postComment({ storyId: STORY_ID, chapterId: chapterId, text: c.text, parentId: parentId, team: c.team }),
+            // Chapter comments MUST be written with scope 'chapter' — the fetch
+            // above reads that scope. Without it the row is saved at story scope
+            // and silently disappears on reload. No demo team tags.
+            onPost: (c) => API.postComment({ scope: 'chapter', storyId: STORY_ID, chapterId: chapterId, text: c.text }),
+            onReply: (parentId, c) => API.postComment({ scope: 'chapter', storyId: STORY_ID, chapterId: chapterId, text: c.text, parentId: parentId }),
             onEdit: (c, oldText, newText) => API.editComment(c.id, newText),
           });
         } catch (e) {
