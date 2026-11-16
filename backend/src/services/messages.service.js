@@ -91,6 +91,7 @@ async function listConversations({ userId }) {
     items: convs.map(c => ({
       id: c.id, peer: peerShape(byId[peerOf(c, userId)]),
       preview: c.preview || '', unread: unreadByConv[c.id] || 0,
+      status: c.status || 'open',
       updatedAt: c.updatedAt,
     })),
   };
@@ -107,7 +108,7 @@ async function openOrCreate({ userId, peerId }) {
     conv = doc.toJSON();
   }
   const unread = await Message.countDocuments({ conversationId: conv.id, senderId: pid, read: false });
-  return { id: conv.id, peer: peerShape(peer), preview: conv.preview || '', unread, updatedAt: conv.updatedAt };
+  return { id: conv.id, peer: peerShape(peer), preview: conv.preview || '', unread, status: conv.status || 'open', updatedAt: conv.updatedAt };
 }
 
 async function loadConv(id, userId) {
@@ -159,7 +160,8 @@ async function listMessages({ userId, convId, page, limit }) {
       }
       return msg;
     }),
-    total, page: pg, limit: lim
+    total, page: pg, limit: lim,
+    status: conv.status || 'open',
   };
 }
 
@@ -183,6 +185,9 @@ async function notifyPeer({ peerId, sender, conv, preview }) {
 
 async function sendMessage({ userId, convId, text, image, replyTo }) {
   const conv = await loadConv(convId, userId);
+  // An editor can close a thread; the author cannot restart it. Only the
+  // editor can reopen it (by sending a message again).
+  if (conv.status === 'closed') err('conversation_closed', 403);
   const me = await User.findOne({ id: String(userId) }).select('id username fullName avatar emailVerified roles primaryRole').lean();
   const msg = await Message.create({
     conversationId: conv.id, senderId: String(userId),

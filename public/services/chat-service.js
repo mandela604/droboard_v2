@@ -78,6 +78,7 @@
         online: !!(row.peer || {}).online,
       },
       preview: row.preview || '', unread: row.unread || 0, updatedAt: asDate(row.updatedAt),
+      status: row.status || 'open',
       messages: [], loaded: false, loading: false,
     };
   }
@@ -160,6 +161,7 @@
         + '<div class="contact-body">'
         +   '<div class="contact-top">'
         +     '<span class="contact-name">' + esc(t.peer.name) + '</span>'
+        +     (t.status === 'closed' ? '<span class="contact-closed">Closed</span>' : '')
         +     '<span class="contact-time">' + esc(fmtShort(t.updatedAt)) + '</span>'
         +   '</div>'
         +   '<div class="contact-bottom">'
@@ -195,6 +197,7 @@
       try {
         var j = await req('GET', MSG + '/conversations/' + encodeURIComponent(thread.id) + '/messages?limit=' + PAGE);
         thread.messages = (j.items || []).map(shapeMessage).reverse(); // API is newest-first, the thread reads oldest-first
+        if (j.status) thread.status = j.status;
         thread.loaded = true;
       } catch (e) {
         thread.loaded = false;
@@ -203,6 +206,7 @@
       thread.loading = false;
     }
     renderMessages();
+    paintClosedState();
 
     if (thread.unread) {
       thread.unread = 0;
@@ -228,6 +232,7 @@
     activeThread = null;
     document.getElementById('layer1').classList.remove('pushed');
     document.getElementById('layer2').classList.remove('open');
+    paintClosedState();
     renderContacts(currentFilter());
   }
 
@@ -445,15 +450,35 @@
   }
 
   /* ── Compose ── */
+  /* A closed thread is read-only for the author: the editor decides when it
+     reopens (their next message does it). */
+  function isClosed() {
+    return !!(activeThread && activeThread.status === 'closed');
+  }
+  function paintClosedState() {
+    var closed = isClosed();
+    var notice = document.getElementById('closedNotice');
+    if (notice) notice.classList.toggle('show', closed);
+    var input = document.getElementById('composeInput');
+    var sendBtn = document.getElementById('sendBtn');
+    var attach = document.getElementById('attachBtn');
+    if (input) {
+      input.disabled = closed;
+      input.placeholder = closed ? 'This conversation is closed' : 'Type a message...';
+    }
+    if (attach) attach.disabled = closed;
+    if (sendBtn) sendBtn.disabled = closed || !((input && input.value.trim()) || pendingImage);
+  }
   function syncSendEnabled() {
     var input = document.getElementById('composeInput'), sendBtn = document.getElementById('sendBtn');
     if (!sendBtn) return;
-    sendBtn.disabled = !((input && input.value.trim()) || pendingImage);
+    sendBtn.disabled = isClosed() || !((input && input.value.trim()) || pendingImage);
   }
 
   async function sendMessage() {
     var input = document.getElementById('composeInput'), sendBtn = document.getElementById('sendBtn');
     if (!activeThread) return;
+    if (isClosed()) { toast('This conversation is closed — only the editor can reopen it.'); return; }
     var text = (input && input.value || '').trim();
     if (!text && !pendingImage) return;
     if (sendBtn) sendBtn.disabled = true;
@@ -472,7 +497,9 @@
       activeThread.updatedAt = asDate(row.createdAt);
       renderContacts(currentFilter());
     } catch (e) {
-      toast(e.status === 401 ? 'Sign in to send messages' : (e.message === 'image_must_be_uploaded' ? 'Upload the image first' : e.message || 'Message not sent'));
+      toast(e.status === 401 ? 'Sign in to send messages'
+        : (e.code === 'conversation_closed' ? 'This conversation is closed — only the editor can reopen it.'
+        : (e.message === 'image_must_be_uploaded' ? 'Upload the image first' : e.message || 'Message not sent')));
     }
     syncSendEnabled();
   }

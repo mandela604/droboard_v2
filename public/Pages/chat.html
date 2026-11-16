@@ -287,6 +287,17 @@ button{font-family:inherit;cursor:pointer}
   background:var(--l2);font-size:12px;line-height:1.4;color:var(--tx-muted);
 }
 .reply-preview.show{display:block}
+.closed-notice{
+  display:none;padding:10px 16px;font-size:12px;line-height:1.45;
+  background:rgba(180,83,9,.10);border-top:1px solid rgba(180,83,9,.25);
+  color:#b45309;font-weight:600;
+}
+.closed-notice.show{display:flex;align-items:center;gap:8px}
+.closed-notice i{font-size:13px}
+.contact-closed{
+  font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  color:#b45309;background:rgba(180,83,9,.12);border-radius:999px;padding:1px 6px;margin-left:6px;
+}
 .reply-preview-name{color:var(--tx-high);font-weight:700;margin-bottom:2px;font-size:11px}
 .reply-preview-text{color:var(--tx-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reply-preview-close{
@@ -388,6 +399,8 @@ button{font-family:inherit;cursor:pointer}
       <span class="reply-preview-close" id="clearReplyBtn"><i class="fas fa-xmark"></i></span>
     </div>
 
+    <div class="closed-notice" id="closedNotice"><i class="fas fa-lock"></i><span>This conversation was closed by the editor. You can read it, but you cannot reply — start a new chat if you need to reach them again.</span></div>
+
     <div class="compose-bar">
       <button class="attach-btn" id="attachBtn" title="Send image"><i class="fas fa-image"></i></button>
       <textarea class="compose-input" id="composeInput" rows="1" placeholder="Type a message..."></textarea>
@@ -411,7 +424,7 @@ button{font-family:inherit;cursor:pointer}
 <input type="file" id="fileInput" accept="image/*" style="display:none"/>
 
 <script src="../services/auth-session.js?v=4"></script>
-<script src="../services/chat-service.js?v=2"></script>
+<script src="../services/chat-service.js?v=3"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

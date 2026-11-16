@@ -897,6 +897,7 @@ async function thread(user, id) {
       text: m.text || '',
       file: m.image ? { url: m.image, name: 'Image', isImage: true } : null,
       time: timeAgo(m.createdAt),
+      edited: !!m.edited,
       createdAt: iso(m.createdAt),
     };
   });
@@ -918,7 +919,7 @@ async function messageUpdate(user, id, patch) {
 
   if (patch.editMessage && patch.editMessage.mid != null) {
     const m = await Message.findOne({ conversationId: id, id: String(patch.editMessage.mid) });
-    if (m) { m.text = String(patch.editMessage.text || '').slice(0, 4000); await m.save(); }
+    if (m) { m.text = String(patch.editMessage.text || '').slice(0, 4000); m.edited = true; await m.save(); }
   }
   if (patch.deleteMessage != null) {
     await Message.deleteOne({ conversationId: id, id: String(patch.deleteMessage) });
@@ -934,6 +935,9 @@ async function messageSend(user, id, body) {
   if (!text && !image) {
     const e = new Error('empty_message'); e.status = 400; throw e;
   }
+  // The editor reaching out reopens a closed thread — that is the only way an
+  // author can get the conversation back to themselves.
+  if (conv.status === 'closed') conv.status = 'open';
   const self = String(user.id);
   const doc = await Message.create({
     conversationId: id,

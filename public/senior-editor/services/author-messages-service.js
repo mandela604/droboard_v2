@@ -53,6 +53,7 @@ function mapMessage(m) {
     text: m.text || '',
     file: m.file || null,
     time: m.time || '',
+    edited: !!m.edited,
   };
 }
 
@@ -173,7 +174,7 @@ function renderThread(){
   var messagesHtml=conv.messages.map(function(m){
     var isOut=m.from===PERSPECTIVE;
     var senderName=isOut?'You':conv.name;
-    var bodyHtml='<div class="msg-meta"><span class="msg-meta-name">'+senderName+'</span><span>'+m.time+'</span></div>';
+    var bodyHtml='<div class="msg-meta"><span class="msg-meta-name">'+senderName+'</span><span>'+m.time+'</span>'+(m.edited?'<span class="msg-edited" style="display:inline">Edited</span>':'')+'</div>';
     if(m.replyTo){
       var ref=conv.messages.find(function(r){return String(r.mid)===String(m.replyTo)});
       if(ref){
@@ -311,9 +312,16 @@ function setConvStatus(id,status){
   });
 }
 
-async function awaitWrite(id, patch, demoFn) {
+async function awaitWrite(id, patch, applyLocal) {
   try {
     await writeConv(id, patch);
+    // The write succeeded — mirror it on the local model so the row, the flag,
+    // the closed banner and the message text update right away.
+    if (typeof applyLocal === 'function') {
+      var conv = convById(id);
+      if (conv) applyLocal(conv);
+    }
+    return true;
   } catch (e) {
     toast('Could not save — try again');
     throw e;
