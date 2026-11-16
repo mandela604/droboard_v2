@@ -22,6 +22,38 @@ const ledger = require('./ledger.service');
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 
+// Resolve any id form (public uuid OR legacy _id) to the account's public id —
+// notification rows are keyed by `User.id`, so writing an _id here makes the
+// row invisible in the recipient's inbox.
+async function publicUserId(ref) {
+  if (!ref) return '';
+  const key = String(ref);
+  const q = /^[0-9a-fA-F]{24}$/.test(key) ? { $or: [{ id: key }, { _id: key }] } : { id: key };
+  const u = await User.findOne(q).select('id').lean();
+  return u ? String(u.id) : '';
+}
+
+// "You invited someone and they registered." One row per invitee per inviter.
+async function notifyInviteJoined(inviterRef, newUser, editorInvite) {
+  const recipientId = await publicUserId(inviterRef);
+  if (!recipientId || String(recipientId) === String(newUser && newUser.id)) return;
+  try {
+    const { notifyActor } = require('./notifications.service');
+    await notifyActor({
+      recipientId,
+      actorId: String(newUser.id),
+      type: 'referral_joined',
+      title: '{@' + String(newUser.username || '') + '|' + String(newUser.fullName || newUser.username || 'Your invitee') + '} joined using your invite',
+      desc: editorInvite
+        ? 'A new writer signed up with your editor invite code and is assigned to you.'
+        : 'Your referral signed up. You earned coins — 30 more minutes of reading unlocks the bonus.',
+      link: editorInvite ? 'senior-editor/invite-authors.html' : 'Pages/refer.html',
+      linkLabel: 'See invites',
+      key: 'referral:' + String(newUser.id),
+    });
+  } catch (e) { /* notifications never fail signup */ }
+}
+
 function randomSuffix(n) {
   let s = '';
   const buf = crypto.randomBytes(n);
@@ -135,6 +167,7 @@ async function applyEditorInvite(newUser, rawCode) {
       { upsert: true, setDefaultsOnInsert: true }
     );
   } catch (e) { /* non-fatal: chief can still assign manually */ }
+  await notifyInviteJoined(inviter.id, newUser, true);
   return { inviterId: String(inviter.id), editor: true };
 }
 
@@ -156,12 +189,14 @@ async function creditInviter({ inviterId, inviteeId, stage, coins }) {
     { upsert: true }
   );
   try {
+    const recipientId = await publicUserId(inviterId);
     const { Notification } = require('../models/social.model');
     await Notification.create({
-      recipientId: String(inviterId), actorId: String(inviteeId),
+      recipientId, actorId: String(inviteeId),
       type: 'coins', title: '+' + coins + ' referral coins',
       desc: stage === 'stage1' ? 'A friend joined with your link (+3 now, +2 when they read 30 min).' : 'Your referral hit 30 min of reading — bonus unlocked.',
-      link: 'refer.html',
+      link: 'Pages/refer.html',
+      key: 'referral-coins:' + stage + ':' + String(inviteeId),
     });
   } catch (e) { /* notifications never block rewards */ }
   return { credited: true, coins };
@@ -202,6 +237,7 @@ async function applyReferral(newUser, rawCode) {
       { $set: { signupRewarded: true }, $inc: { earnedCoins: env.referralStage1Coins } }
     );
   }
+  await notifyInviteJoined(inviter._id, newUser, false);
   return { inviterId: String(inviter._id), stage1: r };
 }
 

@@ -77,7 +77,7 @@ async function flagBook(id, body, opts) {
 
   try {
     const { emit } = require('./notification-emitter');
-    await emit({ recipientId: b.authorId, type: 'book_flagged', title: 'Book flagged', desc: 'Your book "' + b.title + '" was flagged for review.' });
+    await emit({ recipientId: b.authorId, actorId: opts.actor && opts.actor.id, type: 'book_flagged', title: 'Book flagged for review', desc: 'Your book "' + b.title + '" was flagged for review. Reason: ' + reason, link: 'author/author-center.html' });
   } catch (e) { /* the flag stands even if the notification does not send */ }
 
   return { id: b.id, status: b.status, flagReason: b.flagReason, reportId: report.id };
@@ -100,6 +100,16 @@ async function unflagBook(id, opts) {
     { storyId: b.id, status: 'pending' },
     { $set: { status: 'resolved', resolutionNote: 'Book unflagged by editor', resolvedBy: String(opts.user.id) } }
   );
+  try {
+    const { emit } = require('./notification-emitter');
+    await emit({
+      recipientId: b.authorId, actorId: opts.user.id, type: 'book_unflagged',
+      title: 'Your book is back live',
+      desc: 'The flag on "' + b.title + '" was lifted after review.',
+      link: 'author/author-center.html',
+      key: 'unflag:' + String(b.id) + ':' + String(b.updatedAt || Date.now()),
+    });
+  } catch (e) { /* non-fatal */ }
   return { id: b.id, status: b.status };
 }
 

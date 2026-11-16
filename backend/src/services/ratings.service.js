@@ -98,6 +98,21 @@ async function submitRating(bookId, userId, { stars, text, spoiler }) {
   const count = agg.length ? agg[0].count : 0;
   await Book.updateOne({ id: book.id }, { $set: { rating: avg, ratingCount: count } });
   await syncReviewPost(book, userId, stars, text);
+  // The writer is told when a reader reviews/rates their book.
+  if (String(book.authorId) !== String(userId)) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      const { User } = require('../models/user.model');
+      const u = await User.findOne({ id: String(userId) }).select('username').lean();
+      await notifyActor({
+        recipientId: String(book.authorId), actorId: String(userId), type: 'rating',
+        title: '{@' + ((u && u.username) || '') + '|Someone} rated your story ' + stars + '★',
+        desc: (book.title || '') + (text ? ' — "' + String(text).slice(0, 60) + '"' : ''),
+        link: 'Pages/full-reader.html?story=' + book.id, linkLabel: 'Read review',
+        key: 'rating:' + String(userId) + ':' + book.id,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return { ok: true, mine: { stars, text: text || '', spoiler: !!spoiler }, avg, count };
 }
 

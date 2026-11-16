@@ -3,7 +3,7 @@
 // category hub lists threads across ALL child genres. Comments are handled
 // by comments.service with scope='discussion' + discussionId — this service
 // keeps Discussion.commentsCount in sync via the comments service hooks.
-const { Discussion, Comment } = require('../models/social.model');
+const { Discussion, Comment, Reaction } = require('../models/social.model');
 const { Genre, Category } = require('../models/content.model');
 const { User } = require('../models/user.model');
 const { validateMediaUrl } = require('./media.service');
@@ -267,10 +267,23 @@ async function toggleLike({ id, user }) {
   // Liking happens inside a board, so it needs board membership too.
   await boards.assertBoardMember(user, { genreId: d.genreId });
   const i = (d.likedBy || []).map(String).indexOf(String(user.id));
-  if (i === -1) { d.likedBy.push(user.id); d.likes += 1; }
+  const liked = i === -1;
+  if (liked) { d.likedBy.push(user.id); d.likes += 1; }
   else { d.likedBy.splice(i, 1); d.likes = Math.max(0, d.likes - 1); }
   await d.save();
-  return { liked: i === -1, likes: d.likes };
+  if (liked && String(d.authorId) !== String(user.id)) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
+        recipientId: String(d.authorId), actorId: String(user.id), type: 'like',
+        title: '{@|Someone} liked your discussion',
+        desc: String(d.title || '').slice(0, 60),
+        link: 'Pages/discussion.html?id=' + String(d.id), linkLabel: 'View thread',
+        key: 'discussion-like:' + String(user.id) + ':' + String(d.id),
+      });
+    } catch (e) { /* non-fatal */ }
+  }
+  return { liked, likes: d.likes };
 }
 
 function reactionCounts(doc) {
@@ -282,11 +295,13 @@ function reactionCounts(doc) {
 
 async function reactToDiscussion({ id, userId, rid }) {
   const d = await loadOr404(id);
-  // Reactions happen inside a board, so needs board membership.
-  await boards.assertBoardMember(userId, { genreId: d.genreId });
+  // Reactions happen inside a board, so needs board membership. The gate takes
+  // a user object, not a bare id — passing the id made every reaction 401.
+  await boards.assertBoardMember({ id: String(userId), roles: [] }, { genreId: d.genreId });
   const uid = String(userId);
   const prev = await Reaction.findOne({ userId: uid, targetType: 'discussion', targetId: d.id });
   if (prev && prev.rid === rid) return { counts: reactionCounts(d), userRx: rid };
+  let isNew = false;
   if (prev) {
     const pc = Math.max(0, (d.reactions.get(prev.rid) || 0) - 1);
     if (pc) d.reactions.set(prev.rid, pc); else d.reactions.delete(prev.rid);
@@ -294,12 +309,28 @@ async function reactToDiscussion({ id, userId, rid }) {
     await prev.save();
   } else {
     await Reaction.create({ userId: uid, targetType: 'discussion', targetId: d.id, rid });
+    isNew = true;
   }
   d.reactions.set(rid, (d.reactions.get(rid) || 0) + 1);
   // Keep likes in sync as sum of reactions
   const total = Object.values(d.reactions.toObject()).reduce((a, v) => a + (v || 0), 0);
   d.likes = total;
   await d.save();
+  if (isNew && String(d.authorId) !== uid) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      const { User } = require('../models/user.model');
+      const u = await User.findOne({ id: uid }).select('username').lean();
+      const emoji = { love: '❤️', crying: '😭', angry: '😠', shocked: '😱', broken: '💔', emotional: '🥹', savage: '😈', sus: '👀', twist: '🌀', laughing: '😂' };
+      await notifyActor({
+        recipientId: String(d.authorId), actorId: uid, type: 'like',
+        title: '{@' + ((u && u.username) || '') + '|Someone} reacted ' + (emoji[rid] || '') + ' to your discussion',
+        desc: String(d.title || '').slice(0, 60),
+        link: 'Pages/discussion.html?id=' + String(d.id), linkLabel: 'View thread',
+        key: 'discussion-react:' + uid + ':' + String(d.id),
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return { counts: reactionCounts(d), userRx: rid };
 }
 

@@ -154,7 +154,12 @@ async function approveChapterEdit(id, reviewerId, actor) {
   if (!proposal) { const e = new Error('not_found'); e.status = 404; throw e; }
   await assertOwned(actor, proposal.authorId);
   const chapters = require('./chapters.service');
-  return chapters.applyChapterProposal({ proposal, reviewerId });
+  const out = await chapters.applyChapterProposal({ proposal, reviewerId });
+  await notifyProposalDecision({
+    authorId: proposal.authorId, bookId: proposal.bookId, chapterN: proposal.chapterN,
+    kind: 'Chapter edit', approved: true, reviewerId,
+  });
+  return out;
 }
 
 async function rejectChapterEdit(id, reviewerId, note, actor) {
@@ -167,6 +172,10 @@ async function rejectChapterEdit(id, reviewerId, note, actor) {
   proposal.reviewNote = String(note || '').slice(0, 2000);
   proposal.decidedAt = new Date();
   await proposal.save();
+  await notifyProposalDecision({
+    authorId: proposal.authorId, bookId: proposal.bookId, chapterN: proposal.chapterN,
+    kind: 'Chapter edit', approved: false, reviewerId, note,
+  });
   return proposal.toJSON();
 }
 
@@ -175,7 +184,12 @@ async function approveBookEdit(id, reviewerId, actor) {
   if (!proposal) { const e = new Error('not_found'); e.status = 404; throw e; }
   await assertOwned(actor, proposal.authorId);
   const books = require('./books.service');
-  return books.applyBookProposal({ proposal, reviewerId });
+  const out = await books.applyBookProposal({ proposal, reviewerId });
+  await notifyProposalDecision({
+    authorId: proposal.authorId, bookId: proposal.bookId,
+    kind: 'Book edit', approved: true, reviewerId,
+  });
+  return out;
 }
 
 async function rejectBookEdit(id, reviewerId, note, actor) {
@@ -188,7 +202,32 @@ async function rejectBookEdit(id, reviewerId, note, actor) {
   proposal.reviewNote = String(note || '').slice(0, 2000);
   proposal.decidedAt = new Date();
   await proposal.save();
+  await notifyProposalDecision({
+    authorId: proposal.authorId, bookId: proposal.bookId,
+    kind: 'Book edit', approved: false, reviewerId, note,
+  });
   return proposal.toJSON();
+}
+
+// Proposal outcomes go back to the author who sent them, with the editor's
+// note on rejection. Keyed per proposal + decision so retries stay quiet.
+async function notifyProposalDecision({ authorId, bookId, chapterN, kind, approved, reviewerId, note }) {
+  if (!authorId) return;
+  try {
+    const { Book } = require('../models/content.model');
+    const b = bookId ? await Book.findOne({ id: bookId }).select('title').lean() : null;
+    const { notifyActor } = require('../services/notifications.service');
+    await notifyActor({
+      recipientId: String(authorId), actorId: reviewerId ? String(reviewerId) : undefined,
+      type: 'book_change_result',
+      title: approved ? (kind + ' approved') : (kind + ' not approved'),
+      desc: (b && b.title ? '"' + String(b.title).slice(0, 60) + '" — ' : '')
+        + (chapterN ? 'Ch.' + chapterN + ' · ' : '')
+        + (approved ? 'Your change is now live.' : 'Reason: ' + String(note || '').slice(0, 300)),
+      link: 'author/book-workspace.html', linkLabel: 'Track requests',
+      key: 'proposal:' + String(kind) + ':' + String(authorId) + ':' + String(bookId || '') + ':' + String(chapterN || '') + ':' + (approved ? 'approved' : 'rejected'),
+    });
+  } catch (e) { /* notifications never block a decision */ }
 }
 
 async function activity(query) {

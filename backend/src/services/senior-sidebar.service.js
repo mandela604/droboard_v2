@@ -948,6 +948,25 @@ async function messageSend(user, id, body) {
   conv.updatedAt = new Date();
   conv.unreadBy = [...new Set([...(conv.unreadBy || []).map(String), ...others])];
   await conv.save();
+  // The author needs to know an editor wrote to them, even when they are not
+  // sitting on the chat page. Coalesce per conversation like 1:1 chat does.
+  for (const peer of others) {
+    try {
+      const { Notification } = require('../models/social.model');
+      const key = 'dm:' + String(conv.id);
+      const prev = await Notification.findOne({ recipientId: peer, key }).lean();
+      const count = prev && prev.unread ? ((prev.payload && prev.payload.count) || 0) + 1 : 1;
+      if (prev) await Notification.deleteOne({ id: prev.id });
+      const { emit } = require('./notification-emitter');
+      await emit({
+        recipientId: peer, actorId: self, type: 'direct_message',
+        title: 'New message from your editor',
+        desc: conv.preview || 'Open your inbox to reply.',
+        link: 'Pages/chat.html?contact=' + encodeURIComponent(String(conv.id)),
+        key, count, badge: 'chat',
+      });
+    } catch (e) { /* notifications never block a message */ }
+  }
   return { ok: true, id: doc.id };
 }
 

@@ -145,6 +145,16 @@ async function verifyEmail(token) {
   user.emailVerifiedAt = new Date();
   user.emailVerifyTokenHash = null;
   await user.save();
+  try {
+    const { notify } = require('./notifications.service');
+    await notify({
+      recipientId: String(user.id), type: 'security',
+      title: 'Email verified',
+      desc: 'Your email address is now confirmed on your account.',
+      link: 'Pages/settings.html', linkLabel: 'Account security',
+      key: 'security:email-verified:' + String(user.id),
+    });
+  } catch (e) { /* non-fatal */ }
   return { ok: true };
 }
 
@@ -185,6 +195,16 @@ async function resetPassword(token, password) {
   user.lockedUntil = null;
   await user.save();
   await RefreshFamily.deleteMany({ userId: user.id }); // kill all sessions
+  try {
+    const { notify } = require('./notifications.service');
+    await notify({
+      recipientId: String(user.id), type: 'security',
+      title: 'Your password was reset',
+      desc: 'A new password was set for your account. All sessions were signed out.',
+      link: 'Pages/settings.html', linkLabel: 'Account security',
+      key: 'security:reset:' + String(user._id) + ':' + String(user.updatedAt || Date.now()),
+    });
+  } catch (e) { /* non-fatal */ }
   return { ok: true };
 }
 

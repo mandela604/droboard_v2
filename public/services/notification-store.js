@@ -81,11 +81,17 @@
     share: { cat: 'activity', kind: 'row', audience: 'both', push: false, cooldownHours: 24 },
     save: { cat: 'activity', kind: 'row', audience: 'author', push: false, cooldownHours: 24 },
     repost: { cat: 'activity', kind: 'row', audience: 'both', push: false, cooldownHours: 0 },
+    review: { cat: 'activity', kind: 'row', audience: 'author', push: false, cooldownHours: 6 },
+    rating: { cat: 'activity', kind: 'row', audience: 'author', push: false, cooldownHours: 6 },
+    collection_follow: { cat: 'activity', kind: 'row', audience: 'both', push: false, cooldownHours: 6 },
 
     /* debates, polls and predictions — all "closed the loop" results */
     debate_reply: { cat: 'activity', kind: 'row', audience: 'both', push: true, cooldownHours: 0 },
+    debate_vote: { cat: 'activity', kind: 'row', audience: 'author', push: false, cooldownHours: 6 },
+    arg_vote: { cat: 'activity', kind: 'row', audience: 'both', push: false, cooldownHours: 6 },
     debate_verdict: { cat: 'highlights', kind: 'milestone', audience: 'both', push: true, cooldownHours: 24 },
     poll_closed: { cat: 'stats', kind: 'digest', audience: 'both', push: false, cooldownHours: 0 },
+    status_expired: { cat: 'stats', kind: 'digest', audience: 'both', push: false, cooldownHours: 0 },
     prediction_settled: { cat: 'highlights', kind: 'milestone', audience: 'both', push: true, cooldownHours: 24 },
 
     /* 1:1 chat — coalesced per conversation, so a thread is one unread row
@@ -103,7 +109,9 @@
     contract_update: { cat: 'system', kind: 'row', audience: 'author', push: true, cooldownHours: 0 },
     completion_result: { cat: 'system', kind: 'row', audience: 'author', push: true, cooldownHours: 0 },
     book_flagged: { cat: 'system', kind: 'row', audience: 'author', push: true, cooldownHours: 0 },
+    book_unflagged: { cat: 'system', kind: 'row', audience: 'author', push: true, cooldownHours: 0 },
     verification: { cat: 'system', kind: 'row', audience: 'author', push: true, cooldownHours: 0 },
+    referral_joined: { cat: 'system', kind: 'row', audience: 'both', push: true, cooldownHours: 0 },
     security: { cat: 'system', kind: 'row', audience: 'both', push: true, cooldownHours: 0 },
     announcement: { cat: 'system', kind: 'row', audience: 'both', push: false, cooldownHours: 48 },
   };
@@ -116,7 +124,7 @@
     'trending_enter', 'top_ten', 'editor_pick', 'featured',
     'new_chapter', 'chapter_live', 'schedule_failed',
     'payout', 'tip', 'coins', 'save', 'share', 'repost',
-    'achievement', 'security', 'announcement',
+    'achievement', 'security', 'announcement', 'status_expired',
     'contract_update', 'book_change_result', 'review_result', 'verification',
   ]);
 
@@ -128,12 +136,16 @@
     new_chapter: 'New chapter', chapter_live: 'Chapter live', schedule_failed: 'Schedule failed',
     like: 'Likes', comment: 'Comments', reply: 'Replies', mention: 'Mentions',
     follow: 'Follows', share: 'Shares', save: 'Saves', repost: 'Reposts',
-    debate_reply: 'Debate replies', debate_verdict: 'Debate verdicts', poll_closed: 'Closed polls',
+    review: 'Reviews', rating: 'Ratings', collection_follow: 'Collection follows',
+    debate_reply: 'Debate replies', debate_vote: 'Debate votes', arg_vote: 'Argument votes',
+    debate_verdict: 'Debate verdicts', poll_closed: 'Closed polls',
     prediction_settled: 'Settled predictions', direct_message: 'Messages',
     tip: 'Tips', payout: 'Payouts', coins: 'Coins',
+    status_expired: 'Status recap',
     review_result: 'Review results', book_change_result: 'Book change results',
     contract_update: 'Contract updates', completion_result: 'Completion results',
-    book_flagged: 'Flagged books',
+    book_flagged: 'Flagged books', book_unflagged: 'Unflagged books',
+    referral_joined: 'Referrals',
     verification: 'Verification',
     security: 'Security', announcement: 'Announcements',
   };
@@ -545,4 +557,15 @@
   window.droNotify = function (ev) {
     try { return emit(ev); } catch (e) { return Promise.resolve(null); }
   };
+
+  /* The socket client emits `dro:notification` with the server-owned row. The
+     page re-renders on that event, so the store must first put the row in its
+     cache — otherwise a live notification never appears until a reload.
+     Re-announcing here would loop, so only the badge event is bumped. */
+  window.addEventListener('dro:notification', function (e) {
+    const row = e && e.detail;
+    if (!row || !row.id) return;
+    const mapped = _map(row);
+    if (mapped) { _upsert(mapped); _bump(); }
+  });
 })();

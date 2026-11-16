@@ -352,6 +352,18 @@ async function voteDebate({ post, side, userId }) {
   if (side === 'for') post.debateData.forV += 1; else post.debateData.agV += 1;
   post.debateData.votes.push({ user: String(userId), side });
   await post.save();
+  if (String(post.authorId) !== String(userId)) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
+        recipientId: String(post.authorId), actorId: String(userId), type: 'debate_vote',
+        title: '{@|Someone} voted on your debate',
+        desc: 'Took the ' + (side === 'for' ? 'For' : 'Against') + ' side · ' + (post.debateData.motion || post.text || '').slice(0, 60),
+        link: '/Pages/discussion.html?id=' + post.id, linkLabel: 'See debate',
+        key: 'debate-vote:' + String(userId) + ':' + post.id,
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return (await shape([post], userId))[0];
 }
 

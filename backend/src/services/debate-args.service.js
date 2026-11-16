@@ -137,6 +137,26 @@ async function createArg({ postId, userId, text, side, parentId }) {
     side, text: body,
   });
   if (parent) await DebateArg.updateOne({ id: parent.id }, { $inc: { repliesCount: 1 } });
+  try {
+    const { notifyActor } = require('./notifications.service');
+    const link = '/Pages/discussion.html?id=' + String(postId);
+    const snippet = '"' + body.slice(0, 60) + '"';
+    if (parent && String(parent.authorId) !== String(userId)) {
+      await notifyActor({
+        recipientId: String(parent.authorId), actorId: String(userId), type: 'reply',
+        title: '{@|Someone} replied to your debate argument', desc: snippet,
+        link, linkLabel: 'View reply', key: 'arg-reply:' + String(userId) + ':' + arg.id,
+      });
+    }
+    if (String(post.authorId) !== String(userId)) {
+      await notifyActor({
+        recipientId: String(post.authorId), actorId: String(userId), type: 'debate_reply',
+        title: '{@|Someone} ' + (parent ? 'replied in' : 'added an argument to') + ' your debate',
+        desc: '"' + body.slice(0, 60) + '" · ' + side,
+        link, linkLabel: 'Answer them', key: 'debate-reply:' + String(userId) + ':' + arg.id,
+      });
+    }
+  } catch (e) { /* non-fatal */ }
   const [card] = await shapeCards([arg.toObject()], userId);
   return card;
 }
@@ -163,6 +183,18 @@ async function voteArg({ id, userId, vote }) {
       if (target === 'up') arg.up += 1; else arg.down += 1;
       arg.votedBy.set(key, target);
       await arg.save();
+      if (String(arg.authorId) !== String(userId)) {
+        try {
+          const { notifyActor } = require('./notifications.service');
+          await notifyActor({
+            recipientId: String(arg.authorId), actorId: String(userId), type: 'arg_vote',
+            title: '{@|Someone} ' + (target === 'up' ? 'upvoted' : 'downvoted') + ' your debate argument',
+            desc: '"' + String(arg.text || '').slice(0, 60) + '"',
+            link: '/Pages/discussion.html?id=' + String(arg.postId), linkLabel: 'View argument',
+            key: 'arg-vote:' + String(userId) + ':' + String(arg.id),
+          });
+        } catch (e) { /* non-fatal */ }
+      }
     }
   }
   const [card] = await shapeCards([arg.toObject()], userId);
@@ -258,6 +290,30 @@ async function createArgByDebateId({ debateId, bookId, chapterId, userId, text, 
     side, text: body,
   });
   if (parent) await DebateArg.updateOne({ id: parent.id }, { $inc: { repliesCount: 1 } });
+  try {
+    const { notifyActor } = require('./notifications.service');
+    const link = '/Pages/full-reader.html?story=' + String(bookId || '') + (chapterId ? '&ch=' + String(chapterId) : '');
+    if (parent && String(parent.authorId) !== String(userId)) {
+      await notifyActor({
+        recipientId: String(parent.authorId), actorId: String(userId), type: 'reply',
+        title: '{@|Someone} replied to your debate argument', desc: '"' + body.slice(0, 60) + '"',
+        link, linkLabel: 'View reply', key: 'arg-reply:' + String(userId) + ':' + arg.id,
+      });
+    }
+    // Story author owns the debate — tell them a new argument landed.
+    if (bookId) {
+      const { Book } = require('../models/content.model');
+      const b = await Book.findOne({ id: String(bookId) }).select('authorId title').lean();
+      if (b && String(b.authorId) !== String(userId)) {
+        await notifyActor({
+          recipientId: String(b.authorId), actorId: String(userId), type: 'debate_reply',
+          title: '{@|Someone} ' + (parent ? 'replied in' : 'added an argument to') + ' your story debate',
+          desc: '"' + body.slice(0, 60) + '" · ' + (b.title || ''),
+          link, linkLabel: 'Answer them', key: 'debate-reply:' + String(userId) + ':' + arg.id,
+        });
+      }
+    }
+  } catch (e) { /* non-fatal */ }
   const [card] = await shapeCards([arg.toObject()], userId);
   return card;
 }

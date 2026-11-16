@@ -406,10 +406,70 @@ async function stateStatuses({ viewerId, handles }) {
 async function toggleLike({ status, userId }) {
   const uid = String(userId);
   const i = (status.likedBy || []).map(String).indexOf(uid);
-  if (i === -1) { status.likedBy.push(uid); status.likes = (status.likes || 0) + 1; }
+  const liked = i === -1;
+  if (liked) { status.likedBy.push(uid); status.likes = (status.likes || 0) + 1; }
   else { status.likedBy.splice(i, 1); status.likes = Math.max(0, (status.likes || 0) - 1); }
   await status.save();
-  return { liked: i === -1, likes: status.likes };
+  if (liked && String(status.userId) !== uid) {
+    try {
+      const { notifyActor } = require('./notifications.service');
+      await notifyActor({
+        recipientId: String(status.userId), actorId: uid, type: 'like',
+        title: '{@|Someone} reacted to your status',
+        desc: (status.caption || status.quote || '').slice(0, 60),
+        link: 'feed.html', linkLabel: 'View status',
+        key: 'status-like:' + uid + ':' + String(status.id || status._id),
+      });
+    } catch (e) { /* non-fatal */ }
+  }
+  return { liked, likes: status.likes };
+}
+
+/**
+ * Send the end-of-life summary for statuses that just expired. Called by the
+ * scheduler; idempotent via a `key` per status id, so an hourly retry never
+ * sends the same recap twice. Reports REAL view + reaction counts from the
+ * stored rows (no invented numbers).
+ */
+async function expireStatusSummaries(limit = 50) {
+  const { Notification } = require('../models/social.model');
+  const cap = Math.min(200, Math.max(1, Number(limit) || 50));
+  // Mongo's TTL monitor deletes expired statuses on its own schedule, which
+  // can be up to 60s late; look back a little so nothing is missed.
+  const due = await Status.find({ expiresAt: { $lte: new Date(Date.now() - 60000) } })
+    .sort({ expiresAt: -1 }).limit(cap * 4).lean().catch(() => []);
+  if (!due.length) return { sent: 0 };
+  const ids = due.map(s => String(s.id || s._id));
+  const already = await Notification.find({ type: 'status_expired', key: { $in: ids.map(id => 'status-expired:' + id) } })
+    .select('key').lean().catch(() => []);
+  const done = new Set((already || []).map(n => String(n.key)));
+  const { notify } = require('./notifications.service');
+  let sent = 0;
+  for (const s of due) {
+    const id = String(s.id || s._id);
+    const key = 'status-expired:' + id;
+    if (done.has(key)) continue;
+    const owner = String(s.userId);
+    const records = (s.viewerRecords || []).filter(r => !(r.user && String(r.user) === owner));
+    const views = Math.max(records.length, (s.viewedBy || []).map(String).filter(v => v !== owner).length);
+    const reactions = Number(s.likes) || 0;
+    try {
+      await notify({
+        recipientId: owner, type: 'status_expired',
+        title: 'Your status expired — here is how it did',
+        desc: (s.caption || s.quote || 'Your status') + ' · closed ' + new Date(s.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        link: 'feed.html', linkLabel: 'See who viewed', key,
+        metrics: [
+          { label: 'Views', value: String(views) },
+          { label: 'Reactions', value: String(reactions) },
+        ],
+        chips: [views + ' view' + (views === 1 ? '' : 's') + ', ' + reactions + ' reaction' + (reactions === 1 ? '' : 's')],
+      });
+      sent++;
+      if (sent >= cap) break;
+    } catch (e) { /* non-fatal */ }
+  }
+  return { sent };
 }
 
 async function deleteStatus({ status }) {
@@ -417,4 +477,4 @@ async function deleteStatus({ status }) {
   return { ok: true };
 }
 
-module.exports = { toStatus, homeStatuses, statusRoster, myStatuses, writersByHandles, createStatus, loadOr404, canWrite, viewStatus, statusViewers, toggleLike, deleteStatus, stateStatuses };
+module.exports = { toStatus, homeStatuses, statusRoster, myStatuses, writersByHandles, createStatus, loadOr404, canWrite, viewStatus, statusViewers, toggleLike, deleteStatus, stateStatuses, expireStatusSummaries };

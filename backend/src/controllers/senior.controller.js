@@ -206,6 +206,10 @@ async function reviewDecide(req, res) {
       // Records who decided + (re)routes to the acting editor if it was unassigned.
       submission.assignedSeId = req.user.id;
       await submission.save();
+      await notifyReviewDecision({
+        authorId: submission.authorId, bookId: submission.bookId,
+        action, feedback, actorId: req.user.id,
+      });
       if (action === 'approved') {
         const offer = req.valid.body.contract
           ? await sidebar.offerContract(req.user, {
@@ -272,6 +276,10 @@ async function reviewDecide(req, res) {
         });
       }
       await grantWriterRole(book.authorId);
+      await notifyReviewDecision({
+        authorId: book.authorId, bookId: book.id,
+        action, feedback, actorId: req.user.id,
+      });
       return offer ? Object.assign({}, out, { contract: offer }) : out;
     }
 
@@ -291,12 +299,38 @@ async function reviewDecide(req, res) {
       { bookId: book.id, status: 'pending' },
       { $set: { status: 'rejected', reviewerId: req.user.id, reviewNote: feedback || '', decidedAt: new Date() } }
     );
+    await notifyReviewDecision({
+      authorId: book.authorId, bookId: book.id,
+      action, feedback, actorId: req.user.id,
+    });
     return book.toJSON();
   });
 }
 
 // A reader becomes a WRITER only when a submission of theirs is approved.
 // Editor-code signups already hold the role, so this is a no-op for them.
+// The author ALWAYS hears the review outcome — approved or rejected — with the
+// editor's written reason. Keyed so a double-decide cannot produce two rows.
+async function notifyReviewDecision({ authorId, bookId, action, feedback, actorId }) {
+  if (!authorId) return;
+  try {
+    const { Book } = require('../models/content.model');
+    const b = bookId ? await Book.findOne({ id: bookId }).select('title').lean() : null;
+    const { notifyActor } = require('../services/notifications.service');
+    await notifyActor({
+      recipientId: String(authorId), actorId: actorId ? String(actorId) : undefined,
+      type: 'review_result',
+      title: action === 'approved' ? 'Your book was approved!' : 'Your book needs changes',
+      desc: (b && b.title ? '"' + String(b.title).slice(0, 60) + '" — ' : '')
+        + (action === 'approved'
+          ? 'Your manuscript is now live on Droboard. Congratulations!'
+          : 'Your editor sent feedback: ' + String(feedback || '').slice(0, 300)),
+      link: 'author/author-center.html', linkLabel: 'Read result',
+      key: 'review:' + String(bookId || '') + ':' + action,
+    });
+  } catch (e) { /* notifications never block a decision */ }
+}
+
 async function grantWriterRole(authorId) {
   try {
     const { User } = require('../models/user.model');
@@ -532,6 +566,20 @@ async function verificationDecide(req, res, decision) {
       { new: true }
     );
     if (!updated) { const e = new Error('not_found_or_decided'); e.status = 409; throw e; }
+    // The writer must hear the outcome either way; a rejection carries the
+    // reason so they know what to fix.
+    try {
+      const { notifyActor } = require('../services/notifications.service');
+      await notifyActor({
+        recipientId: String(target.userId), actorId: String(req.user.id), type: 'verification',
+        title: decision === 'approved' ? 'Your identity is verified' : 'Your verification needs attention',
+        desc: decision === 'approved'
+          ? 'You can now sign contracts and carry the verified badge.'
+          : 'Reason: ' + String(reason || '').trim().slice(0, 300),
+        link: 'author/verification.html', linkLabel: 'View verification',
+        key: 'verification:' + String(updated.id) + ':' + decision,
+      });
+    } catch (e) { /* notifications never block a decision */ }
     return { ok: true, id: updated.id, status: decision, reviewerId: req.user.id };
   });
 }
@@ -747,6 +795,24 @@ async function sendMessage(req, res) {
     conv.preview = String(text).slice(0, 80);
     conv.updatedAt = new Date();
     await conv.save();
+    // Notify the other participant(s) — an editor DM is activity too.
+    for (const peer of conv.participants || []) {
+      if (String(peer) === String(req.user.id)) continue;
+      try {
+        const { Notification } = require('../models/social.model');
+        const key = 'dm:' + String(conv.id);
+        const prev = await Notification.findOne({ recipientId: String(peer), key }).lean();
+        const count = prev && prev.unread ? ((prev.payload && prev.payload.count) || 0) + 1 : 1;
+        if (prev) await Notification.deleteOne({ id: prev.id });
+        const { emit } = require('../services/notification-emitter');
+        await emit({
+          recipientId: String(peer), actorId: String(req.user.id), type: 'direct_message',
+          title: 'New message from your editor', desc: String(text).slice(0, 140),
+          link: 'Pages/chat.html?contact=' + encodeURIComponent(String(conv.id)),
+          key, count, badge: 'chat',
+        });
+      } catch (e) {}
+    }
     try {
       const { getIo } = require('../socket');
       const io = getIo();

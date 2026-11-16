@@ -495,6 +495,41 @@ async function awardLeagueBadges({ season } = {}) {
     ).catch(() => null);
     if (r && r.upsertedCount) awarded++;
   }
+  // Every ranked reader gets their final position, not only the top three —
+  // "your position at the end of the week" is the whole point of the recap.
+  // Keyed per (user, season) so the hourly retry cannot double-send.
+  try {
+    const { notify } = require('./notifications.service');
+    const standings = await LeagueActivity.aggregate([
+      { $match: { season: s } },
+      { $group: { _id: '$userId', points: { $sum: '$points' } } },
+      { $sort: { points: -1 } },
+      { $limit: 100 },
+    ]);
+    for (let i = 0; i < standings.length; i++) {
+      const uid = String(standings[i]._id);
+      if (!uid || uid === 'undefined' || uid === 'null') continue;
+      const place = i + 1;
+      const prize = prizes.find(p => Number(p.place) === place);
+      try {
+        await notify({
+          recipientId: uid, type: 'league_finish',
+          title: 'You finished the week at #' + place,
+          desc: 'Season ' + s + ' is settled — you earned ' + (standings[i].points || 0) + ' points.'
+            + (prize ? ' You won ' + String(prize.badge || ('League #' + place)) + '!' : ''),
+          link: 'leaderboard.html', linkLabel: 'Open leaderboard',
+          key: 'league-finish:' + uid + ':' + s,
+          rank: place, rankNote: 'of ' + standings.length + ' readers', medal: 'rank',
+          iconName: (prize && prize.icon) || 'fa-trophy',
+          color: (prize && prize.color) || '',
+          metrics: [
+            { label: 'Rank', value: '#' + place },
+            { label: 'Points', value: String(standings[i].points || 0) },
+          ],
+        });
+      } catch (e) { /* one bad row never blocks the rollover */ }
+    }
+  } catch (e) { /* league notifications are best-effort */ }
   return { season: s, awarded };
 }
 

@@ -381,6 +381,16 @@ async function changePassword(userId, { oldPassword, newPassword }) {
   u.lockedUntil = null;
   await u.save();
   await RefreshFamily.deleteMany({ userId: u.id });
+  try {
+    const { notify } = require('./notifications.service');
+    await notify({
+      recipientId: String(u.id), type: 'security',
+      title: 'Your password was changed',
+      desc: 'If this was not you, secure your account now.',
+      link: 'Pages/settings.html', linkLabel: 'Account security',
+      key: 'security:password:' + String(u._id) + ':' + String(u.updatedAt || Date.now()),
+    });
+  } catch (e) { /* notifications never block a security write */ }
   return { ok: true };
 }
 

@@ -453,6 +453,19 @@ async function shareCollection({ userId, id, channel }) {
     } catch (e) { /* analytics never break sharing */ }
   }
   const fresh = await Collection.findOne({ id: cid }).select('sharesCount').lean();
+  // The owner is told their collection was shared.
+  if (String(col.ownerId) !== String(userId || '')) {
+    try {
+      const { notify } = require('./notifications.service');
+      await notify({
+        recipientId: String(col.ownerId), type: 'share',
+        title: 'Someone shared your collection',
+        desc: plain.title || 'Your collection',
+        link: 'Pages/collection.html?id=' + encodeURIComponent(String(cid)), linkLabel: 'View collection',
+        key: 'collection-share:' + String(cid) + ':' + String(userId || 'anon'),
+      });
+    } catch (e) { /* non-fatal */ }
+  }
   return { ok: true, sharesCount: (fresh && fresh.sharesCount) || 0 };
 }
 
