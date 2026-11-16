@@ -82,8 +82,24 @@ async function main() {
   const a2 = await mk('writer', 'Ben Scribe', { avatar: 'https://i.pravatar.cc/100?img=12' });
   const reader = await mk('reader', 'Rae Read', { avatar: 'https://i.pravatar.cc/150?img=47' });
 
+  const { AuthorVerification } = require('../src/models/application.model');
   await EditorAssignment.create({ editorId: String(seA.id), authorIds: [String(a1.id)] });
   await EditorAssignment.create({ editorId: String(seB.id), authorIds: [String(a2.id)] });
+  // A pending verification so the senior Author Verification page and the
+  // author's contract page can both be exercised on the dev server.
+  await AuthorVerification.create({
+    id: require('../src/models/ids').uuidv7(),
+    userId: String(a1.id), name: a1.fullName, email: a1.email, avatar: a1.avatar || '',
+    kyc: {
+      type: 'self', dob: '1996-05-14', age: 30, nin: '12345678901',
+      altId: { type: '', no: '' }, guardian: { name: '', relationship: '', idNo: '' },
+      idPhotos: {
+        front: 'https://res.cloudinary.com/demo/image/upload/droboard/id-front',
+        back: 'https://res.cloudinary.com/demo/image/upload/droboard/id-back',
+      },
+    },
+    status: 'pending', submittedAt: new Date(),
+  });
 
   const bkA = await Book.create({ title: 'Nine Lives, Twice', authorId: String(a1.id), status: 'published' });
   const bkB = await Book.create({ title: 'Quiet Harbor', authorId: String(a2.id), status: 'published' });

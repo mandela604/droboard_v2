@@ -502,14 +502,20 @@ async function decorateVerifications(list) {
     const submitted = fmtDate(r.submittedAt || r.createdAt);
     return {
       ...r,
-      name: u.fullName || u.username || 'Unknown author',
-      email: u.email || '',
-      avatar: u.avatar || '',
-      doc: docLabel(r.kyc),
+      // The console table reads `author` / `document`; the older `name` / `doc`
+      // aliases stay for other callers. Both point at the same real values.
+      author: u.fullName || u.username || u.email || r.name || 'Unknown author',
+      name: u.fullName || u.username || u.email || r.name || 'Unknown author',
+      email: u.email || r.email || '',
+      avatar: u.avatar || r.avatar || '',
+      document: r.docType || docLabel(r.kyc),
+      doc: r.docType || docLabel(r.kyc),
       docIcon: 'fa-id-card',
-      submitted,
+      submitted: submitted || '—',
+      reviewer: ed ? (ed.fullName || ed.username || 'Editor') : 'Unassigned',
+      reviewerAvatar: (ed && ed.avatar) || '',
+      reviewerVia: ed ? 'assigned' : '',
       meta: (r.status === 'approved' ? 'Approved · ' : r.status === 'rejected' ? 'Rejected · ' : 'Pending · ') + submitted,
-      reviewer: ed ? { name: ed.fullName, avatar: ed.avatar || '', via: 'assigned' } : null,
     };
   });
 }
@@ -536,7 +542,12 @@ async function verificationList(req, res, which) {
         .sort({ updatedAt: -1 }).limit(50).lean();
       return decorateVerifications(await scopeVerifications(req, list));
     }
-    const list = await AuthorVerification.find({ status: 'pending' }).sort({ createdAt: 1 }).lean();
+    // "All Requests" really means all: the page's tabs filter client-side.
+    // Pending first so the queue reads naturally for the editor.
+    const list = await AuthorVerification.find({}).sort({ createdAt: -1 }).limit(100).lean();
+    const order = { pending: 0, approved: 1, rejected: 2 };
+    list.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9)
+      || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     return decorateVerifications(await scopeVerifications(req, list));
   });
 }

@@ -461,6 +461,10 @@ async function saveIdentity({ userId, kyc, idFiles }) {
     {
       $set: {
         ...profile,
+        // Upsert filters with `$in` cannot populate the new document — set the
+        // owner explicitly or the request is born orphaned (userId null),
+        // invisible to both the author's contract page and the editor's queue.
+        userId: String(userId),
         kyc: identity,
         status: 'pending',
         reviewerId: null,
