@@ -183,18 +183,19 @@ async function getBookDetail(id, viewerId) {
   const bookPct = totalChapters ? Math.min(100, Math.round((chaptersRead / totalChapters) * 100)) : 0;
   const finishedCount = chapters.filter(c => fraction(rowFor(c)) >= 1).length;
 
-  // Continue at the first chapter that is not fully read (prefer one already
-  // started) instead of always replaying the most recently touched chapter.
-  const unfinished = chapters.filter(c => fraction(rowFor(c)) < 1);
+  // Continue at the last chapter the reader actually touched (or the first
+  // chapter for a new book). The percentage above is the whole-book number and
+  // stays independent of which chapter we resume at.
   const byRecent = (a, b) => {
     const ra = rowFor(a), rb = rowFor(b);
     const ta = ra ? new Date(ra.lastReadAt || 0).getTime() : 0;
     const tb = rb ? new Date(rb.lastReadAt || 0).getTime() : 0;
     return tb - ta;
   };
-  const stopChapter = unfinished.length
-    ? (unfinished.filter(c => rowFor(c)).sort(byRecent)[0] || unfinished[0])
-    : (chapters[chapters.length - 1] || null);
+  const withRows = chapters.filter(c => rowFor(c));
+  const stopChapter = withRows.length
+    ? withRows.sort(byRecent)[0]
+    : (chapters[0] || null);
   const stopRow = stopChapter ? rowFor(stopChapter) : null;
   const chapterPct = stopRow ? Math.min(100, Math.round(fraction(stopRow) * 100)) : 0;
   const totalSeconds = rows.reduce((sum, r) => sum + (Number(r.secondsSpent) || 0), 0);

@@ -762,13 +762,12 @@ function applyReadState(rs) {
   if (lastId) {
     const ch = rows.find(c => String(c.cid) === lastId);
     if (ch) {
-      const p = prog[ch.cid] || prog[String(ch.cid)] || {};
       const keep = STORY.currentProgress || {};
       STORY.currentProgress = {
         chapter: ch.n, chapterTitle: ch.title,
-        // Keep the BOOK-level percentage and chapter count from /books/:id —
-        // the per-chapter pct alone made a partly-read book say "not started".
-        percent: keep.percent != null ? keep.percent : Math.round(p.pct || 0),
+        // Resume at the last chapter read; keep the BOOK-level percentage and
+        // chapter count from /books/:id so it agrees with the bridge.
+        percent: keep.percent != null ? keep.percent : 0,
         cid: ch.cid,
         chaptersRead: keep.chaptersRead || 0,
         totalChapters: keep.totalChapters || 0,
