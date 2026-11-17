@@ -125,21 +125,23 @@
       // Footer
       x.fillStyle = '#ff2d55'; x.beginPath(); x.arc(105, 815, 8, 0, Math.PI * 2); x.fill();
       center('Read. React. Climb.', 823, 400, 23, '800', '#ffffff');
-      center('droboard.app', 858, 300, 16, '600', 'rgba(255,255,255,.45)');
+      center(location.hostname.replace(/^www\./, '') || 'Droboard', 858, 300, 16, '600', 'rgba(255,255,255,.45)');
       return c.toDataURL('image/png');
     } catch (e) { return ''; }
   }
 
   function open(n) {
-    if (typeof window.openShareModal !== 'function') return false;
     const m = readMeta(n);
-    const url = location.origin + '/Pages/leaderboard.html';
-    openShareModal({
+    const data = {
       title: '🏆 I finished #' + m.rank + ' on the Droboard Reader League!',
       sub: m.points + ' pts · ' + (m.season ? 'Week ' + m.season + ' · ' : '') + 'beat my rank',
       img: card(n),
-      url: url,
-    });
+      kind: 'league',
+      link: '/Pages/leaderboard.html',
+    };
+    if (window.DroboardShare) return window.DroboardShare.open(data);
+    if (typeof window.openShareModal !== 'function') return false;
+    openShareModal(Object.assign(data, { url: location.origin + data.link }));
     return true;
   }
 

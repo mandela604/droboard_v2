@@ -629,10 +629,12 @@
   }
 
   function openShareModal(data) {
-    _data = data || {};
+    // One canonical payload for every page/card. Call sites may still pass
+    // their own shapes; this is the single place they are unified.
+    _data = window.DroboardShare ? window.DroboardShare.payload(data) : (data || {});
     _syncTheme();
 
-    document.getElementById('dsmLinkInp').value = _data.url || 'https://droboard.com';
+    document.getElementById('dsmLinkInp').value = _data.url || location.href;
     document.getElementById('dsmCopyMsg').textContent = '';
     document.getElementById('dsmCopyBtn').textContent = 'Copy';
 
@@ -807,14 +809,16 @@
               authorName = ('@' + (me.username || me.handle || me.name || 'Reader')).replace(/^@$/, '@Reader');
             } catch (e) {}
             const target = _data.target || {};
-            const dest = localShareUrl(_data.targetUrl || _data.url);
+            // Canonical relative link from DroboardShare; localShareUrl is the
+            // fallback for pages that still call openShareModal directly.
+            const dest = _data.link || localShareUrl(_data.targetUrl || _data.url);
             const body = {
               type: 'repost',
               note: caption,
               original: {
                 id: _data.contentId ? String(_data.contentId) : '',
                 // What it came from, so the card can always lead back there.
-                kind: String(_data.contentType || ''),
+                kind: String(_data.kind || _data.contentType || ''),
                 url: dest,
                 link: dest,
                 bookId: _data.contentType === 'books' ? String(_data.contentId || '') : (target.bookId || ''),
