@@ -124,8 +124,14 @@
 
   function esc(s) { return (s || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+  /* Destination for a story-style creative. A book ad is NOT a story row: its
+     own `id` is the inventory id, so linking with it sends the reader to a
+     bridge page for an ad. The story the advertiser attached in the console
+     (offerRef / storyId) is the real destination; only a real story row falls
+     back to its own id. */
   function storyHref(s) {
-    const id = s.id || (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const real = (s.offerRef && s.offerRef.id) || s.storyId || s.bookId || '';
+    const id = real || s.id || (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     return `bridge.html?id=${encodeURIComponent(id)}`;
   }
 
