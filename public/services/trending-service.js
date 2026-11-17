@@ -154,12 +154,16 @@
 
   function share(post) {
     if (!post) return;
+    if (window.DroboardShare) {
+      window.DroboardShare.open({ post, kind: 'hub', contentId: post.id, contentType: 'posts', genreId: post._genreId });
+      return;
+    }
     if (window.openShareModal) {
       openShareModal({
         title: post.title || 'Trending thread',
         sub: '@' + (post.name || '') + (post._genreName ? ' · ' + post._genreName : ''),
         img: post.avatar || '',
-        url: 'https://droboard.app/hub/' + (post._genreId || 'fantasy') + '/' + post.id,
+        url: '/Pages/discussion.html?genre=' + encodeURIComponent(post._genreId || 'fantasy') + '&id=' + encodeURIComponent(post.id),
         contentId: post.id,
         contentType: 'posts',
       });

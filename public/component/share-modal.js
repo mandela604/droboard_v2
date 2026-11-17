@@ -769,6 +769,7 @@
       audience: _audience,
       url:      _data.url   || '',
       title:    _data.title || '',
+      text:     _data.text  || '',
       img:      _data.img   || '',
     };
 
@@ -786,7 +787,7 @@
             const bg = isImageBg ? storyImg : _selectedBg;
             const slide = await DroboardStatus.post({
               bg,
-              quote: payload.caption || '',
+              quote: payload.caption || payload.text || '',
               caption: _data.title ? `📖 ${_data.title}` : '',
               // If we have a story URL, attach it as a storyRef CTA
               storyRef: (_data.url && _data.title) ? {
@@ -834,7 +835,11 @@
                 // uploaded/media URLs are fine; data: URLs are dropped.
                 avatar: /^https?:\/\//i.test(_data.img || '') ? _data.img : '',
                 time: 'Just now',
-                text: _data.title || '',
+                // A repost carries the SOURCE HEADLINE + LINK, never its body.
+                // The sharer writes their own text in `note` above; copying a
+                // repost/recommendation body here would make reposts inherit
+                // somebody else's words forever.
+                text: '',
                 cover: /^https?:\/\//i.test(_data.img || '') ? _data.img : '',
                 title: _data.title || '',
               },

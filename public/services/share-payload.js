@@ -32,6 +32,37 @@
   }
   function enc(v) { return encodeURIComponent(String(v == null ? '' : v)); }
 
+  /* Preview/quote hint ONLY (used by "Post to Status"). Reposts never copy
+     this body — the sharer writes their own note. Kept canonical so status
+     shares of reviews/recommendations can quote the source if they want. */
+  function sourceText(i) {
+    if (i.text || i.note || i.reviewText || i.body) {
+      return String(i.text || i.note || i.reviewText || i.body || '');
+    }
+    const p = i.post || {};
+    const o = p.original || {};
+    const s = p.storyRef || {};
+    return String(p.note || p.reviewText || p.text || o.note || o.text || s.title || '');
+  }
+  function sourceTitle(i) {
+    if (i.title) return String(i.title);
+    const p = i.post || {};
+    const o = p.original || {};
+    const s = p.storyRef || {};
+    const c = p.chapterRef || {};
+    return String(p.title || p.heading || o.title || s.title || c.title || p.quote || '');
+  }
+  function sourceSub(i) {
+    if (i.sub) return String(i.sub);
+    const p = i.post || {};
+    return p.name || p.handle ? '@' + String(p.name || p.handle) : '';
+  }
+  function sourceImg(i) {
+    if (i.img) return String(i.img);
+    const p = i.post || {};
+    return String(p.image || (p.storyRef && p.storyRef.cover) || (p.chapterRef && p.chapterRef.cover) || (p.original && p.original.cover) || p.avatar || '');
+  }
+
   /* Translate a legacy absolute URL (or a same-origin absolute URL) into a
      relative in-app path. Foreign URLs are left untouched — sharing an
      external link is still a valid share. */
@@ -114,28 +145,43 @@
 
   function payload(input) {
     const i = input || {};
-    const raw = i.link || i.targetUrl || i.url || i.shareUrl || '';
-    const link = toLocalPath(raw, i) || buildLink(i, kindFrom(i, raw));
-    const kind = kindFrom(i, link);
-    const id = i.contentId || i.id || i.postId || i.storyId || i.bookId || i.collectionId || '';
-    const target = Object.assign({}, i.target || {}, {
-      postId: i.postId || (kind === 'post' || kind === 'hub' ? id : ''),
-      bookId: i.bookId || i.storyId || (kind === 'story' ? id : ''),
-      collectionId: i.collectionId || (kind === 'collection' ? id : ''),
-      boardId: i.boardId || i.genreId || '',
-      chapterId: i.chapterId || '',
+    const p = i.post || {};
+    // One normalized input: scalar args win, but a raw `post` is understood too
+    // so a call site can hand over the whole card and stop rebuilding fields.
+    const n = Object.assign({}, i, {
+      contentId: i.contentId || p.id || '',
+      postId: i.postId || p.id || '',
+      storyId: i.storyId || (p.storyRef && p.storyRef.id) || (p.chapterRef && p.chapterRef.id) || '',
+      bookId: i.bookId || (p.bookRef && p.bookRef.id) || '',
+      collectionId: i.collectionId || p.collectionId || '',
+      genreId: i.genreId || p._genreId || '',
+      chapterId: i.chapterId || (p.chapterRef && p.chapterRef.id) || '',
       chapterN: i.chapterN || '',
-      reader: i.reader || '',
+      kind: i.kind || (p.type === 'repost' ? 'post' : ''),
+    });
+    const raw = n.link || n.targetUrl || n.url || n.shareUrl || '';
+    const link = toLocalPath(raw, n) || buildLink(n, kindFrom(n, raw));
+    const kind = kindFrom(n, link);
+    const id = n.contentId || n.id || n.postId || n.storyId || n.bookId || n.collectionId || '';
+    const target = Object.assign({}, n.target || {}, {
+      postId: n.postId || (kind === 'post' || kind === 'hub' ? id : ''),
+      bookId: n.bookId || n.storyId || (kind === 'story' ? id : ''),
+      collectionId: n.collectionId || (kind === 'collection' ? id : ''),
+      boardId: n.boardId || n.genreId || '',
+      chapterId: n.chapterId || '',
+      chapterN: n.chapterN || '',
+      reader: n.reader || '',
     });
     return Object.assign({}, i, {
       kind, id, link, target,
       url: absolute(link),
       targetUrl: link,
-      contentId: i.contentId || id,
-      contentType: i.contentType || (kind === 'story' ? 'books' : kind === 'post' || kind === 'hub' ? 'posts' : kind === 'collection' ? 'collections' : ''),
-      title: i.title || '',
-      sub: i.sub || '',
-      img: i.img || '',
+      contentId: n.contentId || id,
+      contentType: n.contentType || (kind === 'story' ? 'books' : kind === 'post' || kind === 'hub' ? 'posts' : kind === 'collection' ? 'collections' : ''),
+      title: sourceTitle(n),
+      sub: sourceSub(n),
+      text: sourceText(n),
+      img: sourceImg(n),
     });
   }
 
