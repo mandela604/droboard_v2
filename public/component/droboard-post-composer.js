@@ -8,7 +8,7 @@
 (function(global){
 'use strict';
 
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 
 // The page is managed by staff — the server decides who, so these ask it.
@@ -261,6 +261,9 @@ function updatePostBtn(){
     ok=(titleEl&&titleEl.value.trim())||(textEl&&textEl.value.trim())||(qEl&&qEl.value.trim())||!!_pickedImage;
   }
   btn.classList.toggle('on', !!ok);
+  // Shoutout stats load asynchronously — block Post (for real) until they do,
+  // so an early tap can't persist a shoutout with zeroed numbers.
+  btn.disabled = (_cur === 'shoutout' && _statsLoading);
 }
 
 function bindBodyEvents(){
@@ -341,18 +344,26 @@ function bindBodyEvents(){
     const f=imgFile.files && imgFile.files[0]; if(!f) return;
     if(!f.type.startsWith('image/')) return;
     // Real upload to /api/uploads/image — the post stores the returned URL,
-    // never a local data blob.
-    imgPreview.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--tx-muted,#666)"><i class="fas fa-circle-notch fa-spin"></i> Uploading image…</div>';
+    // never a local data blob. Add a temporary status node instead of replacing
+    // innerHTML: replacing it destroyed #drbImgTag/#drbImgClear, so a successful
+    // upload set src on a detached node and the spinner stayed forever.
+    var status=document.createElement('div');
+    status.className='drb-img-status';
+    status.style.cssText='padding:10px 14px;font-size:12px;color:var(--tx-muted,#666)';
+    status.innerHTML='<i class="fas fa-circle-notch fa-spin"></i> Uploading image…';
+    imgPreview.appendChild(status);
     imgPreview.classList.add('show');
     uploadImage(f).then(function(url){
       if(!url) throw new Error('no url');
+      if(status.parentNode) status.parentNode.removeChild(status);
       _pickedImage=url;
       if(imgUrl) imgUrl.value='';
       refreshImgPreview();
     }).catch(function(e){
-      imgPreview.classList.remove('show');
-      imgPreview.innerHTML='';
-      toast('Image upload failed — try again');
+      if(status.parentNode) status.parentNode.removeChild(status);
+      _pickedImage='';
+      refreshImgPreview();
+      toast('Image upload failed — '+(e && e.message ? e.message : 'try again'));
     });
   });
   if(imgUrl) imgUrl.addEventListener('input', function(){

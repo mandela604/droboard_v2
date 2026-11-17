@@ -158,7 +158,11 @@ function mapPost(p){
   // card so a legacy post authored by a former manager still reads @droboard.
   mapped.avatar = DROBOARD_LOGO;
   mapped.name = 'Droboard';
+  // post-card renders fullName || name — both must be the page identity,
+  // otherwise a legacy post keeps showing the manager who published it.
+  mapped.fullName = 'Droboard';
   mapped.handle = '@droboard';
+  mapped.authorId = mapped.authorId || '';
   return mapped;
 }
 function findPostAnywhere(id){
@@ -813,6 +817,51 @@ function initCollections(){
       });
     });
   }
+  async function renderManagers(){
+    const mount=document.getElementById('managersMount'); if(!mount) return;
+    let list=[];
+    try{ list=await global.DroboardPageData.getManagers(); }catch(e){ list=[]; }
+    const canEdit=await canCurrentManage('manage_roles');
+    let h='<div class="pg-section"><div class="pg-section-hdr"><div class="pg-section-title"><i class="fas fa-users-gear"></i>Page managers</div></div>';
+    if(!list.length){
+      h+='<div style="font-size:12px;color:var(--tx-muted);padding:4px 0 10px">No page managers yet — only admins can publish to @droboard.</div>';
+    } else {
+      h+='<div style="display:flex;flex-direction:column;gap:8px;padding-bottom:10px">';
+      list.forEach(function(m){
+        h+='<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--bd);border-radius:10px;background:var(--l2,transparent)">'
+          + photo(m.avatar, m.name, 'manager-av')
+          + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700">'+esc(m.name||m.handle)+'</div><div style="font-size:10.5px;color:var(--tx-muted)">@'+esc(m.handle)+'</div></div>'
+          + '<span class="pay-badge '+(m.role==='admin'?'fixed':'revenue-share')+'">'+esc(m.role)+'</span>'
+          + (canEdit ? '<button class="mini-btn danger" data-mgr-remove="'+esc(m.handle)+'"><i class="fas fa-xmark"></i></button>' : '')
+          + '</div>';
+      });
+      h+='</div>';
+    }
+    if(canEdit){
+      h+='<div style="display:flex;gap:8px;margin-top:4px"><input id="mgrNewHandle" placeholder="@username" style="flex:1;padding:9px 11px;border:1px solid var(--bd);border-radius:10px;background:var(--input-bg);color:var(--text);font-size:12px;outline:none"/>'
+        +'<select id="mgrNewRole" style="padding:9px;border:1px solid var(--bd);border-radius:10px;background:var(--input-bg);color:var(--text);font-size:12px"><option value="editor">editor</option><option value="admin">admin</option></select>'
+        +'<button class="mini-btn primary" id="mgrAddNew"><i class="fas fa-plus"></i> Add</button></div>';
+    }
+    h+='</div>';
+    mount.innerHTML=h;
+    const add=document.getElementById('mgrAddNew');
+    if(add) add.addEventListener('click', async function(){
+      const handle=(document.getElementById('mgrNewHandle').value||'').trim();
+      if(!handle){ toast('Enter a username'); return; }
+      try{ await global.DroboardPageData.addManager(handle, document.getElementById('mgrNewRole').value); toast('✅ Manager added'); renderManagers(); }
+      catch(e){ toast('Could not add manager — '+e.message); }
+    });
+    mount.querySelectorAll('[data-mgr-remove]').forEach(function(b){
+      b.addEventListener('click', async function(){
+        try{ await global.DroboardPageData.removeManager(b.getAttribute('data-mgr-remove')); toast('Manager removed'); renderManagers(); }
+        catch(e){ toast('Could not remove manager — '+e.message); }
+      });
+    });
+  }
+  function photo(src,name,cls){
+    const s=(src&&String(src).trim())||DROBOARD_LOGO;
+    return '<img class="'+(cls||'')+'" src="'+esc(s)+'" onerror="this.onerror=null;this.src=\''+DROBOARD_LOGO+'\'" alt="'+esc(name||'')+'" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0"/>';
+  }
   function getPageSettings(){ return Object.assign({showSupport:true}, _pageSettings||{}); }
   function savePageSettings(patch){ _pageSettings=Object.assign({},getPageSettings(),patch||{}); return _pageSettings; }
   function renderMainSupport(){
@@ -1014,6 +1063,7 @@ async function init(){
     initTabs();
     configureDotsMenu();
     renderAbout();
+    renderManagers();
     attachPostCard();
     renderFeed();
     initSpotlight();
