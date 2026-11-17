@@ -46,7 +46,7 @@ function bookFrom(b){
   if(!b) return null;
   return {
     id:String(b.id||b.bookId||''), title:b.title||'Untitled',
-    author:b.authorName||NAMES[String(b.authorId||'')]||String(b.authorId||'Unknown'),
+    author:b.authorName||b.author||NAMES[String(b.authorId||'')]||String(b.authorId||'Unknown'),
     cover:b.cover||'', genre:b.genre||'', rating:b.rating||0,
     chapters:b.chapterCount||b.chapters||0, words:b.wordCount||b.words||0,
     status:b.status||'ongoing', synopsis:b.synopsis||''
@@ -86,9 +86,28 @@ async function loadAll(){
   var placementRaw = listOf(val(3));
   var historyRaw = listOf(val(4));
 
+  // The chief library endpoint can come back empty even when the platform has
+  // books. The public discover-stories feed is the authoritative list of
+  // featurable stories — use it too (deduped), so "Add a Story" is never blank
+  // just because one console endpoint is empty.
+  try {
+    var pub = await jfetch('/api/feed/discover/stories?limit=50');
+    var seen = {};
+    libraryRaw.forEach(function(b){ seen[String(b.id)] = 1; });
+    listOf(pub).forEach(function(b){ if(b && b.id && !seen[String(b.id)]) { seen[String(b.id)] = 1; libraryRaw.push(b); } });
+  } catch(e) { /* keep whatever the chief library returned */ }
+
+  var failed = results.filter(function(r){ return r.status==='rejected'; });
+  if (failed.length) {
+    console.warn('[FeaturedStories] failed endpoints:', failed.map(function(r){ return String(r.reason && r.reason.message || r.reason); }));
+  }
+
+  // Mutate in place: the UI layer holds references to these objects/arrays from
+  // module load. Replacing them leaves the page stuck with the initial empties.
   var tagMap = {};
   tags.forEach(function(t){ tagMap[t]=styleFor(t); });
-  _tags = tagMap;
+  Object.keys(_tags).forEach(function(k){ delete _tags[k]; });
+  Object.keys(tagMap).forEach(function(k){ _tags[k]=tagMap[k]; });
 
   _sections = SECTION_DEFAULTS.slice();
   sections.forEach(function(s){
@@ -114,9 +133,12 @@ async function loadAll(){
     }).catch(function(){});
   }));
 
-  _library = libraryRaw.map(bookFrom).filter(Boolean);
-  _placements = placementRaw.map(placementFrom).filter(function(p){ return p.id; });
-  _history = historyRaw.map(historyFrom);
+  _library.length = 0;
+  libraryRaw.map(bookFrom).filter(Boolean).forEach(function(b){ _library.push(b); });
+  _placements.length = 0;
+  placementRaw.map(placementFrom).filter(function(p){ return p.id; }).forEach(function(p){ _placements.push(p); });
+  _history.length = 0;
+  historyRaw.map(historyFrom).forEach(function(h){ _history.push(h); });
 }
 
 async function createPlacement(p){
