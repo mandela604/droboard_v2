@@ -152,8 +152,8 @@ function renderTable(list){
         '<td data-label="Reads" class="views-cell" style="color:var(--green);font-weight:700">'+b.views+'</td>'+
         '<td data-label="Rating" class="muted-cell"><span style="color:var(--green);font-weight:700">★ '+(b.rating==null?'—':b.rating)+'</span></td>'+
         '<td data-label="Actions"><div class="actions-cell">'+
-          '<button class="act-btn" title="View" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
-          '<button class="act-btn" title="Edit" onclick="editBook(\''+b.id+'\')"><i class="fas fa-pen"></i></button>'+
+          '<button class="act-btn" title="View on story page" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
+          '<button class="act-btn" title="View on story page" onclick="viewBook(\''+b.id+'\')"><i class="fas fa-eye"></i></button>'+
         '</div></td></tr>';
     }).join('');
   }
@@ -182,8 +182,8 @@ function renderPagination(tp){
 
 function goPage(p){currentPage=p;refresh();window.scrollTo({top:0,behavior:'smooth'});}
 
-function viewBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id);}
-function editBook(id){window.location.href='../author/book-workspace.html?book='+encodeURIComponent(id)+'&mode=edit';}
+function viewBook(id){window.location.href='../Pages/bridge.html?id='+encodeURIComponent(id);}
+function editBook(id){window.location.href='../Pages/bridge.html?id='+encodeURIComponent(id);}
 
 /* Populate genre filter after load */
 function populateGenreFilter(){
