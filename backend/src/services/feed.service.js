@@ -227,51 +227,15 @@ async function discoverData(viewerId, taste) {
     excludedP.then(ex => topBooks({ rating: -1 }, 10, viewerId, null, ex)),
   ]);
 
-  // Recommendation row: the reader's discover filter — a request query, never a
-  // stored profile field — plus reading-history weighting. Guests score the same
-  // way, so a signed-out pick tunes only this response.
-  const requested = (taste || []).map(g => String(g).toLowerCase()).filter(Boolean).slice(0, 4);
-  // The filter vocabulary is the Chief's catalogue, not the client's say-so:
-  // unknown or retired genres simply score nothing.
-  const live = requested.length
-    ? await Genre.find({ status: 'active' }).select('name slug').lean()
-    : [];
-  const known = new Set();
-  live.forEach(g => { known.add(String(g.name).toLowerCase()); known.add(String(g.slug).toLowerCase()); });
-  const tasteGenres = requested.filter(g => known.has(g));
-  const libraryItems = viewerId ? await LibraryItem.find({ userId: viewerId }).lean() : [];
-  const readBookIds = libraryItems.map(i => i.storyId);
-  const readBooks = readBookIds.length ? await Book.find({ id: { $in: readBookIds } }).select('genre authorId').lean() : [];
-
-  // Author familiarity map (authors this reader has already read)
-  const authorCounts = {};
-  readBooks.forEach(b => {
-    const key = String(b.authorId);
-    authorCounts[key] = (authorCounts[key] || 0) + 1;
-  });
-
-  const scored = trending.map(b => {
-    let score = 0;
-
-    // Genre match weight (2 points per matching filter genre)
-    if (tasteGenres.length) {
-      const bookGenres = (b.genre || '').toLowerCase().split(/[,&]/).map(g => g.trim());
-      tasteGenres.forEach(tg => {
-        if (bookGenres.some(bg => bg.indexOf(tg) !== -1)) score += 2;
-      });
-    }
-
-    // Author familiarity weight (1 point per read book from same author)
-    if (authorCounts[String(b.authorId)]) score += authorCounts[String(b.authorId)];
-
-    // Base popularity weight (reads, rating)
-    score += (b.reads || 0) / 1000;
-    score += (b.rating || 0) * 0.5;
-
-    return { book: b, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  const recommended = scored.slice(0, 8).map(s => s.book);
+  // Recommendation row: backend-only ranking over the whole catalogue. The
+  // reader's discover filter is a request query (never a stored profile field)
+  // plus reading-history weighting. The row shows the top 8; the "View All"
+  // section paginates the same ranking past 8.
+  const ex = await excludedP;
+  const ranked = await rankRecommended(viewerId, taste, ex);
+  const recTop = ranked.slice(0, 8);
+  const recAm = await authorMap(recTop.map(b => b.authorId));
+  const recommended = recTop.map(b => cardShape(b, recAm[b.authorId]));
 
   return {
     heroes,
@@ -301,6 +265,68 @@ function bookBaseFilter(viewerId, excludedSet) {
     ];
   }
   return filter;
+}
+
+/* Rank the WHOLE published catalogue for one reader. All weighting lives here,
+   never in the browser: taste genres the reader explicitly asked for, authors
+   they already read, then reads + rating. Returns raw lean books in rank order
+   so callers can take the top 8 (Discover row) or paginate any page (the
+   "Recommended For You" View All section).
+   `excludedSet` lets a caller pass the mute+block set it already resolved. */
+async function rankRecommended(viewerId, taste, excludedSet) {
+  const requested = (taste || []).map(g => String(g).toLowerCase()).filter(Boolean).slice(0, 4);
+  // The filter vocabulary is the Chief's catalogue, not the client's say-so:
+  // unknown or retired genres simply score nothing.
+  const live = requested.length
+    ? await Genre.find({ status: 'active' }).select('name slug').lean()
+    : [];
+  const known = new Set();
+  live.forEach(g => { known.add(String(g.name).toLowerCase()); known.add(String(g.slug).toLowerCase()); });
+  const tasteGenres = requested.filter(g => known.has(g));
+
+  const excluded = excludedSet || (viewerId ? await excludedAuthors(viewerId) : new Set());
+  const [books, libraryItems] = await Promise.all([
+    // Every visible book, not just the top 20 by reads: a smaller story must be
+    // able to rank on taste + familiarity. The projection covers cardShape.
+    Book.find(bookBaseFilter(viewerId, excluded))
+      .select('id title authorId genre cover synopsis reads likes rating chapterCount status')
+      .sort({ reads: -1, _id: -1 }).lean(),
+    viewerId ? LibraryItem.find({ userId: viewerId }).select('storyId').lean() : [],
+  ]);
+
+  // Author familiarity map (authors this reader has already read)
+  const readBookIds = libraryItems.map(i => i.storyId);
+  const readBooks = readBookIds.length
+    ? await Book.find({ id: { $in: readBookIds } }).select('genre authorId').lean()
+    : [];
+  const authorCounts = {};
+  readBooks.forEach(b => {
+    const key = String(b.authorId);
+    authorCounts[key] = (authorCounts[key] || 0) + 1;
+  });
+
+  return books.map(b => {
+    let score = 0;
+
+    // Genre match weight (2 points per matching filter genre)
+    if (tasteGenres.length) {
+      const bookGenres = (b.genre || '').toLowerCase().split(/[,&]/).map(g => g.trim());
+      tasteGenres.forEach(tg => {
+        if (bookGenres.some(bg => bg.indexOf(tg) !== -1)) score += 2;
+      });
+    }
+
+    // Author familiarity weight (1 point per read book from same author)
+    if (authorCounts[String(b.authorId)]) score += authorCounts[String(b.authorId)];
+
+    // Base popularity weight (reads, rating)
+    score += (b.reads || 0) / 1000;
+    score += (b.rating || 0) * 0.5;
+
+    return { book: b, score };
+  })
+    .sort((a, b) => b.score - a.score)
+    .map(s => s.book);
 }
 
 function rxEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -375,13 +401,19 @@ async function discoverStories({ page, limit, viewerId, section, genre, sort, ta
     return paginateList(list.map(b => cardShape(b, am[b.authorId])), pg, lim);
   }
 
-  // Recommended is the same ranked list the Discover row renders.
+  // Recommended is the same ranking the Discover row renders — but paginated,
+  // not capped at the row's 8.
   if (key === 'recommended') {
     const tasteArr = String(taste || '').split(',').map(s => s.trim()).filter(Boolean);
-    const d = await discoverData(viewerId, tasteArr);
-    let list = d.recommended || [];
+    let list = await rankRecommended(viewerId, tasteArr, excluded);
     if (genreRx) list = list.filter(b => genreRx.test(b.genre || ''));
-    return paginateList(list, pg, lim);
+    const start = (pg - 1) * lim;
+    const pageBooks = list.slice(start, start + lim);
+    const am = await authorMap(pageBooks.map(b => b.authorId));
+    return {
+      items: pageBooks.map(b => cardShape(b, am[b.authorId])),
+      hasMore: start + lim < list.length,
+    };
   }
 
   const filter = bookBaseFilter(viewerId, excluded);

@@ -221,7 +221,6 @@
   let LIVE_PLATFORM_ADS = [];
 
   const PAGE_SIZE = 15;      // infinite-scroll page size
-  const AD_INTERVAL = 6;     // insert an ad slot every N stories (both list and grid modes)
   const STORIES_API = '/api/discover/stories';
   const SORT_SECTION = {
     rating: 'top_rated',
@@ -275,9 +274,11 @@
   }
 
   /* ═══════════════════════ POOL BUILDING ═══════════════════════ */
-  // Every AD_INTERVAL stories gets one ad slot. Of every 5 ad slots, 4 are book
-  // ads (a writer promoting their own title) and 1 is a DroBoard platform ad.
-  const AD_CYCLE = ['book', 'book', 'book', 'book', 'platform'];
+  /* Ad cadence is programmed in the marketing module (AdPlacement 'discover',
+     served as placement.interval + placement.cycle). These values are only the
+     fallback used when the marketing config cannot be read. */
+  let _adInterval = 6;
+  let _adCycle = ['book', 'book', 'book', 'book', 'platform'];
 
   function _buildPool() {
     // collections mode: pool is collections, no ads/writers, via CollectionData — with Following vs Explore grouping
@@ -364,8 +365,8 @@
         _writersPlaced = true;
       }
 
-      if (_storyCount % AD_INTERVAL === 0) {
-        const kind = AD_CYCLE[_adIndex % AD_CYCLE.length];
+      if (_adCycle.length && _storyCount % _adInterval === 0) {
+        const kind = _adCycle[_adIndex % _adCycle.length];
         // Pull from live ad inventory; skip the slot entirely when the pool is
         // empty (no ads configured → no filler demo ads).
         if (kind === 'platform' && LIVE_PLATFORM_ADS.length) {
@@ -480,7 +481,9 @@
 
   /* Load promo slides + in-feed ad pools from the live ad inventory.
      Resolves silently (pools stay empty) when AdService is unavailable or
-     no ads are configured — the UI then shows only real user content. */
+     no ads are configured — the UI then shows only real user content.
+     The cadence (every N stories + which formats rotate) is programmed in the
+     marketing module, not here. */
   async function _loadLiveAds() {
     LIVE_PROMO = []; LIVE_BOOK_ADS = []; LIVE_PLATFORM_ADS = [];
     try {
@@ -490,6 +493,14 @@
       LIVE_PROMO = Array.isArray(pools.promo) ? pools.promo : [];
       LIVE_BOOK_ADS = Array.isArray(pools.book) ? pools.book : [];
       LIVE_PLATFORM_ADS = Array.isArray(pools.platform) ? pools.platform : [];
+      if (typeof AdService.getPlacement === 'function') {
+        const place = await AdService.getPlacement('discover');
+        const every = place && parseInt(place.interval, 10);
+        if (every > 0) _adInterval = every;
+        if (place && Array.isArray(place.cycle) && place.cycle.length) {
+          _adCycle = place.cycle.map(String).slice(0, 10);
+        }
+      }
     } catch (e) { /* ignore — ad-free is the safe default */ }
   }
 
@@ -578,10 +589,12 @@
       }
     });
 
-    // rootMargin lets the next page start fetching before the user hits bottom.
+    // root must be the overlay's own scroller: with root:null the scroll
+    // container's clipping cancels the 600px prefetch margin and the next page
+    // only starts at the very bottom.
     _observer = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting) _loadNext();
-    }, { root: null, rootMargin: '0px 0px 600px 0px', threshold: 0 });
+    }, { root: _scrollEl, rootMargin: '0px 0px 600px 0px', threshold: 0 });
     _observer.observe(_sentinelEl);
 
     const promoEl = _root.querySelector('#broPromo');

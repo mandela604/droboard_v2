@@ -537,6 +537,16 @@
     try { ADS = await fetchDiscoverAds(); } catch (e) { ADS = { platformAds: [], bookAds: [] }; }
     ADS.platformAds = ADS.platformAds || [];
     ADS.bookAds = ADS.bookAds || [];
+    // Ad strip cadence is programmed in the marketing module for the 'discover'
+    // placement (interval + cycle). AD_INTERVAL/AD_CYCLE are only the fallback.
+    try {
+      if (window.AdService && typeof AdService.getPlacement === 'function') {
+        const place = await AdService.getPlacement('discover');
+        const every = place && parseInt(place.interval, 10);
+        if (every > 0) AD_INTERVAL = every;
+        if (place && Array.isArray(place.cycle) && place.cycle.length) AD_CYCLE = place.cycle.map(String).slice(0, 10);
+      }
+    } catch (e) { /* keep the fallback cadence */ }
 
     TOP_WRITERS = await buildTopWriters(data);
     heroes = data.heroes || [];
