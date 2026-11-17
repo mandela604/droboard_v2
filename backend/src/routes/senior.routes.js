@@ -16,6 +16,9 @@ const router = Router();
 
 router.use(requireAuth, requireRole('senior_editor', 'chief_editor', 'admin'));
 
+// The signed-in editor's real identity for the shared topbar/user chip.
+router.get('/me', generalLimiter, ctrl.me);
+
 // Platform-wide surfaces: any editor may read, only the chief counter signs.
 const chiefOnly = requireRole('chief_editor', 'admin');
 

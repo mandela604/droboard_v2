@@ -57,7 +57,7 @@ function render() {
 function init() {
   (async () => {
     const user = await (window.SeniorEditorGetUser || (async () => null))();
-    SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'notification-center', title: 'Notification Center', subtitle: 'View and manage all platform notifications and alerts', user: user || { name: 'Editor', role: 'Senior Editor', avatar: null }, notifCount: 0, hideSearch: true });
+    SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'notification-center', title: 'Notification Center', subtitle: 'View and manage all platform notifications and alerts', user: null, notifCount: 0, hideSearch: true });
   })();
   document.getElementById('searchInput').addEventListener('input', render);
   document.getElementById('typeFilter').addEventListener('change', render);

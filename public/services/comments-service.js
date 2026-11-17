@@ -68,7 +68,10 @@
   }
 
   async function postComment({ sid, chN, text, parentId, team }) {
-    return window.DroboardComments.api.postComment({ storyId: sid, chapterId: chN || '', text, parentId, team });
+    return window.DroboardComments.api.postComment({
+      scope: chN ? 'chapter' : 'story',
+      storyId: sid, chapterId: chN || '', text, parentId, team,
+    });
   }
 
   async function init() {

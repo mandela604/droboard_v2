@@ -61,7 +61,7 @@ async function init() {
     const user = await (window.SeniorEditorGetUser || (async () => null))();
     SeniorEditorSidebar.attach('#pageRoot', {
     activeItem: 'contracts', title: 'Contracts', subtitle: 'Manage contracts, templates & signed agreements',
-    user: user || { name: 'Editor', role: 'Senior Editor', avatar: null }, notifCount: 0,
+    user: null, notifCount: 0,
     searchPlaceholder: 'Search contracts…', mobileSearchTarget: '#searchInput',
     onSearch: function (v) { document.getElementById('searchInput').value = v; contractPage = 1; renderContracts(); }
   });

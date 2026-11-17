@@ -96,13 +96,14 @@ async function results({ chapter, userId }) {
 async function readState({ userId, bookId }) {
   const sid = String(bookId);
   const uid = String(userId);
-  const { Book } = require('../models/content.model');
+  const { Book, Chapter } = require('../models/content.model');
   const { Entitlement } = require('../models/money.model');
-  const [book, progress, unlocks] = await Promise.all([
+  const [book, progress, unlocks, chapters] = await Promise.all([
     Book.findOne({ id: sid }).select('id vipLocked').lean().catch(() => null),
     ReadingProgress.find({ userId: uid, storyId: sid }).select('chapterId pct finished secondsSpent lastReadAt').lean().catch(() => []),
     // Ownership rows, not a guess from the accounting journal.
     Entitlement.find({ userId: uid, bookId: sid }).select('chapterId').lean().catch(() => []),
+    Chapter.find({ bookId: sid }).select('id n').sort({ n: 1 }).lean().catch(() => []),
   ]);
   const unlocked = unlocks.map(u => String(u.chapterId));
   const pmap = {};
@@ -114,7 +115,27 @@ async function readState({ userId, bookId }) {
     const t = p.lastReadAt ? new Date(p.lastReadAt).getTime() : 0;
     if (t > lastAt) { lastAt = t; lastId = cid; }
   });
-  return { bookId: sid, vipLocked: !!(book && book.vipLocked), unlocked, progress: pmap, lastChapterId: lastId };
+  // Continue forward: the first chapter that is not fully read wins. A
+  // reader who just finished Ch.1 must land on Ch.2, not replay Ch.1 forever.
+  const progFor = (c) => pmap[String(c.id)] || pmap[String(c.n)] || null;
+  const isRead = (c) => {
+    const p = progFor(c);
+    return !!(p && (p.finished || (Number(p.pct) || 0) >= 85));
+  };
+  let continueId = lastId;
+  const started = chapters.find(c => progFor(c) && !isRead(c));
+  if (started) {
+    continueId = String(started.id);
+  } else if (lastId) {
+    const lastChapter = chapters.find(c => String(c.id) === String(lastId) || String(c.n) === String(lastId));
+    if (lastChapter && !isRead(lastChapter)) {
+      continueId = String(lastChapter.id);
+    } else if (lastChapter) {
+      const next = chapters.find(c => Number(c.n) > Number(lastChapter.n));
+      if (next) continueId = String(next.id);
+    }
+  }
+  return { bookId: sid, vipLocked: !!(book && book.vipLocked), unlocked, progress: pmap, lastChapterId: continueId };
 }
 
 // Record reading time. Upserts per (user, story, chapter), clamps deltas to

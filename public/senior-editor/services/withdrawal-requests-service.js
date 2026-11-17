@@ -57,7 +57,7 @@ function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
   (async function() {
     const user = await (window.SeniorEditorGetUser || (async () => null))();
-    SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'withdrawal-requests',title:'Withdrawal Requests',subtitle:'Manage and process author withdrawal requests',user:user||{name:'Editor',role:'Senior Editor',avatar:null},notifCount:0,searchPlaceholder:'Search by author, amount, or ID...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
+    SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'withdrawal-requests',title:'Withdrawal Requests',subtitle:'Manage and process author withdrawal requests',user:null,notifCount:0,searchPlaceholder:'Search by author, amount, or ID...',mobileSearchTarget:'#tableSearch',onSearch:(v)=>{document.getElementById('tableSearch').value=v;refresh()}});
   })();
 }
 

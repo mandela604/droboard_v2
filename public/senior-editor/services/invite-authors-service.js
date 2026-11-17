@@ -34,7 +34,7 @@ const SE_NAME = 'Chioma Reddy';
 function attachShell(){
   SeniorEditorSidebar.attach('#inviteRoot',{
     activeItem:'invite-authors', title:'Invite Authors', subtitle:'Generate a code or link — writers who sign up with it are auto-assigned to you and active immediately',
-    user:{name:'Chioma Reddy',role:'Senior Editor',avatar:'https://i.pravatar.cc/100?img=5'}, notifCount:3,
+    user:null, notifCount:3,
     searchPlaceholder:'Search writers…',
     onSearch:(v)=>{ const inp=document.getElementById('searchInput'); if(inp){ inp.value=v; currentPage=1; filterAndRender(); } }
   });

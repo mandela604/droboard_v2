@@ -215,7 +215,7 @@ function attachShell() {
     activeItem: 'contract-templates',
     title: 'Contract Templates',
     subtitle: 'Create, manage and customize your contract templates',
-    user: { name: 'Reina Morgan', role: 'General Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+    user: null,
     notifCount: 8,
     searchPlaceholder: 'Search templates...',
     mobileSearchTarget: '#tableSearch',

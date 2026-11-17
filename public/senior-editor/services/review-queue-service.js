@@ -66,7 +66,7 @@ const shell = SeniorEditorSidebar.attach('#queueRoot', {
   activeItem: 'review-queue',
   title: 'Review Queue',
   subtitle: 'Review full book submissions',
-  user: { name: 'Loading...', role: 'Senior Editor', avatar: null },
+  user: null,
   notifCount: 4
 });
 
@@ -114,7 +114,8 @@ const OVERRIDE = {
 };
 const MIN_WORDS = 5000;
 
-const CURRENT_EDITOR = { name: 'Chioma Reddy', avatar: 'https://i.pravatar.cc/100?img=5' };
+// No demo identity: the logged-in editor is resolved by the shared sidebar.
+const CURRENT_EDITOR = { name: '', avatar: '' };
 
 function cleanTitle(t){ return t.replace(/\s*-\s*Ch\.\d+$/i, '').trim(); }
 

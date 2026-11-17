@@ -22,7 +22,7 @@ function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
   (async () => {
     const user = await (window.SeniorEditorGetUser || (async () => null))();
-    SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'signed-contracts', title: 'Contract Details', user: user || { name: 'Editor', role: 'Senior Editor', avatar: null }, notifCount: 0, hideSearch: true, });
+    SeniorEditorSidebar.attach('#dashboardRoot', { activeItem: 'signed-contracts', title: 'Contract Details', user: null, notifCount: 0, hideSearch: true, });
   })();
 }
 

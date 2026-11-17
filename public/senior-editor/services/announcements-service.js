@@ -440,7 +440,7 @@ function init(){
     const user = await (window.SeniorEditorGetUser || (async () => null))();
     shell = SeniorEditorSidebar.attach('#annRoot',{
       activeItem:'announcements', title:'Announcements', subtitle:'Publish updates to authors and readers',
-      user:user||{name:'Editor',role:'Senior Editor',avatar:null}, notifCount:0,
+      user:null, notifCount:0,
       searchPlaceholder:'Search announcements…',
       onSearch:(v)=>{ document.getElementById('annSearch').value = v; currentPg = 1; applyFilters(); }
     });

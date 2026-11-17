@@ -115,8 +115,23 @@ async function createComment({ authorId, user, data }) {
     const disc = await Discussion.findOne({ id: parent.discussionId }).select('id genreId').lean();
     if (disc) await boards.assertBoardMember(actor, { genreId: disc.genreId });
   }
+  // A comment belongs to exactly one surface. Replies inherit EVERY scoping
+  // field from their parent — never trust the client to resend the chapter id,
+  // or a reply can land in the wrong thread (or with no chapter at all).
+  const ownScope = parent ? parent.scope : scope;
+  const ownStoryId = parent ? parent.storyId : storyId;
+  const ownChapterId = parent ? parent.chapterId : chapterId;
+  const ownPostId = parent ? parent.postId : postId;
+  const ownDiscussionId = parent ? parent.discussionId
+    : (scope === 'discussion' ? String(discussionId || postId || '') : null);
+  // A chapter comment without a chapter id would leak into every chapter's
+  // "book" view. Refuse it instead of writing an orphan row.
+  if (ownScope === 'chapter' && !String(ownChapterId || '')) {
+    const e = new Error('chapter_id_required'); e.status = 400; throw e;
+  }
   const comment = await Comment.create({
-    authorId, scope, storyId, chapterId, postId, discussionId: scope === 'discussion' ? String(discussionId || postId || '') : null,
+    authorId, scope: ownScope, storyId: ownStoryId, chapterId: ownChapterId,
+    postId: ownPostId, discussionId: ownDiscussionId,
     parentId: parentId || null, team: team || null, text,
   });
   await counters.bump(authorId, 'commentCount', 1);
@@ -199,6 +214,11 @@ async function createComment({ authorId, user, data }) {
 }
 
 async function listComments({ scope, storyId, chapterId, postId, discussionId, page, limit, viewerId }) {
+  // Chapter threads are keyed by chapter id. Without one there is no single
+  // chapter to show — return nothing rather than every comment on the story.
+  if (scope === 'chapter' && !String(chapterId || '')) {
+    return { items: [], total: 0, page: Math.max(1, parseInt(page, 10) || 1), limit: Math.min(50, Math.max(1, parseInt(limit, 10) || 20)) };
+  }
   const filter = { parentId: null };
   // 'book' = the whole story: its own thread plus every chapter thread.
   if (scope === 'book') filter.scope = { $in: ['story', 'chapter'] };

@@ -119,12 +119,6 @@ async function listArgs({ postId, side, sort, viewerId }) {
 async function createArg({ postId, userId, text, side, parentId }) {
   const post = await loadPostOr404(postId);
   const votedSide = await assertVotedSide(post, userId);
-  // A viewer argues once per debate. Their side is final — no second
-  // top-level argument, and no switching sides. Replies are still allowed.
-  if (!parentId) {
-    const mine = await DebateArg.findOne({ postId: String(postId), authorId: String(userId), parentId: null }).select('id').lean();
-    if (mine) err('already_argued', 409);
-  }
   let parent = null;
   if (parentId) {
     parent = await DebateArg.findOne({ id: String(parentId), postId: String(postId) }).lean();
@@ -134,6 +128,13 @@ async function createArg({ postId, userId, text, side, parentId }) {
   }
   if (side !== 'for' && side !== 'against') err('bad_side', 400);
   if (side !== votedSide) err('side_mismatch', 403);
+  // A viewer argues once per debate. Their side is final — no second
+  // top-level argument. Replies are still allowed. (Side checks come first so
+  // an attempted side-switch still reports `side_mismatch`.)
+  if (!parentId) {
+    const mine = await DebateArg.findOne({ postId: String(postId), authorId: String(userId), parentId: null }).select('id').lean();
+    if (mine) err('already_argued', 409);
+  }
   const body = String(text || '').trim();
   if (!body) err('text_required', 400);
   if (body.length > 2000) err('text_too_long', 400);

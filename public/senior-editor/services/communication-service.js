@@ -23,7 +23,7 @@ async function init(){
       activeItem: 'communication',
       title: 'Communication',
       subtitle: 'Author emails & team chat',
-      user: user || { name: 'Editor', role: 'Senior Editor', avatar: null },
+      user: null,
       notifCount: 0,
       onSearch: v => { document.getElementById('mailSearch').value = v; currentPg = 1; applyFilters(); }
     });

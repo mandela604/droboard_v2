@@ -18,7 +18,7 @@
  *       activeItem: 'dashboard',
  *       title: 'Dashboard',
  *       subtitle: 'Your editorial overview',
- *       user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: '...' },
+ *       user: null,
  *       notifCount: 4,
  *     });
  *   </script>
@@ -80,6 +80,19 @@
     return null;
   }
   window.SeniorEditorGetUser = getCurrentUser;
+
+  /* Instant, session-backed identity for the first paint. Only the real
+     signed-in user is ever returned — no demo persona, no pravatar. */
+  function sessionUser() {
+    try {
+      const s = window.AuthSession && typeof window.AuthSession.getSync === 'function'
+        ? window.AuthSession.getSync() : null;
+      if (s && (s.name || s.handle || s.avatar)) {
+        return { name: s.name || '', role: 'Senior Editor', avatar: s.avatar || '' };
+      }
+    } catch (e) { /* no session loaded yet */ }
+    return null;
+  }
 
   const MENU_ITEMS = [
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',             href: 'dashboard.html',              section: 'Overview' },
@@ -164,6 +177,7 @@
   html[data-theme="dark"] .ses-theme-toggle .ses-knob{transform:translateX(22px)}
   .ses-tb-profile{display:flex;align-items:center;gap:10px;padding:5px 10px 5px 5px;border-radius:30px;border:1px solid var(--input-border);flex-shrink:0;cursor:pointer}
   .ses-tb-profile img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+  .ses-tb-av-ph{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
   .ses-tb-profile-txt{line-height:1.2}
   .ses-tb-profile-txt b{font-size:12.5px;display:block}
   .ses-tb-profile-txt span{font-size:10.5px;color:var(--text-muted)}
@@ -275,28 +289,24 @@
 
     const instId = 'ses' + (++_instanceCounter);
     const activeItem = options.activeItem || 'dashboard';
-    let user = options.user || null;
+    // NEVER trust options.user: pages used to pass hardcoded names like
+    // "Chioma Reddy" / "Reina Morgan" and pravatar URLs, which flashed before
+    // the backend resolved. Start from the real session (if already loaded)
+    // and always reconcile with /api/senior-editor/me below.
+    let user = sessionUser() || { name: '', role: 'Senior Editor', avatar: '' };
 
-    /* ── Resolve the signed-in editor from the backend session ──
-       A visitor cannot reach this module without a valid session, so we ask
-       the backend who they are rather than guessing from localStorage or
-       injecting any demo name/avatar. On failure we render nothing — no
-       fake "User", no pravatar, no stale demo identity. ── */
-    if (!user) {
-      try {
-        const res = fetch('/api/senior-editor/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null);
-        res.then(u => {
-          if (u && (u.id || u.handle || u.name || u.fullName || u.username || u.email)) {
-            user = {
-              name: u.fullName || u.name || u.handle || u.username || '',
-              role: u.role || 'Senior Editor',
-              avatar: u.avatar || null,
-            };
-          }
-        });
-      } catch (e) { /* backend unreachable — render no user identity */ }
+    function profileHtml(u) {
+      const name = _esc((u && u.name) || '');
+      const role = _esc((u && u.role) || 'Senior Editor');
+      const av = (u && u.avatar)
+        ? '<img src="' + _esc(u.avatar) + '" alt="' + name + '"/>'
+        : '<div class="ses-tb-av-ph"><i class="fas fa-user"></i></div>';
+      return av + '<div class="ses-tb-profile-txt"><b>' + name + '</b><span>' + role + '</span></div><i class="fas fa-chevron-down"></i>';
     }
-    user = Object.assign({ name: '', role: 'Senior Editor', avatar: null }, user || {});
+    function paintProfile(u) {
+      const el = document.getElementById(instId + '-profile');
+      if (el) el.innerHTML = profileHtml(u);
+    }
     const existingContent = container.innerHTML;
 
     function navHtml() {
@@ -356,11 +366,7 @@
             <button class="ses-theme-toggle" id="${instId}-theme" title="Toggle dark / light mode">
               <div class="ses-knob" id="${instId}-theme-icon"><i class="fas fa-sun"></i></div>
             </button>
-            <div class="ses-tb-profile" id="${instId}-profile">
-              ${user.avatar ? `<img src="${_esc(user.avatar)}" alt="${_esc(user.name)}"/>` : `<div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">${_esc(user.initials || user.name.split(' ')[0][0] || '?')}</div>`}
-              <div class="ses-tb-profile-txt"><b>${_esc(user.name)}</b><span>${_esc(user.role)}</span></div>
-              <i class="fas fa-chevron-down"></i>
-            </div>
+            <div class="ses-tb-profile" id="${instId}-profile">${profileHtml(user)}</div>
           </div>
           <div class="ses-content" id="${instId}-content"></div>
         </div>
@@ -368,6 +374,23 @@
 
     const contentEl = document.getElementById(instId + '-content');
     contentEl.innerHTML = existingContent;
+
+    /* The topbar never shows a placeholder/demo identity: it starts with
+       the real session name (or a neutral icon) and is replaced with the
+       authoritative backend user as soon as that call resolves. */
+    fetch('/api/senior-editor/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(u => {
+        if (!u || !(u.name || u.fullName || u.handle)) return;
+        user = {
+          name: u.fullName || u.name || u.handle || '',
+          role: u.role || 'Senior Editor',
+          avatar: u.avatar || '',
+        };
+        paintProfile(user);
+      })
+      .catch(() => { /* keep the session name if the API is unreachable */ });
+
     const sidebarEl = document.getElementById(instId + '-sidebar');
     const overlayEl = document.getElementById(instId + '-overlay');
 

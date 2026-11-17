@@ -157,30 +157,51 @@ async function getBookDetail(id, viewerId) {
   ]);
   const last = chapters[chapters.length - 1] || null;
 
-  /* Continue reading — where the reader stopped, and how far they are.
-     pct is BOOK level (finished chapters + the current chapter's own pct),
-     because a chapter's own pct only reaches 100 when it is finished. */
+  /* Continue reading — every chapter contributes its own fraction, so a
+     reader who finishes Ch.1 and starts Ch.2 sees 1.x chapters, not a single
+     chapter frozen at 14%. A chapter counts as read at 85% scroll as well as
+     via the explicit `finished` flag (some readers never trigger finish). */
   const rows = progressRows || [];
-  const newest = rows.slice().sort((a, b) => new Date(b.lastReadAt || 0) - new Date(a.lastReadAt || 0))[0] || null;
-  const chapterById = {};
-  chapters.forEach(c => { chapterById[String(c.id)] = c; });
-  const stopChapter = newest ? (chapterById[String(newest.chapterId)] || null) : null;
-  const finishedCount = rows.filter(r => r.finished).length;
-  const chapterPct = newest ? Math.min(100, Math.max(0, Number(newest.pct) || 0)) : 0;
+  const rowByKey = {};
+  rows.forEach(r => { rowByKey[String(r.chapterId)] = r; });
+  function rowFor(c) {
+    return rowByKey[String(c.id)] || rowByKey[String(c.n)] || null;
+  }
+  function fraction(r) {
+    if (!r) return 0;
+    if (r.finished) return 1;
+    return Math.min(1, Math.max(0, (Number(r.pct) || 0) / 100));
+  }
   const totalChapters = chapters.length;
-  const bookPct = totalChapters
-    ? Math.min(100, Math.round(((finishedCount + chapterPct / 100) / totalChapters) * 100))
-    : 0;
-  const continueReading = newest ? {
-    chapterId: newest.chapterId || null,
-    chapterN: stopChapter ? stopChapter.n : null,
-    title: stopChapter ? (stopChapter.title || null) : null,
+  const readFraction = chapters.reduce((sum, c) => sum + fraction(rowFor(c)), 0);
+  const bookPct = totalChapters ? Math.min(100, Math.round((readFraction / totalChapters) * 100)) : 0;
+  const finishedCount = chapters.filter(c => fraction(rowFor(c)) >= 1).length;
+
+  // Continue at the first chapter that is not fully read (prefer one already
+  // started) instead of always replaying the most recently touched chapter.
+  const unfinished = chapters.filter(c => fraction(rowFor(c)) < 1);
+  const byRecent = (a, b) => {
+    const ra = rowFor(a), rb = rowFor(b);
+    const ta = ra ? new Date(ra.lastReadAt || 0).getTime() : 0;
+    const tb = rb ? new Date(rb.lastReadAt || 0).getTime() : 0;
+    return tb - ta;
+  };
+  const stopChapter = unfinished.length
+    ? (unfinished.filter(c => rowFor(c)).sort(byRecent)[0] || unfinished[0])
+    : (chapters[chapters.length - 1] || null);
+  const stopRow = stopChapter ? rowFor(stopChapter) : null;
+  const chapterPct = stopRow ? Math.min(100, Math.round(fraction(stopRow) * 100)) : 0;
+  const totalSeconds = rows.reduce((sum, r) => sum + (Number(r.secondsSpent) || 0), 0);
+  const continueReading = stopChapter ? {
+    chapterId: stopRow ? stopRow.chapterId : stopChapter.id,
+    chapterN: stopChapter.n,
+    title: stopChapter.title || null,
     pct: bookPct,
     chapterPct,
     finishedChapters: finishedCount,
     totalChapters,
-    secondsSpent: newest.secondsSpent || 0,
-    updatedAt: newest.lastReadAt || null,
+    secondsSpent: totalSeconds,
+    updatedAt: stopRow ? stopRow.lastReadAt : null,
   } : null;
 
   return Object.assign({}, book, {

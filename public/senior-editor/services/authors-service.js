@@ -29,7 +29,7 @@ function attachShell(){
     const user = await (window.SeniorEditorGetUser || (async () => null))();
     shell = SeniorEditorSidebar.attach('#authorsRoot',{
       activeItem:'authors', title:'Authors', subtitle:'Manage invited and assigned authors',
-      user:user||{name:'Editor',role:'Senior Editor',avatar:null}, notifCount:0,
+      user:null, notifCount:0,
       searchPlaceholder:'Search authors…',
       onSearch:(v)=>{ document.getElementById('authorSearch').value = v; currentPage = 1; renderAuthors(); }
     });

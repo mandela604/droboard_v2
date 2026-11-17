@@ -44,6 +44,13 @@
   function loading() {
     const el = document.getElementById('tableBody');
     if (el) el.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading verification requests...</td></tr>';
+    // Nothing fake may flash while the API resolves: clear every derived panel.
+    const stats = document.getElementById('statsGrid');
+    if (stats) stats.innerHTML = '';
+    const recent = document.getElementById('authorGrid');
+    if (recent) recent.innerHTML = '';
+    const info = document.getElementById('pageInfo');
+    if (info) info.textContent = 'Loading requests...';
   }
   async function callApi(path, opts) {
     const c = new AbortController();
@@ -57,17 +64,33 @@
     } catch (e) { clearTimeout(t); throw e; }
   }
 
+  // Older rows returned "—" for submitted even though the raw record carries
+  // a timestamp. Derive the real submission date from any of those fields so
+  // the column always shows a date instead of a dash.
+  function submittedOf(r) {
+    if (r.submitted && r.submitted !== '—') return r.submitted;
+    const raw = r.submittedAt || r.createdAt || r.updatedAt || r.appliedAt;
+    if (!raw) return '—';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function reviewerOf(r) {
+    if (typeof r.reviewer === 'object' && r.reviewer) {
+      return r.reviewer.name || r.reviewer.fullName || r.reviewer.username || 'Unassigned';
+    }
+    if (r.reviewer && r.reviewer !== 'Unassigned') return r.reviewer;
+    return r.reviewerName || r.reviewerId || 'Unassigned';
+  }
   function normalize(r) {
     return Object.assign({}, r, {
       id: String(r.id || ''),
       author: label(r),
       name: label(r),
       document: documentOf(r),
-      submitted: r.submitted || '—',
-      reviewer: typeof r.reviewer === 'object'
-        ? ((r.reviewer && (r.reviewer.name || r.reviewer.fullName)) || 'Unassigned')
-        : (r.reviewer || 'Unassigned'),
-      reviewerAvatar: r.reviewerAvatar || (typeof r.reviewer === 'object' && r.reviewer.avatar) || '',
+      submitted: submittedOf(r),
+      reviewer: reviewerOf(r),
+      reviewerAvatar: r.reviewerAvatar || (typeof r.reviewer === 'object' && r.reviewer && r.reviewer.avatar) || '',
       status: (r.status || 'pending').toLowerCase(),
     });
   }
@@ -287,12 +310,11 @@
   window.AuthorVerificationService = {
     init: async function () {
       if (window.SeniorEditorSidebar) {
-        const me = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
         SeniorEditorSidebar.attach('#dashboardRoot', {
           activeItem: 'author-verification',
           title: 'Author Verification',
           subtitle: 'Review and approve author identity requests',
-          user: { name: me.name || me.username || 'Editor', role: 'Senior Editor', avatar: me.avatar || '' },
+          user: null,
           notifCount: 0,
           searchPlaceholder: 'Search by author name or email...',
         });

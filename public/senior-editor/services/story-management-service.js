@@ -52,7 +52,7 @@ async function init() {
     activeItem: 'story-management',
     title: 'Story Management',
     subtitle: 'Assigned stories & chapter status',
-    user: user || { name: 'Editor', role: 'Senior Editor', avatar: null },
+    user: null,
     notifCount: 0,
     onSearch: function(v) { document.getElementById('searchInput').value = v; currentPg = 1; applyFilters(); }
   });

@@ -43,7 +43,7 @@ function init(){
       activeItem: 'activity-logs',
       title: 'Activity Logs',
       subtitle: 'Track and monitor all platform activities and user actions',
-      user: user || { name: 'Editor', role: 'Senior Editor', avatar: null },
+      user: null,
       notifCount: 0,
       searchPlaceholder: 'Search by user, action, or detail...',
       mobileSearchTarget: '#tableSearch',

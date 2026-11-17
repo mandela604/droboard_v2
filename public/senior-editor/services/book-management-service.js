@@ -601,7 +601,7 @@ function init() {
     activeItem: 'book-management',
     title: 'Book Management',
     subtitle: 'Manage and organize all books on your platform',
-    user: { name: 'Reina Morgan', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=47' },
+    user: null,
     notifCount: 8,
     searchPlaceholder: 'Search everything...',
   });

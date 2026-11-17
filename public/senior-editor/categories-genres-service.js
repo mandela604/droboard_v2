@@ -128,7 +128,7 @@ function init(){
 
 SeniorEditorSidebar.attach('#dashboardRoot',{
   activeItem:'categories-genres',title:'Categories & Genres',subtitle:'Organize and manage all categories and genres',
-  user:{name:'Reina Morgan',role:'General Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:8,
+  user:null,notifCount:8,
   searchPlaceholder:'Search by category or genre name...',mobileSearchTarget:'#tableSearch',
   onSearch:function(v){document.getElementById('tableSearch').value=v;refresh();}
 });

@@ -36,7 +36,7 @@ function renderStatCards(){const el=document.getElementById('overviewStats');if(
 function init(){
   (async function() {
     const user = await (window.SeniorEditorGetUser || (async () => null))();
-    SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:user||{name:'Editor',role:'Senior Editor',avatar:null},notifCount:0,hideSearch:true});
+    SeniorEditorSidebar.attach('#dashboardRoot',{activeItem:'earnings-overview',title:'Earnings Overview',subtitle:'Track platform revenue, author payouts and earnings trends',user:null,notifCount:0,hideSearch:true});
   })();
   callBackend('/earnings-overview');
   renderChart();renderTopEarners();renderStatCards();

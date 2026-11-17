@@ -49,7 +49,7 @@ function init(){
     activeItem: 'reports-flags',
     title: 'Story Reports',
     subtitle: 'Review flags raised on your authors\u2019 stories',
-    user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
+    user: null,
     notifCount: 8,
     searchPlaceholder: 'Search by story, reporter, or ID...'
   });

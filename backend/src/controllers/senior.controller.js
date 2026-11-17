@@ -26,6 +26,30 @@ function res(name) {
   };
 }
 
+/* The signed-in editor, read from the database on every call. The shared
+   sidebar/topbar uses this instead of any page-supplied demo identity, so the
+   real name and avatar always show on every senior-editor page. */
+async function me(req, res) {
+  return base.wrap(res, async () => {
+    const { User } = require('../models/user.model');
+    const u = await User.findOne({ id: String(req.user.id) })
+      .select('id fullName name username handle avatar email roles role primaryRole').lean().catch(() => null);
+    const roles = req.user.roles || [];
+    const role = roles.includes('admin') ? 'Admin'
+      : roles.includes('chief_editor') ? 'Chief Editor' : 'Senior Editor';
+    return {
+      id: String(req.user.id),
+      fullName: (u && (u.fullName || u.name)) || '',
+      name: (u && (u.fullName || u.name || u.username || u.handle)) || '',
+      handle: (u && (u.handle || u.username)) || '',
+      username: (u && u.username) || '',
+      email: (u && u.email) || '',
+      avatar: (u && u.avatar) || '',
+      role,
+    };
+  });
+}
+
 async function dashboard(req, res) {
   return base.wrap(res, async () => sidebar.dashboard(req.user));
 }
@@ -479,7 +503,7 @@ function fmtDate(d) {
 // The console always shows the editor the author actually belongs to. That
 // ownership can come from the assignment pod, a book's assignedSeId, or the
 // editor invite the writer signed up with — check all three.
-async function editorOwnerMap(userIds) {
+async function editorOwnerMap(userIds, viewerId) {
   const { User } = require('../models/user.model');
   const { EditorAssignment } = require('../models/chief.model');
   const { Book } = require('../models/content.model');
@@ -510,6 +534,9 @@ async function editorOwnerMap(userIds) {
     }
   }
   const editorIds = [...new Set(ownerOf.values())];
+  // Include the viewer so a writer whose assignment is missing still gets a
+  // real reviewer: this queue is already scoped to this editor's writers.
+  if (viewerId) editorIds.push(viewerId);
   const edQuery = { $or: [{ id: { $in: editorIds } }] };
   if (editorIds.some(isHex)) edQuery.$or.push({ _id: { $in: editorIds.filter(isHex) } });
   const editors = editorIds.length ? await User.find(edQuery).select('id _id fullName username avatar').lean() : [];
@@ -521,9 +548,10 @@ async function editorOwnerMap(userIds) {
 // The console keys rows by person, so each record carries the author's display
 // fields and the owning editor. A writer with no owner stays unassigned rather
 // than inheriting a demo reviewer.
-async function decorateVerifications(list) {
+async function decorateVerifications(list, viewer) {
   const { User } = require('../models/user.model');
   const userIds = list.map((r) => r.userId).filter(Boolean);
+  const viewerId = viewer && (viewer.id || viewer._id) ? String(viewer.id || viewer._id) : null;
   if (!userIds.length) return list;
   const isHex = (v) => /^[0-9a-fA-F]{24}$/.test(String(v));
   const q = { $or: [{ id: { $in: userIds.map(String) } }] };
@@ -531,12 +559,18 @@ async function decorateVerifications(list) {
   const users = await User.find(q).select('id _id fullName username email avatar').lean();
   const byId = new Map();
   users.forEach((u) => { byId.set(String(u.id), u); byId.set(String(u._id), u); });
-  const { ownerOf, edMap } = await editorOwnerMap(userIds);
+  const { ownerOf, edMap } = await editorOwnerMap(userIds, viewerId);
+  // A senior editor only ever sees their own writers here (see
+  // scopeVerifications), so they are the reviewer whenever an explicit
+  // assignment is missing. Never leave the column as "Unassigned".
+  const isSeniorViewer = !!(viewer && (viewer.roles || []).includes('senior_editor'));
+  const viewerEd = isSeniorViewer ? edMap.get(viewerId) : null;
   return list.map((r) => {
     const u = byId.get(String(r.userId)) || {};
     const ownerId = ownerOf.get(String(r.userId)) || ownerOf.get(String(u.id));
-    const ed = edMap.get(String(ownerId));
-    const submitted = fmtDate(r.submittedAt || r.createdAt);
+    const assigned = edMap.get(String(ownerId));
+    const ed = assigned || viewerEd;
+    const submitted = fmtDate(r.submittedAt || r.createdAt || r.updatedAt);
     return {
       ...r,
       // The console table reads `author` / `document`; the older `name` / `doc`
@@ -551,7 +585,8 @@ async function decorateVerifications(list) {
       submitted: submitted || '—',
       reviewer: ed ? (ed.fullName || ed.username || 'Editor') : 'Unassigned',
       reviewerAvatar: (ed && ed.avatar) || '',
-      reviewerVia: ed ? 'assigned' : '',
+      reviewerId: ed ? String(ed.id || ed._id || '') : String(r.reviewerId || ''),
+      reviewerVia: assigned ? 'assigned' : ed ? 'viewer' : '',
       meta: (r.status === 'approved' ? 'Approved · ' : r.status === 'rejected' ? 'Rejected · ' : 'Pending · ') + submitted,
     };
   });
@@ -583,12 +618,12 @@ async function verificationList(req, res, which) {
     if (which === 'recent') {
       const list = await AuthorVerification.find({ status: { $ne: 'pending' } })
         .sort({ updatedAt: -1 }).limit(10).lean();
-      return decorateVerifications(await scopeVerifications(req, list));
+      return decorateVerifications(await scopeVerifications(req, list), req.user);
     }
     if (which === 'history') {
       const list = await AuthorVerification.find({ status: { $ne: 'pending' } })
         .sort({ updatedAt: -1 }).limit(50).lean();
-      return decorateVerifications(await scopeVerifications(req, list));
+      return decorateVerifications(await scopeVerifications(req, list), req.user);
     }
     // "All Requests" really means all: the page's tabs filter client-side.
     // Pending first so the queue reads naturally for the editor.
@@ -596,7 +631,7 @@ async function verificationList(req, res, which) {
     const order = { pending: 0, approved: 1, rejected: 2 };
     list.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9)
       || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    return decorateVerifications(await scopeVerifications(req, list));
+    return decorateVerifications(await scopeVerifications(req, list), req.user);
   });
 }
 
@@ -930,7 +965,7 @@ async function rotateReferralCode(req, res) {
 }
 
 module.exports = {
-  res, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
+  res, me, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
   approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
   flagBook, unflagBook, myAuthors, referralCode, rotateReferralCode,
   reviewQueue, booksList, completionList, completionApprove, completionReject,

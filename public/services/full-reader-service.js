@@ -505,6 +505,11 @@
     document.getElementById("tbChInfo").textContent = ch.title;
     document.getElementById("chNavCenter").textContent = "Ch " + ch.n + " of " + season.chs.length;
     // topbar + hero chrome (was hardcoded markup) rendered from story data
+    // The hero uses this story's own cover — never a stock/demo image.
+    try {
+      const hero = document.getElementById("chHeroBg");
+      if (hero) hero.style.backgroundImage = FS.cover ? 'url("' + String(FS.cover).replace(/"/g, '%22') + '")' : 'none';
+    } catch (e) {}
     document.getElementById("tbStoryTitle").textContent = FS.title || "Story";
     var catBadge = document.querySelector(".ch-cat-badge");
     if (catBadge) {

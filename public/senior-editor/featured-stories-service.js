@@ -191,7 +191,7 @@ const shell = SeniorEditorSidebar.attach('#fsRoot', {
   activeItem: 'featured-stories',
   title: 'Featured Stories',
   subtitle: "Discover placements & editor's picks",
-  user: { name: 'Chioma Reddy', role: 'Senior Editor', avatar: 'https://i.pravatar.cc/100?img=5' },
+  user: null,
   notifCount: 4,
   onSearch: function(v){ /* main table has its own search bars per tab; top search left as global quick-jump */ }
 });

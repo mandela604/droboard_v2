@@ -255,7 +255,7 @@ function attachShell(){
   if(!window.SeniorEditorSidebar||!window.SeniorEditorSidebar.attach)return;
   var userSession=window.AuthSession&&window.AuthSession.getSync?window.AuthSession.getSync():{};
   var userName=userSession.name||userSession.handle||'Editor';
-  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'editor-bill-review',title:'My Earnings',subtitle:'Track your earnings, withdrawals, and payment methods',user:{name:userName,role:'Editor',avatar:userSession.avatar||'https://i.pravatar.cc/100?img=15'},notifCount:2,searchPlaceholder:'Search…'});
+  SeniorEditorSidebar.attach('#dashRoot',{activeItem:'editor-bill-review',title:'My Earnings',subtitle:'Track your earnings, withdrawals, and payment methods',user:null,notifCount:2,searchPlaceholder:'Search…'});
 }
 
 function bindWindowActions(){
