@@ -693,15 +693,37 @@
   // always open something. Surfaces that know better pass onOpenLink; this
   // covers discussion page, genre hub and droboard page, which never did.
   function defaultOpenLink(post) {
-    if (!post) return;
-    const s = post.storyRef || post.chapterRef || {};
+    if (!post) return false;
     const o = post.original || {};
-    const sid = s.id || s.bookId || o.bookId || o.storyId || '';
-    const pid = o.postId || (o.id && !sid ? o.id : '') || '';
-    if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
-    if (o.link) { location.href = o.link; return; }
-    if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }
-    if (post.id) location.href = '/Pages/discussion.html?id=' + encodeURIComponent(post.id);
+    const s = post.storyRef || post.chapterRef || {};
+    // The share sheet stores a LOCAL in-app URL for everything it shares
+    // (book, chapter, post, collection, board) — that is the most precise
+    // destination, so use it first.
+    const url = o.url || o.link || '';
+    if (url && (/^\/Pages\//.test(url) || url.indexOf(location.origin) === 0)) {
+      location.href = url; return true;
+    }
+    const kind = String(o.kind || '').toLowerCase();
+    // A chapter repost must land on the chapter, not just on the book.
+    const bookForChapter = o.bookId || s.id || s.bookId || '';
+    if ((o.chapterN || o.chapterId) && bookForChapter) {
+      const reader = /scroll/i.test(String(o.reader || '')) ? 'scroll-reader.html?story=' : 'full-reader.html?story=';
+      location.href = '/Pages/' + reader + encodeURIComponent(bookForChapter)
+        + '&ch=' + encodeURIComponent(o.chapterN || o.chapterId);
+      return true;
+    }
+    if (kind.indexOf('collection') === 0 && (o.collectionId || o.id)) {
+      location.href = '/Pages/collection.html?id=' + encodeURIComponent(o.collectionId || o.id); return true;
+    }
+    if ((kind.indexOf('board') === 0 || kind.indexOf('hub') === 0) && (o.boardId || o.id)) {
+      location.href = '/Pages/genre-hub.html?genre=' + encodeURIComponent(o.boardId || o.id); return true;
+    }
+    const bookId = s.id || s.bookId || o.bookId || (kind.indexOf('book') === 0 ? o.id : '');
+    if (bookId) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(bookId); return true; }
+    const postId = o.postId || (kind.indexOf('post') === 0 ? o.id : '') || (o.id && !o.name ? o.id : '');
+    if (postId) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(postId); return true; }
+    if (post.id) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(post.id); return true; }
+    return false;
   }
 
   function attach(rootEl, hooks) {
@@ -727,6 +749,9 @@
     render: renderCard,
     findPost: _findPost,
     registerType,
+    // Hosts that override onOpenLink should call this first so every surface
+    // routes a repost back to the thing it came from.
+    openLinked: defaultOpenLink,
   };
 
 })();

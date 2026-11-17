@@ -628,6 +628,9 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       title: DATA.title, sub: "by " + DATA.author.name + " · Chapter " + chN, img: "",
       url: "https://droboard.app/story/" + STORY_ID + "#ch" + chN,
       contentId: STORY_ID, contentType: 'books',
+      // In-app destination for the repost: this chapter in THIS reader.
+      targetUrl: "/Pages/scroll-reader.html?story=" + encodeURIComponent(STORY_ID) + "&ch=" + encodeURIComponent(chN),
+      target: { bookId: STORY_ID, chapterN: chN, reader: 'scroll' },
       // Repaint every chapter-end share counter from the persisted response.
       onShared: function (res) {
         if (!res || typeof res.sharesCount !== 'number') return;

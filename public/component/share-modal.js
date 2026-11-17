@@ -602,6 +602,32 @@
     } catch (e) {}
   }
 
+  function localShareUrl(url) {
+    const s = String(url || '');
+    // Readers and collection pages already pass a local in-app URL.
+    if (/^\/Pages\//i.test(s)) return s;
+    const m = s.match(/^https?:\/\/droboard\.app\/(.*)$/i);
+    if (!m) return s;
+    const p = m[1].replace(/^\/+/, '');
+    // A chapter link (#ch3 or ?ch=3) must open the chapter in the reader,
+    // not the book's story page.
+    const ch = ((p.match(/#ch(\d+)/i) || p.match(/[?&]ch=(\d+)/i) || [])[1]) || '';
+    let out = '';
+    if (/^post\//i.test(p)) out = '/Pages/discussion.html?id=' + encodeURIComponent(p.slice(5));
+    else if (/^story\/|^book\//i.test(p)) {
+      const bid = p.replace(/^(story|book)\//i, '').split(/[?#]/)[0];
+      out = ch
+        ? '/Pages/full-reader.html?story=' + encodeURIComponent(bid) + '&ch=' + encodeURIComponent(ch)
+        : '/Pages/bridge.html?id=' + encodeURIComponent(bid);
+    }
+    else if (/^collection\//i.test(p)) out = '/Pages/collection.html?id=' + encodeURIComponent(p.slice(11));
+    else if (/^hub\/[^/]+\/(.+)$/i.test(p)) out = '/Pages/discussion.html?id=' + encodeURIComponent(p.replace(/^hub\/[^/]+\//i, ''));
+    else if (/^droboard\/post\//i.test(p)) out = '/Pages/discussion.html?id=' + encodeURIComponent(p.slice(14));
+    else if (/^droboard\/?$/i.test(p)) out = '/Pages/droboard-page.html';
+    else if (/^ad\//i.test(p)) out = '/Pages/feed.html';
+    return out || location.origin + '/';
+  }
+
   function openShareModal(data) {
     _data = data || {};
     _syncTheme();
@@ -776,14 +802,24 @@
                 || JSON.parse(localStorage.getItem('droboard_user') || '{}') || {};
               authorName = ('@' + (me.username || me.handle || me.name || 'Reader')).replace(/^@$/, '@Reader');
             } catch (e) {}
+            const target = _data.target || {};
+            const dest = localShareUrl(_data.targetUrl || _data.url);
             const body = {
               type: 'repost',
               note: caption,
               original: {
                 id: _data.contentId ? String(_data.contentId) : '',
-                bookId: _data.contentType === 'books' ? String(_data.contentId || '') : '',
-                postId: _data.contentType === 'posts' ? String(_data.contentId || '') : '',
-                link: _data.url || '',
+                // What it came from, so the card can always lead back there.
+                kind: String(_data.contentType || ''),
+                url: dest,
+                link: dest,
+                bookId: _data.contentType === 'books' ? String(_data.contentId || '') : (target.bookId || ''),
+                postId: _data.contentType === 'posts' ? String(_data.contentId || '') : (target.postId || ''),
+                collectionId: _data.contentType === 'collections' ? String(_data.contentId || '') : (target.collectionId || ''),
+                boardId: target.boardId || '',
+                chapterId: target.chapterId || '',
+                chapterN: target.chapterN || '',
+                reader: target.reader || '',
                 name: authorName,
                 // The rank card is a data-URL preview only. Never put it in
                 // the post body — it blows past the request size limit. Real

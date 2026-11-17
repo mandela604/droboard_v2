@@ -200,7 +200,7 @@ async function main() {
   await Post.create({
     authorId: String(a2.id), type: 'repost', note: 'Luna never disappoints.',
     likesCount: 98, commentsCount: 27,
-    original: { name: 'Ada Writer', avatar: 'https://i.pravatar.cc/100?img=32', time: '2h ago', text: 'Chapter 21 is live.', cover: COVER_FX, title: 'Nine Lives, Twice' },
+    original: { kind: 'books', bookId: String(bkA.id), url: '/Pages/bridge.html?id=' + bkA.id, link: '/Pages/bridge.html?id=' + bkA.id, name: 'Ada Writer', avatar: 'https://i.pravatar.cc/100?img=32', time: '2h ago', text: 'Chapter 21 is live.', cover: COVER_FX, title: 'Nine Lives, Twice' },
   });
   const firstDiscussion = await Discussion.create({ genreId: String(gen.id), authorId: String(a1.id), title: 'Best bakery rivals trope?', body: 'Rank the slow-burn ones you have read.', tag: 'discussion', badge: 'Top', badgeClass: 'author', controversy: 12, likes: 300, commentsCount: 51, score: 90, hot: true });
   await Discussion.create({ genreId: String(gen.id), authorId: String(a2.id), title: 'That chapter 3 cardamom line', body: 'Did you see it coming?', tag: 'controversial', badge: 'Top', controversy: 86, likes: 88, commentsCount: 9, score: 40 });
@@ -528,7 +528,7 @@ async function seedDiscover(ctx) {
     {
       authorId: String(a2.id), type: 'repost', savedBy: [String(reader.id)],
       note: 'This is the whole argument in one line.', likesCount: 98, commentsCount: 27,
-      original: { name: 'Ada Writer', avatar: 'https://i.pravatar.cc/100?img=32', time: '6h ago', text: 'Hollow Court is finished. Thank you for reading her.', cover: COVER.c6, title: 'Hollow Court' },
+      original: { kind: 'books', bookId: String(bkF.id), url: '/Pages/bridge.html?id=' + bkF.id, link: '/Pages/bridge.html?id=' + bkF.id, name: 'Ada Writer', avatar: 'https://i.pravatar.cc/100?img=32', time: '6h ago', text: 'Hollow Court is finished. Thank you for reading her.', cover: COVER.c6, title: 'Hollow Court' },
     },
     {
       authorId: String(a1.id), type: 'poll', savedBy: [String(reader.id)],

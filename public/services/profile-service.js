@@ -813,6 +813,7 @@
         },
         onOpenDebate: (post) => { location.href = 'debate.html?id=' + encodeURIComponent((post && post.id) || ''); },
         onOpenLink: (post) => {
+          if (window.DroboardPostCard && DroboardPostCard.openLinked && DroboardPostCard.openLinked(post)) return;
           const ref = (post && (post.storyRef || post.chapterRef)) || null;
           const sid = ref && (ref.id || ref.bookId || '');
           const pid = post && post.original && (post.original.postId || post.original.id);

@@ -492,7 +492,12 @@
       },
       onDots: (post, anchor) => { try { window._lastDotsAnchor = anchor || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchor); else toast('More options…'); },
       onJoinAma: () => toast('🎙️ Joining AMA…'),
-      onOpenLink: (post) => openStoryGuarded(storyRefFor(post) || (post && (post.storyRef || post.chapterRef))),
+      onOpenLink: (post) => {
+        // Reposts (books, chapters, posts, collections, boards) carry their
+        // own destination — the shared component resolves it for every page.
+        if (window.DroboardPostCard && DroboardPostCard.openLinked && DroboardPostCard.openLinked(post)) return;
+        openStoryGuarded(storyRefFor(post) || (post && (post.storyRef || post.chapterRef)));
+      },
       onPollVote: (post, i) => {
         if (post.poll.voted >= 0) { toast('✅ Already voted!'); return; }
         api('POST', '/posts/' + encodeURIComponent(post.id) + '/poll/vote', { option: i })

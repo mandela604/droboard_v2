@@ -781,6 +781,14 @@
         url: "https://droboard.app/story/" + currentStoryId,
         contentId: currentStoryId,
         contentType: 'books',
+        // In-app destination for the repost: this chapter in THIS reader.
+        targetUrl: "/Pages/full-reader.html?story=" + encodeURIComponent(currentStoryId)
+          + "&ch=" + encodeURIComponent((chs && chs[curChIdx] && chs[curChIdx].n) || 1),
+        target: {
+          bookId: currentStoryId,
+          chapterN: (chs && chs[curChIdx] && chs[curChIdx].n) || 1,
+          reader: 'full',
+        },
         // Server persisted the share; repaint the chapter-end counter from its
         // response so the number moves without a reload.
         onShared: function (res) {

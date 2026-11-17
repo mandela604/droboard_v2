@@ -60,11 +60,25 @@ function normContent(data) {
     // book id. Never write a post id into bookId — that made the embedded
     // card open /Pages/bridge.html?id=<post> and land on "not found".
     const isPost = o.type === 'post' || !!o.postId;
+    const kind = String(o.kind || '').toLowerCase();
+    const isBook = kind.indexOf('book') === 0 || kind.indexOf('stor') === 0;
     data.original = {
       id: o.id || o.bookId || o.storyId || '',
-      bookId: o.bookId || o.storyId || (!isPost ? o.id : '') || '',
+      // Only explicit ids from the share sheet are trusted. Inferring bookId
+      // from a generic `id` turned a collection id into a story id and landed
+      // on "not found".
+      bookId: isBook && !o.bookId ? (o.id || '') : (o.bookId || o.storyId || ''),
       postId: o.postId || (isPost ? o.id : '') || '',
-      link: o.link || '',
+      // The share sheet also sends the destination and its type so the repost
+      // card can lead back to a book, chapter, post, collection or board.
+      kind: String(o.kind || ''),
+      url: String(o.url || o.link || '').slice(0, 600),
+      link: o.link || o.url || '',
+      collectionId: String(o.collectionId || '').slice(0, 120),
+      boardId: String(o.boardId || '').slice(0, 120),
+      chapterId: String(o.chapterId || '').slice(0, 120),
+      chapterN: o.chapterN != null ? o.chapterN : '',
+      reader: String(o.reader || '').slice(0, 20),
       name: o.name || '', avatar: o.avatar || '', time: o.time || '',
       text: o.text || '', cover: o.cover || '', title: o.title || '',
     };
