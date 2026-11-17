@@ -950,6 +950,19 @@
       const raw = await fetchStory(STORY_ID);
       DATA = normalizeStory(raw);
       if (!DATA) throw new Error('Story data was empty');
+      // The reader pages resolve the resume chapter from read-state.lastChapterId.
+      // Use the same source here so both surfaces show the same chapter, while
+      // the percentage stays the whole-book number from the story payload.
+      try {
+        const rs = await getJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/read-state`, 'Read state');
+        const lastId = rs && rs.lastChapterId ? String(rs.lastChapterId) : '';
+        const row = lastId && (raw.chapters || []).find(c => String(c.id) === lastId);
+        if (row) {
+          DATA.continue.chapterN = row.n;
+          DATA.continue.chapterId = row.id;
+          DATA.continue.chapterTitle = row.title || DATA.continue.chapterTitle;
+        }
+      } catch (e) { /* keep the story payload's chapter */ }
     } catch (err) {
       showError(err.message || 'Failed to load story.');
       return;
