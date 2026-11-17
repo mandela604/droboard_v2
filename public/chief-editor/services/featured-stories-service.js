@@ -143,11 +143,23 @@ async function loadAll(){
   historyRaw.map(historyFrom).forEach(function(h){ _history.push(h); });
 }
 
+// The route validates these fields as strings — Date objects and null fail
+// with 400. Convert at the boundary so the UI can keep using Date objects.
+function dateStr(v){ return v ? new Date(v).toISOString() : undefined; }
+function cleanPatch(p){
+  var out = {};
+  Object.keys(p||{}).forEach(function(k){
+    var v = p[k];
+    if (v === undefined || v === null) return;
+    out[k] = (k==='start'||k==='end') ? dateStr(v) : (k==='sub' ? String(v) : v);
+  });
+  return out;
+}
 async function createPlacement(p){
-  return jfetch(API_BASE+'/placements', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p) });
+  return jfetch(API_BASE+'/placements', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cleanPatch(p)) });
 }
 async function updatePlacement(id, patch){
-  return jfetch(API_BASE+'/placements/'+encodeURIComponent(id), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
+  return jfetch(API_BASE+'/placements/'+encodeURIComponent(id), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cleanPatch(patch)) });
 }
 async function deletePlacement(id){
   return jfetch(API_BASE+'/placements/'+encodeURIComponent(id), { method:'DELETE' });
@@ -155,11 +167,15 @@ async function deletePlacement(id){
 async function refeature(index){
   return jfetch(API_BASE+'/history/'+encodeURIComponent(index)+'/refeature', { method:'POST' });
 }
+function repaint(){ if (window.__featuredRepaint) window.__featuredRepaint(); }
 function persistWrite(promise){
   return Promise.resolve(promise)
     .then(function(){ return loadAll(); })
-    .then(function(){ renderAll(); })
-    .catch(function(e){ console.warn('[FeaturedStories] write failed', e); return loadAll().then(function(){ renderAll(); }); });
+    .then(function(){ repaint(); })
+    .catch(function(e){
+      console.warn('[FeaturedStories] write failed', e);
+      return loadAll().then(function(){ repaint(); if (window.toast) window.toast('Could not save — ' + ((e&&e.message)||'try again')); });
+    });
 }
 
 function tags(){ return _tags; }
@@ -765,6 +781,7 @@ window.addEventListener('resize', renderTable);
    INIT
 ───────────────────────────────────────── */
 function renderAll(){ renderStats(); renderTable(); }
+window.__featuredRepaint = renderAll;
 const genres = [...new Set(LIBRARY.map(s=>s.genre))];
 document.getElementById('libraryGenreFilter').innerHTML = '<option value="">All Genres</option>' + genres.map(g=>`<option value="${g}">${g}</option>`).join('');
 document.getElementById('sectionFilter').innerHTML = '<option value="all">All Discover Sections</option>' + SECTIONS.map(s=>`<option value="${s.id}">${s.icon} ${s.label}</option>`).join('');
