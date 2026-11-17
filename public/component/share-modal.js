@@ -718,6 +718,10 @@
     lbl.innerHTML = type === 'status'
       ? '<i class="fas fa-circle-notch"></i> Post to Status'
       : '<i class="fas fa-user-circle"></i> Post to Profile';
+    // A previous successful post hides the label while the spinner shows and
+    // closes the sheet without restoring it. Reset on every open or the next
+    // compose appears with a blank pink button.
+    lbl.style.display = '';
 
     document.getElementById('dscSpinner').classList.remove('show');
     document.getElementById('dscBg').classList.add('open');
@@ -890,6 +894,8 @@
 
     closeCompose();
     closeShareModal();
+    const lbl = document.getElementById('dscPostLbl');
+    if (lbl) lbl.style.display = '';
     _toast(`✅ Posted to ${label}!`);
     _posting = false;
   }
