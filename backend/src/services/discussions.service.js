@@ -262,6 +262,27 @@ async function deleteThread({ id, userId, isAdmin }) {
   return { ok: true };
 }
 
+/* Pinning is a board-management action: the editor crew set on the parent
+   Category by Chief/Super Admin (or platform staff) may pin, not any member. */
+async function pinThread({ id, pinned, user }) {
+  const d = await loadOr404(id);
+  const roles = ((user && user.roles) || []).map(String);
+  const staff = roles.some(r => ['admin', 'chief_editor', 'senior_editor'].includes(r));
+  const g = await Genre.findOne({ id: String(d.genreId) }).select('categoryId').lean().catch(() => null);
+  const c = g && g.categoryId
+    ? await Category.findOne({ id: String(g.categoryId) }).select('adminIds moderatorIds').lean().catch(() => null)
+    : null;
+  const crew = c ? [...(c.adminIds || []), ...(c.moderatorIds || [])].map(String) : [];
+  if (!staff && (!user || !crew.includes(String(user.id)))) {
+    const e = new Error('forbidden'); e.status = 403; throw e;
+  }
+  d.pinned = !!pinned;
+  await d.save();
+  const out = d.toJSON();
+  await withAuthors([out]);
+  return toFlatCard(out, user && user.id);
+}
+
 async function toggleLike({ id, user }) {
   const d = await loadOr404(id);
   // Liking happens inside a board, so it needs board membership too.
@@ -351,4 +372,4 @@ async function reactionState({ id, userId }) {
   return { counts: reactionCounts(d), userRx: prev ? prev.rid : null };
 }
 
-module.exports = { listThreads, feedThreads, createThread, getThread, updateThread, deleteThread, toggleLike, reactToDiscussion, unreactDiscussion, reactionState, resolveGenreIds, resolveThreadGenre, loadOr404, toCard, toFlatCard, withAuthors };
+module.exports = { listThreads, feedThreads, createThread, getThread, updateThread, deleteThread, toggleLike, pinThread, reactToDiscussion, unreactDiscussion, reactionState, resolveGenreIds, resolveThreadGenre, loadOr404, toCard, toFlatCard, withAuthors };

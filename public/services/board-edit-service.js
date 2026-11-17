@@ -45,7 +45,8 @@
       const r = await fetch(API_BASE + '/genres/' + encodeURIComponent(GENRE_ID), { credentials: 'include' });
       if (r.ok) {
         const data = await r.json();
-        RULES = (data.genre && data.genre.rules) || [];
+        const g = data.genre || data.data || data;
+        RULES = g.rules || [];
       }
     } catch (e) {}
   }
@@ -99,7 +100,10 @@
       const r = await fetch(API_BASE + '/genres/' + encodeURIComponent(GENRE_ID), { credentials: 'include' });
       if (r.ok) {
         const data = await r.json();
-        MODS = (data.genre && data.genre.moderators) || [];
+        const crew = ((data.genre || data.data || data).moderators) || [];
+        MODS = crew.map(function (m) {
+          return { id: m.id, handle: m.username || m.handle || '', name: m.fullName || m.name || m.username || '', av: m.avatar || '', role: 'Moderator', at: Date.now() };
+        }).filter(function (m) { return !!m.id; });
       }
     } catch (e) {
       MODS = [];
@@ -114,8 +118,8 @@
       if (r.ok) {
         const data = await r.json();
         USER_POOL = (data.users || data.items || data.data || []).map(function(u) {
-          return { handle: u.handle, name: u.name || u.handle, av: u.avatar || '' };
-        });
+          return { id: u.id, handle: u.handle || u.username, name: u.name || u.fullName || u.handle, av: u.avatar || '' };
+        }).filter(function(u) { return !!u.id; });
       }
     } catch (e) {
       USER_POOL = [];
@@ -123,9 +127,8 @@
   }
 
   async function addMod(user) {
-    const exists = MODS.some(function(m) { return m.handle === user.handle; });
-    if (exists) return;
-    MODS.push({ handle: user.handle, name: user.name, av: user.av, role: 'Moderator', at: Date.now() });
+    if (!user || !user.id || MODS.some(function(m) { return m.id === user.id; })) return;
+    MODS.push({ id: user.id, handle: user.handle, name: user.name, av: user.av, role: 'Moderator', at: Date.now() });
     await syncMods();
   }
 
@@ -140,7 +143,7 @@
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ moderatorIds: MODS.map(function(m) { return m.handle; }) })
+        body: JSON.stringify({ moderatorIds: MODS.map(function(m) { return m.id; }).filter(Boolean) })
       });
       if (!r.ok) throw new Error('Failed to update moderators');
     } catch (e) {}
@@ -174,32 +177,6 @@
           return '<div class="mod-row"><img class="mod-av" src="' + esc(m.av || 'https://i.pravatar.cc/100?img=1') + '" alt=""/><div class="mod-txt"><div class="mod-n">' + esc(m.name || m.handle) + '</div><div class="mod-r">@' + esc(m.handle) + ' · ' + esc(m.role || 'Moderator') + '</div></div><div class="row-del" onclick="removeMod(' + i + ')" title="Remove moderator"><i class="fas fa-user-minus"></i></div></div>';
         }).join('')
       : '<div class="empty">No moderators — add one from the members below.</div>';
-  }
-  function buildUserPool() {
-    // Live swap: GET /api/users?search=… (debounced) instead of a local pool
-    const seed = window.GenreDemoSeed;
-    const seen = {};
-    USER_POOL = [];
-    if (seed && seed.DEMO_MEMBERS) {
-      Object.keys(seed.DEMO_MEMBERS).forEach(function (gid) {
-        seed.DEMO_MEMBERS[gid].forEach(function (m) {
-          if (seen[m.handle]) return;
-          seen[m.handle] = 1;
-          USER_POOL.push({ handle: m.handle, name: m.name, av: m.av });
-        });
-      });
-    }
-    // A few extra site-wide accounts so search feels bigger than one hub
-    [
-      { name: 'You (Reader)', handle: 'You_Reader', av: 'https://i.pravatar.cc/100?img=68' },
-      { name: 'Ese_Uyi', handle: 'Ese_Uyi', av: 'https://i.pravatar.cc/100?img=44' },
-      { name: 'Samantha Shannon', handle: 'S_Shannon', av: 'https://i.pravatar.cc/100?img=26' },
-      { name: 'James Islington', handle: 'J_Islington', av: 'https://i.pravatar.cc/100?img=51' },
-    ].forEach(function (m) {
-      if (seen[m.handle]) return;
-      seen[m.handle] = 1;
-      USER_POOL.push(m);
-    });
   }
   function searchPool(q) {
     q = String(q || '').toLowerCase().replace(/^@/, '');
@@ -313,9 +290,17 @@
 
   /* ══ INIT ══ */
   loadHub().then(function () {
+    // The hub API sends `canManage` from the board crew set by Chief/Super
+    // Admin. A plain member must never reach the editor form.
+    if (GENRE && GENRE.canManage !== true) {
+      const root = document.getElementById('boardEditRoot') || document.body;
+      root.innerHTML = '<div style="padding:60px 20px;text-align:center;font-size:14px;color:var(--muted)"><i class="fas fa-lock" style="font-size:30px;display:block;margin-bottom:12px"></i>You do not manage this board.<br><a href="genre-hub.html?genre=' + encodeURIComponent(GENRE_ID) + '">Back to the board</a></div>';
+      return null;
+    }
     renderDetails();
     return Promise.all([loadRules(), loadMods()]);
-  }).then(function () {
+  }).then(function (r) {
+    if (!r) return;
     renderRules();
     renderMods();
   });

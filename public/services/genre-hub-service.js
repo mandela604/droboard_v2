@@ -188,7 +188,8 @@
     paintJoin();
     const eb = document.getElementById('hubEditBtn');
     if (eb) {
-      if (isStaff()) eb.style.display = '';
+      // Only the board's Chief/Super-Admin-assigned crew may edit it.
+      eb.style.display = canManageBoard() ? '' : 'none';
       eb.onclick = function () { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE.slug || GENRE_ID); };
     }
     paintComposerAvatar();
@@ -229,6 +230,12 @@
   }
   function isStaff() {
     try { return window.canModerate ? window.canModerate() : false; } catch (e) { return false; }
+  }
+  // The board crew is set by Chief/Super Admin on the Category. The API sends
+  // `canManage` computed from that crew + platform staff roles; never let a
+  // plain member see management actions.
+  function canManageBoard() {
+    return !!(GENRE && GENRE.canManage);
   }
   /* Every filter works like the Hot tab: a real subset in a real order
      (not a silent re-sort of the same list). API-pinned threads (p.pinned) lead. */
@@ -325,7 +332,11 @@
   function renderAbout() {
     const feed = document.getElementById('feed');
     feed.innerHTML = '<div style="padding:14px"><div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:14px">About '+GENRE.name+'</b><button id="aboutEditBtn" style="font-size:11px;font-weight:700;color:var(--acc);background:rgba(255,0,80,.08);border:1px solid var(--bd-acc);padding:6px 10px;border-radius:10px"><i class="fas fa-pen"></i> Edit</button></div><div style="font-size:12px;line-height:1.6;color:var(--tx-body)" id="aboutBlurbView">'+(GENRE.blurb||'')+'</div><div id="aboutForm" style="display:none;margin-top:10px"><input id="aboutName" value="'+(GENRE.name||'').replace(/"/g,'&quot;')+'" placeholder="Genre name" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><input id="aboutTagline" value="'+(GENRE.tagline||'').replace(/"/g,'&quot;')+'" placeholder="Tagline" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px"/><textarea id="aboutBlurb" rows="3" placeholder="About this hub" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:13px;resize:none;margin-bottom:8px">'+(GENRE.blurb||'')+'</textarea><input id="aboutCover" value="'+(GENRE.cover||'').replace(/"/g,'&quot;')+'" placeholder="Cover image URL" style="width:100%;background:var(--l2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:10px"/><div style="display:flex;gap:8px"><button id="aboutSave" style="flex:1;background:var(--acc);color:#fff;padding:10px;border-radius:10px;font-weight:700">Save</button><button id="aboutCancel" style="flex:1;background:transparent;border:1px solid var(--bd);padding:10px;border-radius:10px">Cancel</button></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.members||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Members</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.stories||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Stories</div></div><div style="background:var(--l2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:800">'+(GENRE.discussions||'—')+'</div><div style="font-size:10px;color:var(--tx-muted)">Threads</div></div></div></div>';
-    document.getElementById('aboutEditBtn').onclick = () => { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE_ID) + '#details'; };
+    const aboutEdit = document.getElementById('aboutEditBtn');
+    if (aboutEdit) {
+      aboutEdit.style.display = canManageBoard() ? '' : 'none';
+      aboutEdit.onclick = () => { location.href = 'board-edit.html?board=' + encodeURIComponent(GENRE_ID) + '#details'; };
+    }
     document.getElementById('aboutCancel').onclick = () => { document.getElementById('aboutForm').style.display='none'; document.getElementById('aboutBlurbView').style.display='block'; };
     document.getElementById('aboutSave').onclick = async () => {
       const patch = { name: document.getElementById('aboutName').value.trim()||GENRE.name, tagline: document.getElementById('aboutTagline').value.trim(), blurb: document.getElementById('aboutBlurb').value.trim(), cover: document.getElementById('aboutCover').value.trim() };
@@ -574,20 +585,22 @@
         },
         onReportType: (post, typeId) => fileReport(post, typeId),
         onCopyLink: (post) => {
-          const url = 'https://droboard.app/hub/' + GENRE_ID + '/' + post.id;
-          if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('🔗 Link copied')).catch(() => toast(url));
-          else toast(url);
+          const link = DroboardShare
+            ? DroboardShare.absolute('/Pages/discussion.html?genre=' + encodeURIComponent(GENRE_ID) + '&id=' + encodeURIComponent(post.id))
+            : location.origin + '/Pages/discussion.html?genre=' + encodeURIComponent(GENRE_ID) + '&id=' + encodeURIComponent(post.id);
+          if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => toast('🔗 Link copied')).catch(() => toast(link));
+          else toast(link);
         },
         onEdit: () => toast('✏️ Edit'),
         onDelete: () => toast('🗑️ Delete'),
         onPin: (post) => {
-          if (!isStaff()) { toast('Only moderators can pin.'); return; }
+          if (!canManageBoard()) { toast('Only this board\'s editors can pin.'); return; }
           fetch(`${API_BASE}/discussions/${encodeURIComponent(post.id)}/pin`, { method: 'POST', credentials: 'include' })
             .then(() => { post.pinned = true; setActiveTab(activeTab); toast('📌 Pinned to top'); })
             .catch(() => toast('Pin failed.'));
         },
         onUnpin: (post) => {
-          if (!isStaff()) { toast('Only moderators can unpin.'); return; }
+          if (!canManageBoard()) { toast('Only this board\'s editors can unpin.'); return; }
           fetch(`${API_BASE}/discussions/${encodeURIComponent(post.id)}/pin`, { method: 'DELETE', credentials: 'include' })
             .then(() => { post.pinned = false; setActiveTab(activeTab); toast('Unpinned'); })
             .catch(() => toast('Unpin failed.'));

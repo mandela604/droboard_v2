@@ -42,17 +42,22 @@ function withBtnLoading(btns, delay, callback, loadingText) {
 }
 
 /* ── Staff gate for moderation UI (pin/unpin, etc.) ──
-   Reads an explicit role override first (dro_staff_role = admin |
-   moderator | user). DEMO-OPEN default: demo sessions act as staff so
-   moderation UI is testable. Live: resolve from AuthSession/user.roles
-   AND enforce server-side — the client flag only hides the menu item. */
+   NEVER default to staff. A plain reader must not see moderation controls.
+   The explicit localStorage override is a dev/test switch only; production
+   callers should pass an explicit flag from the signed-in user's roles.
+   Server routes still enforce the same rule — this only hides UI. */
 window.canModerate = function () {
   try {
     const r = String(localStorage.getItem('dro_staff_role') || '').toLowerCase();
     if (r === 'admin' || r === 'moderator' || r === 'mod') return true;
     if (r === 'user' || r === 'reader' || r === 'member') return false;
   } catch (e) {}
-  return true;
+  try {
+    const u = (window.AuthSession && AuthSession.getSync && AuthSession.getSync())
+      || JSON.parse(localStorage.getItem('droboard_user') || '{}') || {};
+    const roles = (Array.isArray(u.roles) ? u.roles : [u.role || u.primaryRole || '']).map(function (x) { return String(x || '').toLowerCase(); });
+    return roles.some(function (x) { return ['admin', 'chief_editor', 'senior_editor', 'moderator'].indexOf(x) !== -1; });
+  } catch (e) { return false; }
 };
 
 /* ── ScrollKeep: keep list-page scroll across back-navigation ──

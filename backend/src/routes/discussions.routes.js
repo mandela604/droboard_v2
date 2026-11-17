@@ -81,6 +81,13 @@ router.delete('/:id', requireAuth, writeLimiter, audit('discussions.delete'),
 router.post('/:id/like', requireAuth, writeLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.like);
 
+// Board crew only — enforced in pinThread() against the parent Category's
+// adminIds/moderatorIds (set by Chief/Super Admin).
+router.post('/:id/pin', requireAuth, writeLimiter, audit('discussions.pin'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.pin);
+router.delete('/:id/pin', requireAuth, writeLimiter, audit('discussions.unpin'),
+  validate(z.object({ params: z.object({ id }) })), ctrl.unpin);
+
 router.post('/:id/react', requireAuth, writeLimiter, audit('discussions.react'),
   validate(z.object({ params: z.object({ id }), body: z.object({ rid: z.string().min(1).max(40) }).strict() })), ctrl.react);
 

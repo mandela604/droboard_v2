@@ -160,6 +160,7 @@ async function parentHub(categoryId, viewerId) {
     // toCategory aliased. Raw numbers stay in the *Count fields above.
     stories: compact(stories), members: compact(members), discussions: compact(discussions),
     admins: crew.admins, moderators: crew.moderators,
+    canManage: await isBoardManager(c, viewerId),
   });
 }
 
@@ -168,6 +169,17 @@ async function genreHub(slugOrId, viewerId) {
   const g = await Genre.findOne({ $or: [{ slug: slugOrId }, { id: slugOrId }] }).lean();
   if (g && g.status === 'active') return parentHub(g.categoryId, viewerId);
   return parentHub(slugOrId, viewerId);
+}
+
+async function isBoardManager(category, viewerId) {
+  if (!viewerId) return false;
+  const [u] = await Promise.all([
+    User.findOne({ id: String(viewerId) }).select('roles').lean().catch(() => null),
+  ]);
+  const roles = ((u && u.roles) || []).map(String);
+  if (roles.some(r => ['admin', 'chief_editor', 'senior_editor'].includes(r))) return true;
+  const ids = [...(category.adminIds || []), ...(category.moderatorIds || [])].map(String);
+  return ids.includes(String(viewerId));
 }
 
 async function categoryHub(slugOrId, viewerId) {
@@ -189,6 +201,7 @@ async function categoryHub(slugOrId, viewerId) {
     membersCount: members, isJoined,
     stories: compact(stories), members: compact(members), discussions: compact(discussions),
     admins: crew.admins, moderators: crew.moderators,
+    canManage: await isBoardManager(c, viewerId),
   });
 }
 
