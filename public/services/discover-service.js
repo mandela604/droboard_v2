@@ -432,7 +432,7 @@
 
   function renderGenreGrid() {
     document.getElementById('genreGrid').innerHTML = GENRES.map(g =>
-      `<div class="genre-item" ${g.filter ? `data-browse-trigger data-browse-title="${g.name} Stories" data-browse-filter="${g.filter}"` : 'data-browse-trigger data-browse-title="All Stories"'}>
+      `<div class="genre-item" ${g.filter ? `data-browse-trigger data-browse-title="${g.name} Stories" data-browse-genre="${g.filter}" data-browse-filter="${g.filter}"` : 'data-browse-trigger data-browse-title="All Stories" data-browse-section="all"'}>
         <div class="genre-icon" style="background:${g.bg};color:${g.color}"><i class="fas ${g.icon}"></i></div>
         <div class="genre-name">${g.name}</div>
       </div>`
@@ -440,20 +440,11 @@
   }
 
   async function wireComponents(data) {
-    const pool = (data.moreStories || []).map((s, i) => ({
-      // Keep the real book id: the browse overlay opens bridge.html?id=<id>,
-      // and a synthetic ds-N id sends the reader to a non-existent book.
-      id: s.id, img: s.img, title: s.title, author: s.author,
-      genre: GENRE_MAP[s.genre] || s.genre.toLowerCase(), cat: s.genre,
-      preview: s.preview, views: `${70 + (i * 9) % 260}k`, likes: `${8 + (i * 3) % 40}k`,
-      badge: i % 6 === 0 ? 'hot' : i % 5 === 0 ? 'new' : '',
-      rating: (4.3 + (i % 7) * 0.08).toFixed(1), chapters: 6 + (i % 20),
-      av: `https://i.pravatar.cc/100?img=${(i * 7 + 4) % 70}`,
-      keywords: [(GENRE_MAP[s.genre] || s.genre).toLowerCase(), s.author.replace('@', '').toLowerCase(), ...s.title.toLowerCase().split(' ').filter(w => w.length > 3).slice(0, 4)],
-    }));
+    // The overlay now fetches each section/genre from /api/discover/stories,
+    // so the page passes no story list and invents no fields. Only navigation
+    // hooks (used when a card is clicked programmatically) are configured here.
     if (window.BrowseOverlay) {
       BrowseOverlay.configure({
-        stories: pool,
         onOpenStory: story => { location.href = `bridge.html?id=${encodeURIComponent(story.id)}`; },
         onOpenWriter: writer => { location.href = `profile.html?u=${encodeURIComponent((writer.handle || writer.name || '').replace('@', ''))}`; },
       });
@@ -553,17 +544,16 @@
     document.querySelectorAll('#heroDots .dot').forEach((d, i) => d.addEventListener('click', () => { goHero(i); startHero(); }));
     if (heroes.length) { goHero(0); startHero(); }
 
-    // Strip rating from sections that should not display star ratings
-    const noRating = (arr) => (arr || []).map(s => Object.assign({}, s, { rating: 0 }));
-
+    // Render every row exactly as the backend returned it. No field is
+    // stripped, zeroed, re-scored or re-ordered in the browser.
     DiscoverCard.renderRow('topRatedRow', data.topRated, 'No top rated stories yet.');
-    DiscoverCard.renderRow('romanceRow', noRating(data.topRomance), 'No romance picks right now.');
-    DiscoverCard.renderRow('trendingRow', noRating(data.trending), 'Nothing trending right now.');
-    DiscoverCard.renderRow('newRow', noRating(data.newReleases), 'No new releases yet.');
-    DiscoverCard.renderRow('editorRow', noRating(data.editorsPicks), "No editor's picks yet.");
-    DiscoverCard.renderRow('recRow', noRating(data.recommended), 'No recommendations yet.');
-    DiscoverCard.renderRow('completeRow', noRating(data.complete), 'No completed stories yet.');
-    DiscoverCard.renderRow('updatedRow', noRating(data.recentlyUpdated), 'No recent updates.');
+    DiscoverCard.renderRow('romanceRow', data.topRomance, 'No romance picks right now.');
+    DiscoverCard.renderRow('trendingRow', data.trending, 'Nothing trending right now.');
+    DiscoverCard.renderRow('newRow', data.newReleases, 'No new releases yet.');
+    DiscoverCard.renderRow('editorRow', data.editorsPicks, "No editor's picks yet.");
+    DiscoverCard.renderRow('recRow', data.recommended, 'No recommendations yet.');
+    DiscoverCard.renderRow('completeRow', data.complete, 'No completed stories yet.');
+    DiscoverCard.renderRow('updatedRow', data.recentlyUpdated, 'No recent updates.');
     DiscoverCard.renderCollRow('collRow', data.collections, 'No collections yet.');
     renderGenreGrid();
 

@@ -134,35 +134,12 @@ let extra = '';
     </a>`;
   }
 
-  /* Trope per story: explicit trope/tropes win, else a stable pick from the
-     CE catalog pool for the story's genre (live books carry tropes). */
-  const TROPE_POOL = {
-    romance: ['Enemies to Lovers', 'Secret Baby', 'Second Chance'],
-    billionaire: ['Billionaire Boss', 'Secret Baby', 'Fake Dating'],
-    ceo: ['CEO Romance', 'Fake Dating', 'Billionaire Boss'],
-    werewolf: ['Fated Mates', 'Alpha Romance', 'Second Chance'],
-    fantasy: ['Royal Romance', 'Royal Secret', 'Fated Mates'],
-    mafia: ['Mafia Romance', 'Forced Proximity', 'Secret Baby'],
-    campus: ['Fake Dating', 'Forced Proximity', 'Love Triangle'],
-    revenge: ['Second Chance', 'Forced Proximity', 'Secret Baby'],
-    drama: ['Second Chance', 'Marriage of Convenience', 'Forbidden Love'],
-    betrayal: ['Secret Baby', 'Love Triangle', 'Second Chance'],
-    family: ['Arranged Marriage', 'Secret Baby', 'Second Chance'],
-    heartbreak: ['Second Chance', 'Forbidden Love', 'Love Triangle'],
-    horror: ['Forbidden Love', 'Fated Mates', 'Vampire Romance'],
-    mystery: ['Secret Baby', 'Forced Proximity', 'Love Triangle'],
-    marriage: ['Arranged Marriage', 'Marriage of Convenience', 'Second Chance'],
-    vampire: ['Vampire Romance', 'Forbidden Love', 'Fated Mates'],
-  };
-  const TROPE_FALLBACK = ['Second Chance', 'Forbidden Love', 'Secret Baby'];
+  /* Trope comes from the backend only (explicit trope/tropes). Nothing is
+     invented here — if the API sends no trope, the card shows none. */
   function storyTrope(s) {
     if (s.trope) return s.trope;
-    if (s.tropes && s.tropes.length) return s.tropes[0];
-    const pool = TROPE_POOL[String(s.genre || '').toLowerCase()] || TROPE_FALLBACK;
-    const key = String(s.id || s.title || '');
-    let h = 0;
-    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-    return pool[h % pool.length];
+    if (Array.isArray(s.tropes) && s.tropes.length) return s.tropes[0];
+    return '';
   }
 
   function listItem(s) {

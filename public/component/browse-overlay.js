@@ -87,6 +87,11 @@
     .bro-root *,.bro-root *::before,.bro-root *::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     .bro-root img{display:block;object-fit:cover}
     .bro-root button{font-family:inherit;cursor:pointer;border:none;background:none}
+    /* The button font reset above out-specifies Font Awesome's .fas rule, so
+       icons inside buttons rendered blank (the invisible back arrow). Give the
+       icon font back explicitly. The back arrow itself is inline SVG and does
+       not depend on the CDN. */
+    .bro-root .fas,.bro-root .fa,.bro-root .far,.bro-root .fab{font-family:'Font Awesome 6 Free';font-weight:900}
     .bro-root ::-webkit-scrollbar{display:none}
 
     .bro-topbar{position:sticky;top:0;z-index:20;flex-shrink:0;background:var(--bro-topbar);
@@ -217,6 +222,13 @@
 
   const PAGE_SIZE = 15;      // infinite-scroll page size
   const AD_INTERVAL = 6;     // insert an ad slot every N stories (both list and grid modes)
+  const STORIES_API = '/api/discover/stories';
+  const SORT_SECTION = {
+    rating: 'top_rated',
+    popular: 'trending',
+    new: 'new_releases',
+    updated: 'recently_updated',
+  };
 
   /* ═══════════════════════ STATE ═══════════════════════ */
   let _built = false, _isOpen = false;
@@ -230,6 +242,15 @@
   let _tune = false;        // true only when opened from the Recommended "View All"
   let _pool = [];
   let _page = 1, _hasMore = true, _loading = false;
+
+  /* Backend-driven browsing. When a trigger carries a section or a genre the
+     overlay asks the API for that exact slice; nothing is filtered, padded or
+     synthesized in the browser. Local `stories` remain only for pages that
+     hand the overlay a pre-fetched list (e.g. Continue Reading). */
+  let _remote = false;
+  let _section = '';
+  let _genre = 'all';
+  let _storyCount = 0, _writersPlaced = false, _adIndex = 0;
 
   let _stories = STORIES_BASE.slice();
   let _hooks = {
@@ -320,46 +341,41 @@
         expanded = expanded.filter(s => s.genre === _filter);
       }
     }
-    /* Taste-picker personalization (Recommended view only): stories matching
-       the reader's selected genres float to the top, original order kept
-       within each group. Same dro_tastes key the Discover page writes. */
-    if (_mode === 'section' && _tune) {
-      var tastes = null;
-      try { tastes = JSON.parse(localStorage.getItem('dro_tastes') || 'null'); } catch (e) {}
-      if (tastes && Array.isArray(tastes.genres) && tastes.genres.length) {
-        var want = tastes.genres.map(function (g) { return String(g).toLowerCase(); });
-        var scoreOf = function (it) { return want.indexOf(String(it.genre || '').toLowerCase()) !== -1 ? 1 : 0; };
-        expanded = expanded
-          .map(function (s, i) { return { s: s, i: i }; })
-          .sort(function (a, b) { return (scoreOf(b.s) - scoreOf(a.s)) || (a.i - b.i); })
-          .map(function (x) { return x.s; });
-      }
-    }
+    /* No client-side re-ranking. Recommended ordering is the backend's job
+       (discover/service ranks by taste and reading history); this overlay only
+       renders the order it receives. */
 
+    // Ads and the one writers row are UI extras from live ad inventory; the
+    // story objects themselves are passed through untouched.
+    return _withExtras(expanded);
+  }
+
+  /* Interleave backend ad inventory (and one writers row) into a page of
+     stories. Story fields are never touched here. */
+  function _withExtras(items) {
     const withExtras = [];
-    let adI = 0;
-    let writerRowPlaced = false;
-    expanded.forEach((s, i) => {
-      withExtras.push(s);
+    items.forEach(s => {
+      withExtras.push(Object.assign({ type: 'story' }, s, { img: s.img || s.cover || '' }));
+      _storyCount++;
 
       // One top-writers row, inserted once near the top of the list view.
-      if (!writerRowPlaced && i === 3) {
+      if (!_writersPlaced && _storyCount === 3) {
         withExtras.push({ type: 'writers', id: 'writers-row' });
-        writerRowPlaced = true;
+        _writersPlaced = true;
       }
 
-      if ((i + 1) % AD_INTERVAL === 0) {
-        const kind = AD_CYCLE[adI % AD_CYCLE.length];
+      if (_storyCount % AD_INTERVAL === 0) {
+        const kind = AD_CYCLE[_adIndex % AD_CYCLE.length];
         // Pull from live ad inventory; skip the slot entirely when the pool is
         // empty (no ads configured → no filler demo ads).
         if (kind === 'platform' && LIVE_PLATFORM_ADS.length) {
-          const ad = LIVE_PLATFORM_ADS[adI % LIVE_PLATFORM_ADS.length];
-          withExtras.push(Object.assign({ type: 'platformAd', id: 'pad-' + adI }, ad));
+          const ad = LIVE_PLATFORM_ADS[_adIndex % LIVE_PLATFORM_ADS.length];
+          withExtras.push(Object.assign({ type: 'platformAd', id: 'pad-' + _adIndex }, ad));
         } else if (kind !== 'platform' && LIVE_BOOK_ADS.length) {
-          const ad = LIVE_BOOK_ADS[adI % LIVE_BOOK_ADS.length];
-          withExtras.push(Object.assign({ type: 'bookAd', id: 'bad-' + adI }, ad));
+          const ad = LIVE_BOOK_ADS[_adIndex % LIVE_BOOK_ADS.length];
+          withExtras.push(Object.assign({ type: 'bookAd', id: 'bad-' + _adIndex }, ad));
         }
-        adI++;
+        _adIndex++;
       }
     });
     return withExtras;
@@ -488,7 +504,7 @@
     _root.innerHTML = `
       <div class="bro-topbar">
         <div class="bro-toprow">
-          <button class="bro-back" aria-label="Close"><i class="fas fa-arrow-left"></i></button>
+          <button class="bro-back" aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="bro-title" id="broTitle">Browse</div>
           <button class="bro-tune" id="broTune" style="display:none"><i class="fas fa-sliders" style="font-size:9px"></i> Tune</button>
         </div>
@@ -590,6 +606,9 @@
   function _setFilter(g) {
     if (g === _filter) return;
     _filter = g;
+    _genre = g;
+    _section = '';
+    _remote = true;
     _genreBarEl.querySelectorAll('[data-bro-genre]').forEach(p => p.classList.toggle('on', p.dataset.broGenre === g));
     _reset();
   }
@@ -609,8 +628,31 @@
     _loadNext();
   }
 
+  /* Ask the backend for one page of the selected section/genre. The response
+     is rendered as-is: no filtering, padding, re-ranking or field invention. */
+  async function _fetchStories(page) {
+    const q = new URLSearchParams();
+    q.set('page', String(page));
+    q.set('limit', String(PAGE_SIZE));
+    if (_section) q.set('section', _section);
+    if (_genre && _genre !== 'all') q.set('genre', _genre);
+    if (_section === 'recommended') {
+      let t = null;
+      try { t = JSON.parse(localStorage.getItem('dro_tastes') || 'null'); } catch (e) {}
+      const g = (t && Array.isArray(t.genres) ? t.genres : [])
+        .map(x => String(x).trim()).filter(Boolean).slice(0, 4);
+      if (g.length) q.set('taste', g.join(','));
+    }
+    const res = await fetch(STORIES_API + '?' + q.toString(), { credentials: 'include' });
+    if (!res.ok) throw new Error('stories ' + res.status);
+    const j = await res.json();
+    const items = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
+    return { items, hasMore: j.hasMore === true };
+  }
+
   function _reset() {
-    _page = 1; _loading = false;
+    _page = 1; _loading = false; _hasMore = true;
+    _storyCount = 0; _writersPlaced = false; _adIndex = 0;
     _listEl.className = _mode === 'collections' ? 'dcc-grid' : 'bro-list';
     // inject collection grid CSS once when needed
     if (_mode === 'collections' && !document.getElementById('dcc-style')) {
@@ -641,6 +683,12 @@
       _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading more…';
       return;
     }
+    if (_remote) {
+      _loaderEl.classList.remove('hidden');
+      _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading…';
+      _loadNext();
+      return;
+    }
     _pool = _buildPool();
     _afterPool();
   }
@@ -649,25 +697,42 @@
     if (_loading || !_hasMore) return;
     _loading = true;
     _loaderEl.classList.remove('hidden');
-    _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading more…';
+    _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading…';
 
-    // Simulated background fetch — the IntersectionObserver rootMargin means
-    // this typically starts well before the user reaches the bottom.
-    await new Promise(r => setTimeout(r, 450));
+    let items = [];
+    let hasMore = false;
+    try {
+      if (_remote) {
+        const page = await _fetchStories(_page);
+        items = page.items;
+        hasMore = page.hasMore && items.length > 0;
+        _page++;
+      } else {
+        const start = (_page - 1) * PAGE_SIZE;
+        items = _pool.slice(start, start + PAGE_SIZE);
+        _page++;
+        hasMore = start + PAGE_SIZE < _pool.length;
+      }
+    } catch (e) {
+      _hasMore = false;
+      _loaderEl.innerHTML = 'Could not load stories. '
+        + '<button type="button" class="bro-retry" style="border:none;background:none;color:var(--bro-acc,#ff2d55);font-weight:800;cursor:pointer">Retry</button>';
+      const retry = _loaderEl.querySelector('.bro-retry');
+      if (retry) retry.addEventListener('click', () => { _hasMore = true; _loadNext(); });
+      _loading = false;
+      return;
+    }
 
-    const start = (_page - 1) * PAGE_SIZE;
-    const items = _pool.slice(start, start + PAGE_SIZE);
-    _page++;
-    _hasMore = start + PAGE_SIZE < _pool.length;
-
-    if (_page === 2 && items.length === 0) {
-      _emptyEl.classList.add('show');
+    if (!items.length) {
+      _hasMore = false;
+      if (_page === 2) _emptyEl.classList.add('show');
       _loaderEl.classList.add('hidden');
       _loading = false;
       return;
     }
 
-    const html = items.map(s => _listItemHTML(s)).join('');
+    _hasMore = hasMore;
+    const html = _withExtras(items).map(s => _listItemHTML(s)).join('');
     _listEl.insertAdjacentHTML('beforeend', html);
 
     if (!_hasMore) {
@@ -686,8 +751,16 @@
     if (opts.mode === 'collections' || opts.mode === 'continueReading') _mode = opts.mode;
     else _mode = opts.mode === 'genre' ? 'genre' : (opts.mode === 'section' ? 'section' : (opts.filter ? 'genre' : 'section'));
     _title = opts.title || (_mode === 'genre' ? 'Browse Stories' : 'Browse');
-    _filter = _mode === 'genre' ? (opts.filter || 'all') : 'all';
     _tune = opts.tune === true;
+
+    _section = String(opts.section || '').trim().toLowerCase();
+    _genre = String(opts.genre || opts.filter || 'all').trim().toLowerCase() || 'all';
+    if (!_section && opts.sort) _section = SORT_SECTION[String(opts.sort).toLowerCase()] || '';
+    _remote = !!(opts.remote || _section || opts.genre || opts.filter || opts.sort);
+    if (_mode === 'collections' || _mode === 'continueReading') {
+      _remote = false; _section = ''; _genre = 'all';
+    }
+    _filter = _mode === 'genre' ? _genre : 'all';
 
     _titleEl.textContent = _title;
     _tuneEl.style.display = _tune ? '' : 'none';
@@ -727,10 +800,17 @@
     if (!trigger) return;
     e.preventDefault();
     const mode = trigger.dataset.browseMode || (trigger.dataset.browseFilter ? 'genre' : 'section');
+    const filter = trigger.dataset.browseFilter || trigger.dataset.browseGenre || '';
+    // A trigger without a section or genre means "the whole catalogue";
+    // the backend decides what that contains.
+    const section = trigger.dataset.browseSection || (filter ? '' : 'all');
     open({
       title: trigger.dataset.browseTitle || '',
       mode,
-      filter: trigger.dataset.browseFilter || 'all',
+      section,
+      genre: trigger.dataset.browseGenre || filter || 'all',
+      filter,
+      sort: trigger.dataset.browseSort || '',
       tune: trigger.hasAttribute('data-browse-tune'),
     });
   });

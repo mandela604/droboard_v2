@@ -291,28 +291,113 @@ async function discoverData(viewerId, taste) {
   };
 }
 
-async function discoverStories({ page, limit, viewerId }) {
+/* Shared visibility filter for catalogue reads. */
+function bookBaseFilter(viewerId, excludedSet) {
+  const filter = { status: { $in: ['ongoing', 'completed', 'published'] } };
+  if (viewerId && excludedSet && excludedSet.size) {
+    filter.$or = [
+      { authorId: { $nin: [...excludedSet] } },
+      { authorId: viewerId },
+    ];
+  }
+  return filter;
+}
+
+function rxEsc(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function paginateList(list, pg, lim) {
+  const start = (pg - 1) * lim;
+  return { items: list.slice(start, start + lim), hasMore: start + lim < list.length };
+}
+
+/* Section keys double as the backend's definition of each "View All" row, so
+   the overlay shows exactly the same books as the row it was opened from. */
+const SECTION_SORT = {
+  top_rated: { rating: -1, reads: -1, _id: -1 },
+  trending: { reads: -1, _id: -1 },
+  top_romance: { reads: -1, _id: -1 },
+  recently_updated: { updatedAt: -1, _id: -1 },
+  new_releases: { updatedAt: -1, _id: -1 },
+  complete: { reads: -1, _id: -1 },
+  all: { updatedAt: -1, _id: -1 },
+};
+const SORT_SECTION = {
+  rating: 'top_rated',
+  popular: 'trending',
+  new: 'new_releases',
+  updated: 'recently_updated',
+};
+
+/* GET /api/discover/stories
+   section: top_rated | top_romance | trending | new_releases | editors_picks |
+            recommended | complete | recently_updated | all
+   genre:   catalogue genre slug/name (romance, billionaire, mafia…)
+   No section + no genre = the full catalogue, newest first.
+   Every story field in the response comes from the DB via cardShape(). */
+async function discoverStories({ page, limit, viewerId, section, genre, sort, taste }) {
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const lim = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
-  const filter = { status: { $in: ['ongoing', 'completed', 'published'] } };
-  if (viewerId) {
-    const excluded = await excludedAuthors(viewerId);
-    if (excluded.size) {
-      filter.$or = [
-        { authorId: { $nin: [...excluded] } },
-        { authorId: viewerId },
-      ];
-    }
+  let key = String(section || '').trim().toLowerCase();
+  if (!key && sort) key = SORT_SECTION[String(sort).toLowerCase()] || '';
+
+  let genreKey = String(genre || '').trim();
+  if (!genreKey && key === 'top_romance') genreKey = 'romance';
+  const genreRx = genreKey && genreKey.toLowerCase() !== 'all'
+    ? new RegExp(rxEsc(genreKey), 'i')
+    : null;
+
+  const excluded = viewerId ? await excludedAuthors(viewerId) : new Set();
+
+  // Curated row: the Chief's FeaturedPlacement order, filtered by visibility.
+  if (key === 'editors_picks') {
+    const now = new Date();
+    const placements = await FeaturedPlacement.find({
+      sectionKey: 'editors-picks',
+      active: true,
+      $and: [
+        { $or: [{ startAt: { $lte: now } }, { startAt: null }, { startAt: { $exists: false } }] },
+        { $or: [{ endAt: { $gte: now } }, { endAt: null }, { endAt: { $exists: false } }] },
+      ],
+    }).sort({ order: 1, createdAt: -1 }).limit(100).lean();
+    const ids = [];
+    placements.forEach(p => {
+      const id = String(p.bookId || '');
+      if (id && ids.indexOf(id) === -1) ids.push(id);
+    });
+    const books = ids.length
+      ? await Book.find({ id: { $in: ids }, status: { $in: ['ongoing', 'completed', 'published'] } }).lean()
+      : [];
+    const byId = {};
+    books.forEach(b => { byId[b.id] = b; });
+    const am = await authorMap(books.map(b => b.authorId));
+    let list = ids.map(id => byId[id]).filter(Boolean);
+    if (genreRx) list = list.filter(b => genreRx.test(b.genre || ''));
+    return paginateList(list.map(b => cardShape(b, am[b.authorId])), pg, lim);
   }
+
+  // Recommended is the same ranked list the Discover row renders.
+  if (key === 'recommended') {
+    const tasteArr = String(taste || '').split(',').map(s => s.trim()).filter(Boolean);
+    const d = await discoverData(viewerId, tasteArr);
+    let list = d.recommended || [];
+    if (genreRx) list = list.filter(b => genreRx.test(b.genre || ''));
+    return paginateList(list, pg, lim);
+  }
+
+  const filter = bookBaseFilter(viewerId, excluded);
+  if (genreRx) filter.genre = genreRx;
+  if (key === 'top_rated') filter.rating = { $gt: 0 };
+  if (key === 'complete') filter.status = 'completed';
+
+  const order = SECTION_SORT[key] || (genreRx ? { reads: -1, _id: -1 } : { updatedAt: -1, _id: -1 });
   const [books, total] = await Promise.all([
-    // _id tiebreaker: updatedAt ties (same-second publishes) otherwise make
-    // skip/limit unstable, so a reader scrolling the list sees duplicates.
-    Book.find(filter).sort({ updatedAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
+    // _id tiebreaker: ties (same-second publishes) otherwise make skip/limit
+    // unstable, so a reader scrolling the list sees duplicates.
+    Book.find(filter).sort(order).skip((pg - 1) * lim).limit(lim).lean(),
     Book.countDocuments(filter),
   ]);
   const am = await authorMap(books.map(b => b.authorId));
-  const items = books.map(b => cardShape(b, am[b.authorId]));
-  return { items, hasMore: pg * lim < total };
+  return { items: books.map(b => cardShape(b, am[b.authorId])), hasMore: pg * lim < total };
 }
 
 async function libraryStats(userId) {

@@ -32,7 +32,16 @@ router.get('/discover', optionalAuth, generalLimiter, validate(z.object({ query:
   taste: z.string().max(200).optional(),
 }).passthrough() })), ctrl.discover);
 router.get('/discover/stories', optionalAuth, generalLimiter,
-  validate(z.object({ query: z.object({ page: pg.page, limit: pg.limit }).strict() })), ctrl.discoverStories);
+  validate(z.object({ query: z.object({
+    page: pg.page,
+    limit: pg.limit,
+    // Backend owns section/genre filtering so the overlay never re-filters
+    // or invents story fields in the browser.
+    section: z.string().max(30).optional(),
+    genre: z.string().max(60).optional(),
+    sort: z.string().max(20).optional(),
+    taste: z.string().max(200).optional(),
+  }).strict() })), ctrl.discoverStories);
 router.get('/discover/ads', generalLimiter, async (req, res) => {
   const base = require('../controllers/base.controller');
   const ads = require('../services/ads.service');
