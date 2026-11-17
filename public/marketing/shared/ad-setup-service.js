@@ -706,8 +706,28 @@
     } catch (e) {}
     return out;
   }
-  function storySource() {
-    return [];
+  /* Platform-wide catalogue search for "Promote a platform story".
+     Live /api/books — the console never invents a story, and the pick carries
+     the real story id so the creative links to the book, not to itself. */
+  async function searchStories(q) {
+    const res = await fetch('/api/books?q=' + encodeURIComponent(q) + '&limit=8', { credentials: 'include' });
+    if (!res.ok) return [];
+    const j = await res.json().catch(() => ({}));
+    return (j.items || []).map(function (b) {
+      return {
+        id: b.id,
+        title: b.title || '',
+        author: b.author || (b.handle ? '@' + b.handle : ''),
+        cat: b.genre || '',
+        genre: b.genre || '',
+        cover: b.cover || b.img || '',
+        rating: b.rating || 0,
+        reads: compactN(b.reads),
+        chapters: b.chapterCount || 0,
+        desc: b.synopsis || '',
+        authorAv: b.authorAv || b.authorAvatar || (window.DroboardPeople && DroboardPeople.avatarFor ? DroboardPeople.avatarFor(b.author) : ''),
+      };
+    });
   }
   function fillFromStory(s) {
     var set = function (key, val) {
@@ -1082,13 +1102,21 @@
         });
       });
       var si = $('suStorySearch');
-      if (si) si.addEventListener('input', function () {
-        var q = si.value.trim().toLowerCase();
-        if (!q) { $('suStoryHits').innerHTML = ''; return; }
-        renderHits('suStoryHits', storySource().filter(function (s) {
-          return ((s.title || '').toLowerCase().indexOf(q) !== -1) || ((s.author || '').toLowerCase().indexOf(q) !== -1);
-        }).slice(0, 6), 'story');
-      });
+      if (si) {
+        var storySeq = 0;
+        si.addEventListener('input', function () {
+          var q = si.value.trim();
+          var box = $('suStoryHits');
+          if (!q) { if (box) box.innerHTML = ''; return; }
+          var seq = ++storySeq;
+          searchStories(q).then(function (hits) {
+            if (seq !== storySeq) return; // a newer keystroke won
+            renderHits('suStoryHits', hits, 'story');
+          }).catch(function () {
+            if (seq === storySeq) renderHits('suStoryHits', [], 'story');
+          });
+        });
+      }
       var opSi = $('suOfferPickSearch');
       if (opSi) opSi.addEventListener('input', function () {
         var q = opSi.value.trim().toLowerCase();
