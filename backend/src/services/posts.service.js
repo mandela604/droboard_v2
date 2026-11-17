@@ -13,7 +13,9 @@ const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'faceboo
 function canWrite(post, user) {
   if (!user) return false;
   if ((user.roles || []).includes('admin')) return true;
-  return String(post.authorId) === String(user.id);
+  if (String(post.authorId) === String(user.id)) return true;
+  // Page posts are authored by @droboard; its managers may moderate them.
+  return !!post.page && isPageManager(user.id);
 }
 
 // Composer payload → stored shape. Both dialects converge: poll opts strings
@@ -93,6 +95,58 @@ const RECOMMEND_MIN_CHAPTERS = 3;
 // Roles allowed to publish into a platform page (the official Droboard page).
 const PAGE_POST_ROLES = ['admin', 'senior_editor', 'chief_editor', 'marketing'];
 
+// The official page account owns every page post so cards read @droboard on
+// every surface. Managers are recorded on `postedBy` for the audit trail.
+async function pageAccountId() {
+  const { User } = require('../models/user.model');
+  const u = await User.findOne({ username: 'droboard' }).select('id _id').lean().catch(() => null);
+  return u ? String(u.id || u._id) : null;
+}
+async function isPageManager(userId) {
+  if (!userId) return false;
+  const { PageManager } = require('../models/social.model');
+  const mgr = await PageManager.findOne({ userId: String(userId) }).select('role').lean().catch(() => null);
+  if (mgr) return true;
+  const { User: U } = require('../models/user.model');
+  const u = await U.findOne({ id: String(userId) }).select('roles').lean().catch(() => null);
+  return !!(u && (u.roles || []).some(r => PAGE_POST_ROLES.includes(String(r))));
+}
+
+// Shoutout numbers are hydrated on the SERVER from the shouted user's real
+// data. The client used to send zeros for private profiles or before its
+// async profile fetch resolved — which is why shoutouts showed 0 everywhere.
+async function hydrateShoutout(s) {
+  if (!s) return s;
+  const { ReadingProgress } = require('../models/social.model');
+  const { Book } = require('../models/content.model');
+  const { User } = require('../models/user.model');
+  const key = String(s.userId || s.id || s.handle || '').replace(/^@/, '');
+  if (!key) return s;
+  const user = await User.findOne({ $or: [{ id: key }, { username: key }] })
+    .select('id username fullName avatar roles followerCount').lean().catch(() => null);
+  if (!user) return s;
+  const uid = String(user.id);
+  const [books, progress] = await Promise.all([
+    Book.find({ authorId: uid }).select('reads likes').lean().catch(() => []),
+    ReadingProgress.find({ userId: uid }).select('secondsSpent finished').lean().catch(() => []),
+  ]);
+  const reads = books.reduce((n, b) => n + (Number(b.reads) || 0), 0);
+  const followers = Number(user.followerCount) || 0;
+  const hours = Math.round(progress.reduce((n, p) => n + (Number(p.secondsSpent) || 0), 0) / 3600);
+  const finished = progress.filter(p => p.finished).length;
+  const isWriter = (user.roles || []).includes('writer');
+  return Object.assign({}, s, {
+    id: uid, userId: uid,
+    name: user.fullName || user.username || s.name || '',
+    handle: user.username || s.handle || '',
+    avatar: user.avatar || s.avatar || '',
+    role: isWriter ? 'Writer' : 'Reader',
+    stats: { reads, followers, books: books.length, likes: books.reduce((n, b) => n + (Number(b.likes) || 0), 0) },
+    readingHours: hours,
+    chaptersRead: finished,
+  });
+}
+
 async function createPost({ authorId, data }) {
   if (data.type === 'recommendation' && data.storyRef && data.storyRef.id) {
     const { ReadingProgress } = require('../models/social.model');
@@ -106,13 +160,16 @@ async function createPost({ authorId, data }) {
   // A post can belong to a platform PAGE (the official Droboard page). Only
   // staff may post into one — a reader cannot inject themselves into it.
   if (payload.page) {
-    const { User } = require('../models/user.model');
-    const u = await User.findOne({ id: String(authorId) }).select('roles').lean().catch(() => null);
-    const staff = !!(u && (u.roles || []).some(r => PAGE_POST_ROLES.includes(String(r))));
-    if (staff) payload.page = String(payload.page).slice(0, 40);
-    else delete payload.page;
+    if (!await isPageManager(authorId)) {
+      const e = new Error('page_post_forbidden'); e.status = 403; throw e;
+    }
+    payload.page = String(payload.page).slice(0, 40);
+    if (payload.shoutout) payload.shoutout = await hydrateShoutout(payload.shoutout);
+    // The page account is the author; the human manager is recorded separately.
+    const pageId = await pageAccountId();
+    if (pageId) { payload.postedBy = String(authorId); payload.authorId = pageId; }
   }
-  const post = await Post.create(Object.assign({}, payload, { authorId }));
+  const post = await Post.create(Object.assign({}, payload, { authorId: payload.authorId || authorId }));
   await counters.bump(post.authorId, 'postCount', 1);
   return (await shape([post], authorId))[0];
 }
@@ -268,6 +325,9 @@ async function updatePost({ post, data, viewerId }) {
     normContent(data);
     post.debateData = data.debateData;
     post.debateData.votes = [];
+  }
+  if (data.shoutout !== undefined) {
+    post.shoutout = await hydrateShoutout(data.shoutout);
   }
   await post.save();
   return (await shape([post], viewerId))[0];
@@ -521,9 +581,72 @@ async function sharePost({ post, channel, userId }) {
   return { counted: true, sharesCount: post.sharesCount, byChannel };
 }
 
+/* ── Official page: manager roster + editable copy ─────────────────────── */
+async function listManagers() {
+  const { PageManager, User } = require('../models/social.model');
+  const { User: U } = require('../models/user.model');
+  const rows = await PageManager.find({}).sort({ createdAt: -1 }).lean().catch(() => []);
+  const users = await U.find({ id: { $in: rows.map(r => String(r.userId)).filter(Boolean) } })
+    .select('id username fullName avatar').lean().catch(() => []);
+  const byId = {}; users.forEach(u => { byId[String(u.id)] = u; });
+  return rows.map(r => {
+    const u = byId[String(r.userId)] || {};
+    return {
+      handle: String(r.handle).replace(/^@/, ''),
+      userId: r.userId || '', role: r.role,
+      name: u.fullName || u.username || r.handle,
+      avatar: u.avatar || '',
+    };
+  });
+}
+async function addManager({ handle, role }, actorId) {
+  const { PageManager } = require('../models/social.model');
+  const { User } = require('../models/user.model');
+  const h = String(handle || '').replace(/^@/, '').trim().toLowerCase();
+  if (!h) { const e = new Error('bad_handle'); e.status = 400; throw e; }
+  const u = await User.findOne({ username: h }).select('id').lean().catch(() => null);
+  const doc = await PageManager.findOneAndUpdate(
+    { handle: h },
+    { $set: { role: role === 'admin' ? 'admin' : 'editor', userId: u ? String(u.id) : '', addedBy: String(actorId || '') } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  return { handle: doc.handle, role: doc.role, userId: doc.userId || '' };
+}
+async function updateManagerRole(handle, role) {
+  const { PageManager } = require('../models/social.model');
+  const h = String(handle || '').replace(/^@/, '');
+  const doc = await PageManager.findOneAndUpdate({ handle: h }, { $set: { role: role === 'admin' ? 'admin' : 'editor' } }, { new: true });
+  if (!doc) { const e = new Error('not_found'); e.status = 404; throw e; }
+  return { handle: doc.handle, role: doc.role };
+}
+async function removeManager(handle) {
+  const { PageManager } = require('../models/social.model');
+  await PageManager.deleteOne({ handle: String(handle || '').replace(/^@/, '') });
+  return { ok: true };
+}
+async function canManagePage(userId) { return isPageManager(userId); }
+async function getPageSettings() {
+  const { PageSettings } = require('../models/social.model');
+  let doc = await PageSettings.findOne({ page: 'droboard' }).lean().catch(() => null);
+  if (!doc) doc = await PageSettings.create({ page: 'droboard' });
+  return { bio: doc.bio || '', blurb: doc.blurb || '', links: doc.links || [], rules: doc.rules || [] };
+}
+async function savePageSettings(data, actorId) {
+  const { PageSettings } = require('../models/social.model');
+  const patch = {};
+  ['bio', 'blurb'].forEach(k => { if (data[k] !== undefined) patch[k] = String(data[k]).slice(0, 5000); });
+  if (Array.isArray(data.links)) patch.links = data.links.map(String).slice(0, 30);
+  if (Array.isArray(data.rules)) patch.rules = data.rules.map(String).slice(0, 50);
+  patch.updatedBy = String(actorId || '');
+  const doc = await PageSettings.findOneAndUpdate({ page: 'droboard' }, { $set: patch }, { upsert: true, new: true, setDefaultsOnInsert: true });
+  return { bio: doc.bio || '', blurb: doc.blurb || '', links: doc.links || [], rules: doc.rules || [] };
+}
+
 module.exports = {
   POST_TYPES, createPost, listPosts, savedPosts, getPost, updatePost, deletePost,
   shape,
   toggleLike, toggleSave, toggleHide, clearSaved, votePoll, retractPollVote, voteDebate, retractDebateVote, loadOr404, canWrite,
   reactToPost, unreactPost, reactionState, sharePost,
+  listManagers, addManager, updateManagerRole, removeManager, canManagePage,
+  getPageSettings, savePageSettings,
 };

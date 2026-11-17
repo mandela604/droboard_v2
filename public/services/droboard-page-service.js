@@ -52,8 +52,17 @@ async function canManage(handle, need){
   const user = await getCurrentUser();
   if (!user) return false;
   const roles = rolesOf(user);
-  if (need === 'post') return roles.indexOf('admin') !== -1 || roles.indexOf('senior_editor') !== -1 || roles.indexOf('chief_editor') !== -1;
   if (need === 'manage_roles') return roles.indexOf('admin') !== -1;
+  if (need === 'post') {
+    // The backend owns the page-manager roster — ask it, never guess from
+    // client-side role names alone.
+    try {
+      const j = await api('/page/me/manager');
+      return !!(j && j.canPost);
+    } catch (e) {
+      return roles.indexOf('admin') !== -1 || roles.indexOf('senior_editor') !== -1 || roles.indexOf('chief_editor') !== -1;
+    }
+  }
   return false;
 }
 
@@ -95,13 +104,26 @@ async function fetchCollections(){
   return Array.isArray(j) ? j : (j.items || []);
 }
 
-// Page managers: no backend route exists — fail loudly instead of faking a roster.
-function getManagers(){ throw new Error('Page managers API is not available yet (no backend route)'); }
-function addManager(){ throw new Error('Page managers API is not available yet (no backend route)'); }
-function updateManagerRole(){ throw new Error('Page managers API is not available yet (no backend route)'); }
-function removeManager(){ throw new Error('Page managers API is not available yet (no backend route)'); }
+// Page managers + editable copy — real backend endpoints.
+async function getManagers(){
+  const j = await api('/page/managers');
+  return (j && j.items) || [];
+}
+function addManager(handle, role){
+  return api('/page/managers', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ handle, role }) });
+}
+function updateManagerRole(handle, role){
+  return api('/page/managers/' + encodeURIComponent(handle), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ role }) });
+}
+function removeManager(handle){
+  return api('/page/managers/' + encodeURIComponent(handle), { method:'DELETE' });
+}
+function fetchPageCopy(){ return api('/page/settings'); }
+function persistPageCopy(patch){
+  return api('/page/settings', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patch) });
+}
 
-global.DroboardPageData = { fetchPosts, fetchCollections, canManage, canCurrentManage, createPost, getManagers, addManager, updateManagerRole, removeManager, API_BASE };
+global.DroboardPageData = { fetchPosts, fetchCollections, canManage, canCurrentManage, createPost, getManagers, addManager, updateManagerRole, removeManager, fetchPageCopy, persistPageCopy, API_BASE };
 
 // ── Page controller ──
 let _pageSettings={}; // in-memory UI preference (support strip visibility)
@@ -125,11 +147,19 @@ function mapPost(p){
   if (mapped.type === 'repost') mapped.type = 'recommendation';
   if(mapped.type==='shoutout' && mapped.shoutout && mapped.shoutout.id){
     const s = mapped.shoutout;
-    const name = s.name || 'Unknown';
-    const av   = s.avatar || DROBOARD_LOGO;
-    return Object.assign({}, mapped, { avatar: DROBOARD_LOGO, name: mapped.name || 'Droboard', shoutout:Object.assign({}, s, { name:name, avatar:av, following:!!FOLLOW_STATE[s.id], _writerId:s.id }) });
+    mapped.shoutout = Object.assign({}, s, {
+      name: s.name || 'Unknown',
+      avatar: s.avatar || DROBOARD_LOGO,
+      following: !!FOLLOW_STATE[s.id],
+      _writerId: s.id,
+    });
   }
-  return Object.assign({ avatar: DROBOARD_LOGO, name: 'Droboard' }, mapped);
+  // The page is the publisher — force its identity AFTER copying the server
+  // card so a legacy post authored by a former manager still reads @droboard.
+  mapped.avatar = DROBOARD_LOGO;
+  mapped.name = 'Droboard';
+  mapped.handle = '@droboard';
+  return mapped;
 }
 function findPostAnywhere(id){
   return POSTS.find(function(p){return String(p.id)===String(id)}) || null;
@@ -555,7 +585,7 @@ function attachPostCard(){
         const books=st.books!=null? (Array.isArray(st.books)?st.books.length:st.books) : '';
         if(reads!=='' || followers!=='' || books!=='') statBits='<span><b style="color:var(--tx-high)">'+esc(String(reads))+'</b> reads</span><span><b style="color:var(--tx-high)">'+esc(String(followers))+'</b> followers</span><span><b style="color:var(--tx-high)">'+esc(String(books))+'</b> books</span>';
       }
-      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+esc(s.avatar||'')+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+esc(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
+      return '<div class="dpc-body"><div class="drb-badge drb-badge-shout"><i class="fas fa-star"></i> Shoutout</div>'+(post.text?'<div class="pcc-text">'+esc(post.text)+'</div>':'')+'<div class="drb-shout-card" data-shout-open="'+post.id+'"><img class="drb-shout-av" src="'+esc(s.avatar||DROBOARD_LOGO)+'" loading="lazy"/><div class="drb-shout-info"><div class="drb-shout-name">@'+esc(s.name||'')+'</div><div class="drb-shout-tag">'+esc(s.tagline||'')+'</div>'+(statBits?'<div style="display:flex;gap:8px;margin-top:4px;font-size:10px;color:var(--tx-muted)">'+statBits+'</div>':'')+'</div><button class="drb-shout-follow'+(s.following?' ing':'')+'" data-shout-follow="'+esc(s.id||s._writerId||'')+'">'+(s.following?'✓ Following':'+ Follow')+'</button></div></div>';
     });
   }catch(e){}
 
@@ -724,30 +754,64 @@ function initCollections(){
      rows (founded date, social handles, support address) are gone. */
   const DEFAULT_RULES=['Be kind — debate the story, not the person.','Tag spoilers so everyone gets to feel the twist.','No harassment of writers or fellow readers.','Shoutouts and story picks are curated by the team, not paid placements.'];
   const SOCIAL_ICONS={ instagram:'fab fa-instagram', x:'fab fa-x-twitter', facebook:'fab fa-facebook', tiktok:'fab fa-tiktok', youtube:'fab fa-youtube', linkedin:'fab fa-linkedin', threads:'fab fa-threads', snapchat:'fab fa-snapchat', whatsapp:'fab fa-whatsapp', telegram:'fab fa-telegram', website:'fas fa-globe' };
-  function getAbout(){
-    // Static page copy — there is no droboard-page hero API to read from.
+  let _pageCopy = null;
+  async function getAbout(){
+    // Real, persisted page copy from the backend (falls back to markup copy).
+    try { _pageCopy = await global.DroboardPageData.fetchPageCopy(); } catch(e) { _pageCopy = null; }
     return {
-      bio: null, // null keeps the markup's static bio
-      blurb: null,
-      email: '',
-      support: '',
-      links: [],
-      rules: DEFAULT_RULES.slice()
+      bio: (_pageCopy && _pageCopy.bio) || null,
+      blurb: (_pageCopy && _pageCopy.blurb) || null,
+      email: '', support: '',
+      links: (_pageCopy && _pageCopy.links) || [],
+      rules: (_pageCopy && _pageCopy.rules && _pageCopy.rules.length) ? _pageCopy.rules : DEFAULT_RULES.slice(),
     };
   }
   function setText(id, v){ const el=document.getElementById(id); if(el && v!==undefined && v!==null) el.textContent=v; }
-  function renderAbout(){
-    const a=getAbout();
+  async function renderAbout(){
+    const a=await getAbout();
     setText('pageBio', a.bio);
     if(a.blurb) setText('aboutBlurb', a.blurb);
     setText('aboutContact', a.email&&a.support ? a.email+' · '+a.support : '');
     const linksBox=document.getElementById('aboutLinks');
     if(linksBox) linksBox.innerHTML=a.links.length ? a.links.map(function(l){
-      const icon=SOCIAL_ICONS[l.network]||'fas fa-globe';
-      return '<span style="color:var(--blue);font-size:12px;white-space:nowrap"><i class="'+icon+'"></i> '+esc(l.handle)+'</span>';
+      const str=String(l);
+      const icon=SOCIAL_ICONS[str.split(':')[0]]||'fas fa-globe';
+      return '<span style="color:var(--blue);font-size:12px;white-space:nowrap"><i class="'+icon+'"></i> '+esc(str)+'</span>';
     }).join('') : '<span style="font-size:11px;color:var(--tx-faint)">No links published</span>';
     const ul=document.getElementById('aboutRules'); if(ul) ul.innerHTML=a.rules.map(function(r){return '<li>'+esc(r)+'</li>'}).join('');
-    const eb=document.getElementById('aboutEditBtn'); if(eb) eb.style.display='none'; // page-info saving has no backend route yet
+    const eb=document.getElementById('aboutEditBtn'); if(eb) eb.style.display=(await canCurrentManage('post'))?'block':'none';
+    bindAboutEdit();
+  }
+  function bindAboutEdit(){
+    const btn=document.getElementById('aboutEditBtn'); if(!btn || btn._bound) return; btn._bound=true;
+    btn.addEventListener('click', async function(){
+      if(!await canCurrentManage('post')) return;
+      const a=await getAbout();
+      const box=document.createElement('div');
+      box.className='modal-overlay show';
+      box.innerHTML='<div class="modal-box" style="max-width:520px"><div class="modal-head"><h3>Edit page info</h3><button class="modal-close" id="AboutX"><i class="fas fa-xmark"></i></button></div>'
+        +'<div class="modal-body"><div class="drb-field"><label class="drb-label">Bio</label><textarea class="drb-textarea" id="abBio" rows="3">'+esc(a.bio||'')+'</textarea></div>'
+        +'<div class="drb-field"><label class="drb-label">About blurb</label><textarea class="drb-textarea" id="abBlurb" rows="3">'+esc(a.blurb||'')+'</textarea></div>'
+        +'<div class="drb-field"><label class="drb-label">Links (one per line)</label><textarea class="drb-textarea" id="abLinks" rows="2">'+esc((a.links||[]).join('\n'))+'</textarea></div>'
+        +'<div class="drb-field"><label class="drb-label">Community rules (one per line)</label><textarea class="drb-textarea" id="abRules" rows="4">'+esc((a.rules||[]).join('\n'))+'</textarea></div></div>'
+        +'<div class="modal-foot"><button class="mini-btn" id="abCancel">Cancel</button><button class="mini-btn primary" id="abSave">Save</button></div></div>';
+      document.body.appendChild(box);
+      const close=function(){ box.remove(); };
+      box.querySelector('#AboutX').addEventListener('click', close);
+      box.querySelector('#abCancel').addEventListener('click', close);
+      box.addEventListener('click', function(e){ if(e.target===box) close(); });
+      box.querySelector('#abSave').addEventListener('click', async function(){
+        const lines=function(id){ return (document.getElementById(id).value||'').split('\n').map(function(x){return x.trim()}).filter(Boolean); };
+        try{
+          await global.DroboardPageData.persistPageCopy({
+            bio: document.getElementById('abBio').value.trim(),
+            blurb: document.getElementById('abBlurb').value.trim(),
+            links: lines('abLinks'), rules: lines('abRules'),
+          });
+          close(); await renderAbout(); toast('✅ Page info saved');
+        }catch(e){ toast('Could not save page info — '+e.message); }
+      });
+    });
   }
   function getPageSettings(){ return Object.assign({showSupport:true}, _pageSettings||{}); }
   function savePageSettings(patch){ _pageSettings=Object.assign({},getPageSettings(),patch||{}); return _pageSettings; }

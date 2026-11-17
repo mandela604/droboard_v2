@@ -2,7 +2,9 @@
 // Thin compat aliases — reuse existing services, no new logic.
 const { z } = require('zod');
 const base = require('../controllers/base.controller');
-const { validate, generalLimiter } = require('../middleware/http');
+const { validate, generalLimiter, writeLimiter, audit } = require('../middleware/http');
+const { requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/guards');
 
 function Router() { return require('express').Router(); }
 const router = Router();
@@ -29,6 +31,37 @@ router.get('/droboard-page/collections', generalLimiter,
     const cols = require('../services/collections.service');
     return base.wrap(res, async () => cols.listCollections(req.valid.query));
   });
+
+// ── Official @droboard page: managers + editable copy ──────────────────
+const pageAuth = [requireAuth, requireRole('admin', 'senior_editor', 'chief_editor', 'marketing', 'editor', 'moderator')];
+const adminOnly = [requireAuth, requireRole('admin')];
+
+router.get('/page/managers', generalLimiter, async (req, res) =>
+  base.wrap(res, async () => ({ items: await require('../services/posts.service').listManagers() })));
+router.post('/page/managers', ...adminOnly, writeLimiter, audit('page.manager.add'),
+  validate(z.object({ body: z.object({ handle: z.string().min(1).max(40), role: z.enum(['admin', 'editor']).optional() }).strict() })),
+  async (req, res) => base.wrap(res, async () =>
+    require('../services/posts.service').addManager(req.valid.body, req.user.id)));
+router.patch('/page/managers/:handle', ...adminOnly, writeLimiter, audit('page.manager.role'),
+  validate(z.object({ params: z.object({ handle: z.string().min(1).max(40) }), body: z.object({ role: z.enum(['admin', 'editor']) }).strict() })),
+  async (req, res) => base.wrap(res, async () =>
+    require('../services/posts.service').updateManagerRole(req.valid.params.handle, req.valid.body.role)));
+router.delete('/page/managers/:handle', ...adminOnly, writeLimiter, audit('page.manager.remove'),
+  validate(z.object({ params: z.object({ handle: z.string().min(1).max(40) }) })),
+  async (req, res) => base.wrap(res, async () =>
+    require('../services/posts.service').removeManager(req.valid.params.handle)));
+router.get('/page/me/manager', generalLimiter, requireAuth, async (req, res) =>
+  base.wrap(res, async () => ({ canPost: await require('../services/posts.service').canManagePage(req.user.id) })));
+router.get('/page/settings', generalLimiter, async (req, res) =>
+  base.wrap(res, async () => require('../services/posts.service').getPageSettings()));
+router.patch('/page/settings', ...pageAuth, writeLimiter, audit('page.settings.patch'),
+  validate(z.object({ body: z.object({
+    bio: z.string().max(5000).optional(), blurb: z.string().max(5000).optional(),
+    links: z.array(z.string().max(300)).max(30).optional(),
+    rules: z.array(z.string().max(500)).max(50).optional(),
+  }).strict() })),
+  async (req, res) => base.wrap(res, async () =>
+    require('../services/posts.service').savePageSettings(req.valid.body, req.user.id)));
 
 // feed v1 compat (feed-data.js calls /v1/*)
 router.get('/v1/feed', generalLimiter, async (req, res) => {

@@ -89,19 +89,26 @@ function loadUserStats(u){
 // Real image upload (POST /api/uploads/image) — no data-URL blobs.
 function uploadImage(file){
   var fd = new FormData();
-  fd.append('file', file);
+  // The working feed composer supplies a filename — multer needs it to accept
+  // the field. Without it this composer's uploads silently failed.
+  fd.append('file', file, file.name || 'upload.png');
   return fetch('/api/uploads/image', { method:'POST', credentials:'include', body: fd })
     .then(function(res){
-      if(!res.ok) throw new Error('Image upload failed ('+res.status+')');
-      return res.json();
+      return res.json().catch(function(){ return {}; }).then(function(j){
+        if(!res.ok) throw new Error((j && (j.error || j.message)) || ('Image upload failed ('+res.status+')'));
+        return j;
+      });
     })
-    .then(function(j){ return (j && j.url) || ''; });
+    .then(function(j){
+      if(!j || !j.url) throw new Error('Image upload failed — no URL returned');
+      return j.url;
+    });
 }
 
 // ── Overlay composer ──
   let _overlay=null, _cur='announcement', _onPosted=null;
   function getOnPosted(){ return _onPosted || (global.DroboardComposer && global.DroboardComposer._onPosted) || null; }
-let _pickedUser=null, _pickedStory=null, _pickedImage='';
+let _pickedUser=null, _pickedStory=null, _pickedImage='', _statsLoading=false;
 let _forText='For', _againstText='Against'; // editable side labels for debates
 /* deadline chips — component/expiry-chips.js; silent no-op if a page omits it */
 function _expField(kind){ return window.DroboardExpiry ? DroboardExpiry.field(kind) : ''; }
@@ -245,7 +252,7 @@ function updateDebatePreview(){
 function updatePostBtn(){
   const btn=document.getElementById('drbPost'); if(!btn) return;
   let ok=false;
-  if(_cur==='shoutout') ok=!!_pickedUser;
+  if(_cur==='shoutout') ok=!!_pickedUser && !_statsLoading;
   else if(_cur==='repost') ok=!!_pickedStory;
   else {
     const titleEl=document.getElementById('drbTitleF');
@@ -294,13 +301,17 @@ function bindBodyEvents(){
               const w=hits.find(function(x){return String(x.id)===el.dataset.wid});
               if(!w) return;
               _pickedUser=w;
+              _statsLoading=true;
               document.getElementById('drbUserSearch').value='';
               drop.classList.remove('open');
               renderUserPicked(); updatePostBtn();
-              // Pull the person's live numbers (reads/followers/books, or their
-              // reading profile) so the shoutout card shows the real thing.
+              // Pull the person's live numbers so the preview shows real stats.
+              // The server re-hydrates them at publish time too, but blocking
+              // Post until this resolves removes the 0s race entirely.
               loadUserStats(w).then(function(full){
                 _pickedUser=full;
+              }).catch(function(){}).then(function(){
+                _statsLoading=false;
                 renderUserPicked(); updatePostBtn();
               });
             });
@@ -401,6 +412,10 @@ function renderUserPicked(){
   if(!_pickedUser){ box.innerHTML=''; return; }
   const w=_pickedUser;
   const role=w.role||'Writer';
+  if(_statsLoading){
+    box.innerHTML='<div class="drb-picked"><img class="drb-picked-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-picked-info"><div class="drb-picked-name">@'+esc(w.name)+'</div><div class="drb-picked-tag">'+esc(w.handle||w.id)+' · '+esc(role)+'</div><div class="drb-picked-stats"><i class="fas fa-circle-notch fa-spin"></i> Loading live stats…</div></div></div>';
+    return;
+  }
   let statsHtml;
   if(role==='Reader'){
     statsHtml='<span><b>'+esc(String(w.readingHours||0))+'</b>h read</span><span><b>'+esc(String(w.chaptersRead||0))+'</b> books finished</span><span><b>'+esc(String(w.streak||0))+'</b> day streak</span>';
@@ -412,7 +427,7 @@ function renderUserPicked(){
     statsHtml='<span><b>'+esc(reads>=1000? (reads/1000|0)+'k' : reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String(books))+'</b> books</span>';
   }
   box.innerHTML='<div class="drb-picked"><img class="drb-picked-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-picked-info"><div class="drb-picked-name">@'+esc(w.name)+'</div><div class="drb-picked-tag">'+esc(w.handle||w.id)+' · '+esc(role)+'</div><div class="drb-picked-stats">'+statsHtml+'</div></div><button class="drb-picked-x" id="drbClearUser"><i class="fas fa-xmark"></i></button></div>';
-  box.querySelector('#drbClearUser').addEventListener('click', function(){ _pickedUser=null; renderUserPicked(); updatePostBtn(); });
+  box.querySelector('#drbClearUser').addEventListener('click', function(){ _pickedUser=null; _statsLoading=false; renderUserPicked(); updatePostBtn(); });
 }
 function renderStoryPicked(){
   const box=document.getElementById('drbStoryPicked'); if(!box) return;
@@ -482,7 +497,7 @@ async function doPost(){
   }finally{ if(btn){ btn.textContent='Post'; btn.disabled=false; } }
 }
 
-function open(){ ensureOverlay(); _cur='announcement'; _pickedUser=null; _pickedStory=null; _pickedImage=''; renderTypes(); renderBody(); _overlay.classList.add('open'); document.body.style.overflow='hidden'; }
+function open(){ ensureOverlay(); _cur='announcement'; _pickedUser=null; _pickedStory=null; _pickedImage=''; _statsLoading=false; renderTypes(); renderBody(); _overlay.classList.add('open'); document.body.style.overflow='hidden'; }
 function close(){ if(_overlay) _overlay.classList.remove('open'); document.body.style.overflow=''; }
 
 // managers panel stays inline — reused

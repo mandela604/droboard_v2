@@ -17,6 +17,8 @@ const postSchema = new mongoose.Schema({
   // Droboard page owns its own posts, so its feed never shows the whole
   // platform's posts.
   page: { type: String, default: '', index: true },
+  // For page posts: the staff member who published it (the author is @droboard).
+  postedBy: { type: String, default: null, ref: 'User' },
   likesCount: { type: Number, default: 0 },
   likedBy: [{ type: String, ref: 'User' }],
   commentsCount: { type: Number, default: 0 },
@@ -417,6 +419,26 @@ const debateArgSchema = new mongoose.Schema({
 debateArgSchema.index({ postId: 1, parentId: 1, createdAt: 1 });
 debateArgSchema.index({ postId: 1, side: 1, up: -1 });
 
+// The official @droboard page has its own manager roster. Only these users
+// (plus admins) may publish to /api/posts with page:'droboard'. `editor` may
+// post; `admin` may also add/remove managers and edit page info.
+const pageManagerSchema = new mongoose.Schema({
+  handle: { type: String, required: true, lowercase: true, trim: true, unique: true, index: true },
+  userId: { type: String, default: null, ref: 'User' },
+  role: { type: String, enum: ['admin', 'editor'], default: 'editor' },
+  addedBy: { type: String, default: null, ref: 'User' },
+}, { timestamps: true });
+
+// Editable page copy (bio / links / rules). One row, keyed by `page`.
+const pageSettingsSchema = new mongoose.Schema({
+  page: { type: String, required: true, unique: true, default: 'droboard' },
+  bio: { type: String, default: '' },
+  blurb: { type: String, default: '' },
+  links: { type: [String], default: [] },
+  rules: { type: [String], default: [] },
+  updatedBy: { type: String, default: null, ref: 'User' },
+}, { timestamps: true });
+
 module.exports = {
   Post: mongoose.model('Post', postSchema),
   Comment: mongoose.model('Comment', commentSchema),
@@ -441,4 +463,6 @@ module.exports = {
   InsightHit: mongoose.model('InsightHit', insightHitSchema),
   InsightVisitor: mongoose.model('InsightVisitor', insightVisitorSchema),
   DebateArg: mongoose.model('DebateArg', debateArgSchema),
+  PageManager: mongoose.model('PageManager', pageManagerSchema),
+  PageSettings: mongoose.model('PageSettings', pageSettingsSchema),
 };
