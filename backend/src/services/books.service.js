@@ -173,8 +173,14 @@ async function getBookDetail(id, viewerId) {
     return Math.min(1, Math.max(0, (Number(r.pct) || 0) / 100));
   }
   const totalChapters = chapters.length;
+  // The rating gate (GET /stories/:id/rating) counts READING PROGRESS ROWS —
+  // one per chapter the reader opened. Use the same definition here so a book
+  // that says "2/3 chapters read" never says "not started" on the continue
+  // card. The finer fraction stays available as `chapterPct`.
+  const chaptersRead = rows.length;
   const readFraction = chapters.reduce((sum, c) => sum + fraction(rowFor(c)), 0);
-  const bookPct = totalChapters ? Math.min(100, Math.round((readFraction / totalChapters) * 100)) : 0;
+  const finePct = totalChapters ? Math.min(100, Math.round((readFraction / totalChapters) * 100)) : 0;
+  const bookPct = totalChapters ? Math.min(100, Math.round((chaptersRead / totalChapters) * 100)) : 0;
   const finishedCount = chapters.filter(c => fraction(rowFor(c)) >= 1).length;
 
   // Continue at the first chapter that is not fully read (prefer one already
@@ -198,6 +204,8 @@ async function getBookDetail(id, viewerId) {
     title: stopChapter.title || null,
     pct: bookPct,
     chapterPct,
+    finePct,
+    chaptersRead,
     finishedChapters: finishedCount,
     totalChapters,
     secondsSpent: totalSeconds,

@@ -115,7 +115,13 @@ function normalizeLive(b) {
       rating: stats.rating ? parseFloat(stats.rating).toFixed(1) : '–',
     },
     totalChapters: totalCh,
-    currentProgress: { chapter: continueChN, chapterTitle: continueChTitle, percent: continuePct, cid: cr ? cr.chapterId : null },
+    currentProgress: {
+      chapter: continueChN, chapterTitle: continueChTitle,
+      percent: continuePct, cid: cr ? cr.chapterId : null,
+      // Book-level "chapters read" — the same count the rating gate uses.
+      chaptersRead: (cr && cr.chaptersRead) || 0,
+      totalChapters: totalCh,
+    },
     genres: [b.genre].filter(Boolean),
     startDate: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—',
     lastUpdated: b.updatedAt ? timeAgo(new Date(b.updatedAt).getTime()) : '—',
@@ -463,7 +469,10 @@ async function refreshStats() {
 function paintContinueBanner() {
   const cp = STORY.currentProgress || {};
   document.getElementById('cbChName').textContent = cp.chapter ? `Ch${cp.chapter} — ${cp.chapterTitle}` : 'Start reading';
-  document.getElementById('cbChMeta').textContent = cp.percent > 0 ? `${cp.percent}% through this chapter` : 'Not started yet';
+  const read = cp.chaptersRead ? `${cp.chaptersRead} of ${cp.totalChapters} chapters read` : null;
+  document.getElementById('cbChMeta').textContent = cp.percent > 0
+    ? `${cp.percent}% complete · ${read || ('Ch ' + cp.chapter)}`
+    : (read || 'Not started yet');
   document.getElementById('cbProgress').style.width = (cp.percent || 0) + '%';
 }
 function paintFollowButton() {
@@ -754,7 +763,16 @@ function applyReadState(rs) {
     const ch = rows.find(c => String(c.cid) === lastId);
     if (ch) {
       const p = prog[ch.cid] || prog[String(ch.cid)] || {};
-      STORY.currentProgress = { chapter: ch.n, chapterTitle: ch.title, percent: Math.round(p.pct || 0), cid: ch.cid };
+      const keep = STORY.currentProgress || {};
+      STORY.currentProgress = {
+        chapter: ch.n, chapterTitle: ch.title,
+        // Keep the BOOK-level percentage and chapter count from /books/:id —
+        // the per-chapter pct alone made a partly-read book say "not started".
+        percent: keep.percent != null ? keep.percent : Math.round(p.pct || 0),
+        cid: ch.cid,
+        chaptersRead: keep.chaptersRead || 0,
+        totalChapters: keep.totalChapters || 0,
+      };
     }
   }
 }

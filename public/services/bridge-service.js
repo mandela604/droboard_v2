@@ -166,6 +166,7 @@
         progress: continuePct,
         chapterPct: continueChapterPct,
         started: !!(cr && cr.chapterId),
+        chaptersRead: (cr && cr.chaptersRead) || 0,
         finishedChapters: (cr && cr.finishedChapters) || 0,
         totalChapters: totalCh,
         timeLeft: cr && cr.secondsSpent ? fmtN(cr.secondsSpent) + 's read' : '',
@@ -438,8 +439,11 @@
     document.getElementById('rpTitle').textContent = c.chapterTitle;
     document.getElementById('rpBarFill').style.width = c.progress + '%';
     const total = c.totalChapters ? ' · Ch ' + c.chapterN + ' of ' + c.totalChapters : '';
+    // Same "chapters read" count the rating gate uses, so the two never
+    // contradict each other (e.g. 2/3 read vs "Not started yet").
+    const read = c.chaptersRead ? ' · ' + c.chaptersRead + ' chapter' + (c.chaptersRead === 1 ? '' : 's') + ' read' : '';
     document.getElementById('rpPct').textContent = c.started
-      ? c.progress + '% complete' + total
+      ? c.progress + '% complete' + total + read
       : 'Not started yet' + total;
     document.getElementById('rpLeft').textContent = c.timeLeft || (c.started ? 'Keep reading' : 'Start reading');
   }
