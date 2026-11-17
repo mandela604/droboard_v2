@@ -130,6 +130,8 @@ const discussionSchema = new mongoose.Schema({
   likedBy: [{ type: String, ref: 'User' }], // legacy simple like toggle
   reactions: { type: Map, of: Number, default: {} }, // rid -> count (per-user state in Reaction)
   commentsCount: { type: Number, default: 0 },
+  sharesCount: { type: Number, default: 0 },
+  sharesByChannel: { type: Map, of: Number, default: {} },
   // The hub's sticky house-rules card (discussion-service.js renders a
   // title+body-only OP when this is set) — a demo field, so a real column.
   pinned: { type: Boolean, default: false },
@@ -320,7 +322,7 @@ reactionSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true }
 // Counters stay denormalized on Post/Collection; this is the per-user trail.
 const shareEventSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
-  targetType: { type: String, enum: ['post', 'comment', 'collection', 'story'], required: true, index: true },
+  targetType: { type: String, enum: ['post', 'discussion', 'comment', 'collection', 'story'], required: true, index: true },
   targetId: { type: String, required: true, index: true },
   channel: { type: String, default: '' },
 }, { timestamps: { createdAt: true, updatedAt: false } });

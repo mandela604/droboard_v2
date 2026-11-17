@@ -43,6 +43,7 @@
     "smoke:debate:routing": "node scripts/smoke-debate-routing.cjs",
     "smoke:verification": "node scripts/smoke-verification-page.cjs",
     "smoke:reader:views": "node scripts/smoke-reader-views.cjs",
+    "smoke:discussion:share": "node scripts/smoke-discussion-share.cjs",
     "smoke:store": "node scripts/smoke-store.cjs",
     "smoke:author:dashboard": "node scripts/smoke-author-dashboard.cjs",
     "smoke:ratings": "node scripts/smoke-story-ratings.cjs",

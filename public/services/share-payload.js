@@ -177,7 +177,9 @@
       url: absolute(link),
       targetUrl: link,
       contentId: n.contentId || id,
-      contentType: n.contentType || (kind === 'story' ? 'books' : kind === 'post' || kind === 'hub' ? 'posts' : kind === 'collection' ? 'collections' : ''),
+      contentType: n.contentType && n.kind !== 'hub'
+        ? n.contentType
+        : (kind === 'hub' ? 'discussions' : kind === 'story' ? 'books' : kind === 'post' ? 'posts' : kind === 'collection' ? 'collections' : n.contentType || ''),
       title: sourceTitle(n),
       sub: sourceSub(n),
       text: sourceText(n),

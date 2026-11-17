@@ -597,7 +597,7 @@ async function chapterReactionState({ bookId, key, userId }) {
 // `status` / `profile` are the in-app destinations the same sheet posts to.
 const SHARE_CHANNELS = ['whatsapp', 'twitter', 'instagram', 'telegram', 'facebook', 'threads', 'reddit', 'copy', 'status', 'profile'];
 // Content families that can be shared through POST /api/share.
-const SHARE_TYPES = ['books', 'posts', 'collections'];
+const SHARE_TYPES = ['books', 'posts', 'collections', 'discussions'];
 
 function shareCounts(book) {
   return { sharesCount: book.sharesCount || 0 };
@@ -660,6 +660,43 @@ async function shareStory({ bookId, userId, channel }) {
   };
 }
 
+/* Hub threads (the "Trending in hubs" row and genre boards) are Discussion
+   docs, not Posts. They used to be shared as contentType 'posts', so the
+   backend looked for a Post and returned 404. */
+async function shareDiscussion({ id, userId, channel }) {
+  if (!SHARE_CHANNELS.includes(channel)) { const e = new Error('bad_channel'); e.status = 400; throw e; }
+  const { Discussion, ShareEvent } = require('../models/social.model');
+  const d = await Discussion.findOne({ id: String(id) });
+  if (!d) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const prev = await ShareEvent.findOne({
+    userId: String(userId), targetType: 'discussion', targetId: String(d.id),
+  }).select('channel createdAt').lean();
+  if (prev && prev.channel === channel && prev.createdAt &&
+      new Date(prev.createdAt).getTime() >= Date.now() - 10000) {
+    return {
+      counted: false, channel,
+      counts: { sharesCount: d.sharesCount || 0 },
+      channelShares: d.sharesByChannel ? Object.fromEntries(d.sharesByChannel) : {},
+      sharesCount: d.sharesCount || 0,
+    };
+  }
+  d.sharesCount = (d.sharesCount || 0) + 1;
+  const byCh = d.sharesByChannel || (d.sharesByChannel = new Map());
+  byCh.set(channel, (byCh.get(channel) || 0) + 1);
+  await d.save();
+  await ShareEvent.updateOne(
+    { userId: String(userId), targetType: 'discussion', targetId: String(d.id) },
+    { $set: { channel }, $currentDate: { createdAt: true }, $setOnInsert: { userId: String(userId), targetType: 'discussion', targetId: String(d.id) } },
+    { upsert: true }
+  ).catch(() => {});
+  return {
+    counted: true, channel,
+    counts: { sharesCount: d.sharesCount },
+    channelShares: Object.fromEntries(byCh),
+    sharesCount: d.sharesCount,
+  };
+}
+
 /* One endpoint for every shareable thing: the client always sends the content
    id + type, the server resolves that content and bumps its own counter. */
 async function shareContent({ contentType, contentId, userId, channel }) {
@@ -678,12 +715,34 @@ async function shareContent({ contentType, contentId, userId, channel }) {
   }
   if (type === 'posts' || type === 'post') {
     const posts = require('./posts.service');
-    const post = await posts.loadOr404(cid);
+    let post = null;
+    try { post = await posts.loadOr404(cid); }
+    catch (e) {
+      // Old call sites label hub threads as posts — resolve them as
+      // discussions instead of dead-ending on 404.
+      if (e.status === 404) {
+        const r = await shareDiscussion({ id: cid, userId, channel });
+        return {
+          contentType: 'discussions', contentId: cid, channel,
+          counted: r.counted, sharesCount: r.sharesCount,
+          counts: r.counts, channelShares: r.channelShares,
+        };
+      }
+      throw e;
+    }
     const r = await posts.sharePost({ post, channel, userId });
     return {
       contentType: 'posts', contentId: cid, channel,
       counted: r.counted !== false, sharesCount: r.sharesCount,
       counts: { sharesCount: r.sharesCount }, channelShares: r.byChannel,
+    };
+  }
+  if (type === 'discussions' || type === 'discussion') {
+    const r = await shareDiscussion({ id: cid, userId, channel });
+    return {
+      contentType: 'discussions', contentId: cid, channel,
+      counted: r.counted, sharesCount: r.sharesCount,
+      counts: r.counts, channelShares: r.channelShares,
     };
   }
   if (type === 'collections' || type === 'collection') {
@@ -760,5 +819,5 @@ module.exports = {
   reactStory, unreactStory, storyReactionState, STORY_RX,
   chapterRxCounts, reactChapter, unreactChapter, chapterReactionState,
   chapterReactionTotals, syncBookLikes,
-  shareStory, shareContent, SHARE_CHANNELS, SHARE_TYPES,
+  shareStory, shareDiscussion, shareContent, SHARE_CHANNELS, SHARE_TYPES,
 };
