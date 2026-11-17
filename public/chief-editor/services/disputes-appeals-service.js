@@ -26,7 +26,7 @@ async function init(){
   if(_daInitDone) return;
   _daInitDone = true;
 
-  const shell = ChiefEditorSidebar.attach('#disputesRoot',{activeItem:'disputes-appeals',title:'Disputes & Appeals',subtitle:'Resolve conflicts & appeals',user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6});
+  const shell = ChiefEditorSidebar.attach('#disputesRoot',{activeItem:'disputes-appeals',title:'Disputes & Appeals',subtitle:'Resolve conflicts & appeals',user:null,notifCount:6});
   var d = null;
   try{ d = await callBackend('/disputes-appeals'); }catch(e){ d = null; }
   if(!d){

@@ -22,7 +22,7 @@
  *     activeItem: 'dashboard',
  *     title: 'Chief Editor Dashboard',
  *     subtitle: 'Platform-wide editorial oversight',
- *     user: { name: 'Reina Morgan', role: 'Chief Editor', avatar: '...' },
+ *     user: null,
  *     notifCount: 5,
  *   });
  */

@@ -73,7 +73,7 @@ async function loadData(){
 }
 
 function init(){
-  const shell = ChiefEditorSidebar.attach('#partnershipsRoot',{activeItem:'partnerships',title:'Partnerships',subtitle:'Manage platform partnerships',user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6});
+  const shell = ChiefEditorSidebar.attach('#partnershipsRoot',{activeItem:'partnerships',title:'Partnerships',subtitle:'Manage platform partnerships',user:null,notifCount:6});
   return loadData();
 }
 

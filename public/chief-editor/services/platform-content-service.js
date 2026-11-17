@@ -300,7 +300,7 @@ async function init(){
     activeItem: 'platform-content',
     title: 'Platform Content',
     subtitle: 'Every book on Droboard, across every author',
-    user: { name:'Adaeze Bello', role:'Chief Editor', avatar:'https://i.pravatar.cc/100?img=47' },
+    user: null,
     notifCount: 0,
     searchPlaceholder: 'Search anything…',
     onSearch: (v) => { document.getElementById('searchInput').value = v; currentPage = 1; applyFilters(); },

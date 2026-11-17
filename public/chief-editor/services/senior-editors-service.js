@@ -26,6 +26,14 @@ function esc(s){
     return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
   });
 }
+/* Real avatar when present; a clean local fallback (same pattern as the admin
+   console) when the account has no image or the remote image fails to load. */
+var FALLBACK_AV = '../assets/droboard-icon.png';
+function photo(src, name, cls){
+  var s = (src && String(src).trim()) || FALLBACK_AV;
+  return '<img class="' + (cls || '') + '" src="' + esc(s) +
+    '" onerror="this.onerror=null;this.src=\'' + FALLBACK_AV + '\'" alt="' + esc(name || '') + '"/>';
+}
 /* Editor pay is a dollar figure ('$3,200'); restated in the currency Super
    Admin set. Typed-in pay text in the invite/quota sheets stays as entered. */
 function money(n){ if(window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n); return typeof n==='string' ? n : '$' + Number(n||0).toLocaleString('en-US'); }
@@ -55,45 +63,72 @@ var _gridBound=false;
 // Assign sheet pool: real writers from the backend when live, else the demo pool.
 function loadAuthorPool(){
   return Crud.listAuthors().then(function(remote){
-    if(remote && remote.items && remote.items.length){
+    if(remote && Array.isArray(remote.items)){
       return remote.items.map(function(u){
         return { id:u.id, handle:u.username || u.name, name:u.fullName || u.name, avatar:u.avatar,
                  genres:u.genres || [], reads:(u.followers || 0) + '', verified:false, books:u.books || 0 };
       });
     }
-    return ChiefEditorData.getAuthorPool();
-  });
+    return [];
+  }).catch(function(){ return []; });
 }
 
 function loadData(){
   ChiefEditorData.getSeniorEditors().then(function(d){
-    // Backend returns {items:[...], invites:[...]} or an array directly
-    let items = Array.isArray(d) ? d : (d && d.items ? d.items : []);
+    // Backend returns {items:[active editors], invites:[pending invites]}.
+    // Both must be mapped or invites vanish on every refresh.
+    var items = Array.isArray(d) ? d : (d && d.items ? d.items : []);
+    var invites = (d && d.invites) || [];
     if(!Array.isArray(items)) items = [];
-    
-    // Transform backend fields to frontend fields
+    if(!Array.isArray(invites)) invites = [];
+    function quotaOf(e){ return e.quota || {}; }
+    function dateOnly(v){ return v ? String(v).split('T')[0] : ''; }
+
     ALL = items.map(function(e){
+      var q = quotaOf(e);
       return {
         id: e.id,
-        name: e.fullName || e.username || '',
+        kind: 'editor',
+        name: e.fullName || e.name || e.username || '',
         email: e.email || '',
         avatar: e.avatar || '',
-        status: e.status || 'active',
+        status: q.quotaStatus || (e.status === 'active' ? 'on-track' : (e.status || 'on-track')),
+        accountStatus: e.status || 'active',
         authorsManaged: e.assignedAuthors || 0,
-        joined: e.createdAt ? e.createdAt.split('T')[0] : '',
+        joined: dateOnly(e.createdAt),
         openReports: e.openReports || 0,
-        // Invite/quota fields (from pending invite data, may be undefined for active editors)
-        target: (e.quota && e.quota.target) || 0,
-        invited: (e.quota && e.quota.invited) || 0,
-        deadline: (e.quota && e.quota.deadline) || '',
-        paymentType: (e.quota && e.quota.paymentType) || 'fixed',
-        monthlyPay: (e.quota && e.quota.monthlyPay) || '$0',
-        revenueShare: (e.quota && e.quota.revenueShare) || '',
-        ytdPaid: (e.quota && e.quota.ytdPaid) || 0,
+        target: q.target || 0,
+        invited: q.invited || 0,
+        deadline: q.deadline ? dateOnly(q.deadline) : '',
+        paymentType: q.paymentType || 'fixed',
+        monthlyPay: q.monthlyPay || '$0',
+        revenueShare: q.revenueShare || '',
+        ytdPaid: q.ytdPaid || 0,
         invitedAt: e.createdAt || ''
       };
-    });
-    
+    }).concat(invites.map(function(v){
+      return {
+        id: v.id,
+        kind: 'invite',
+        name: v.name || '',
+        email: v.email || '',
+        avatar: v.avatar || '',
+        status: 'pending',
+        authorsManaged: 0,
+        joined: dateOnly(v.createdAt),
+        openReports: 0,
+        target: v.target || 0,
+        invited: 0,
+        deadline: v.deadline ? dateOnly(v.deadline) : '',
+        paymentType: v.paymentType || 'fixed',
+        monthlyPay: v.monthlyPay || 0,
+        revenueShare: v.revenueShare || '',
+        ytdPaid: 0,
+        invitedAt: v.createdAt || '',
+        inviteToken: v.token || ''
+      };
+    }));
+
     return loadAuthorPool();
   }).then(function(d){
     authorPool = d;
@@ -102,7 +137,7 @@ function loadData(){
     renderStats(); applyFilters(); bindToolbar(); renderQueue();
   }).catch(function(e){
     console.error(e);
-    ALL = [];  // Reset to empty array on error
+    ALL = [];  // Never render demo rows when the backend fails
     document.getElementById('edGrid').innerHTML='<div class="empty-msg">Failed to load: ' + (e && e.message || 'network error') + '</div>';
   });
 }
@@ -192,7 +227,7 @@ function renderGrid(){
 
 function pendingCard(e){
   var h='<div class="ed-card" data-card-id="'+e.id+'"><div class="ed-top">';
-  h+='<img class="ed-avatar" src="'+e.avatar+'" alt=""/>';
+  h+=photo(e.avatar, e.name, 'ed-avatar');
   h+='<div class="ed-name-wrap"><div class="ed-name">'+e.name+'</div>';
   h+='<div class="ed-email">'+e.email+'</div></div>';
   h+='<div class="ed-top-right"><span class="ed-status pending">Pending</span>';
@@ -223,7 +258,7 @@ function activeCard(e){
   var sl=e.status==='behind'?'Behind':e.status==='ahead'?'Ahead':'On track';
   var ac=(assignments[e.id]||[]).length;
   var h='<div class="ed-card" data-card-id="'+e.id+'"><div class="ed-top">';
-  h+='<img class="ed-avatar" src="'+e.avatar+'" alt=""/>';
+  h+=photo(e.avatar, e.name, 'ed-avatar');
   h+='<div class="ed-name-wrap"><div class="ed-name">'+e.name;
   if(e.openReports>0) h+=' <span class="report-dot" title="'+e.openReports+' open report(s)"></span>';
   h+='</div><div class="ed-email">'+e.email+'</div></div>';
@@ -458,8 +493,8 @@ function getUnassigned(){
   // actually submit a book (editor-code signups are auto-assigned instead).
   return Crud.listUnassigned('1').then(function(remote){
     if(remote && remote.items) return remote;      // live backend shape
-    return ChiefEditorData.getUnassignedAuthors({ waiting: '1' }); // demo fallback
-  }).catch(function(){ return ChiefEditorData.getUnassignedAuthors({ waiting: '1' }); });
+    return { items: [] };
+  }).catch(function(){ return { items: [] }; });
 }
 
 var _queueItems = []; // last fetched queue rows — full author objects for the wizard
@@ -491,7 +526,7 @@ function renderQueue(){
         ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--red-bg,#fff0f0);color:var(--red,#e53e3e);white-space:nowrap">' + n + ' submission' + (n===1?'':'s') + ' waiting</span>'
         : '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--table-head,#faf9ff);color:var(--text-muted,#71708a);white-space:nowrap">No submissions yet</span>';
       return '<div class="un-row">' +
-        '<img class="un-avatar" src="' + esc(a.avatar || '') + '" alt=""/>' +
+        photo(a.avatar, a.name, 'un-avatar') +
         '<div class="un-info"><div class="un-name">' + esc(a.name || '') + '</div>' +
         '<div class="un-meta">' + esc(a.email || '') + (a.genres && a.genres.length ? ' · ' + esc(a.genres.slice(0,2).join(', ')) : '') + '</div></div>' +
         badge +
@@ -544,7 +579,7 @@ function openEditorPicker(authorId, authorName){
     list.innerHTML = editors.map(function(e){
       var n = (assignments[e.id] || []).length;
       return '<div class="epw-row" data-epw-eid="' + esc(e.id) + '">' +
-        '<img src="' + esc(e.avatar || '') + '" alt=""/>' +
+        photo(e.avatar, e.name) +
         '<div class="epw-row-info"><div class="ep-name">' + esc(e.name) + '</div><div class="ep-meta">' + esc(e.email || '') + '</div></div>' +
         '<span class="ep-count">' + n + ' assigned</span>' +
         '<i class="fas fa-circle epw-check"></i></div>';
@@ -580,7 +615,7 @@ function epwRenderReview(){
   var cur = ed ? (assignments[ed.id] || []).length : 0;
   var writerHtml =
     '<div class="epw-card">' +
-      '<img src="' + esc(a.avatar || '') + '" alt=""/>' +
+      photo(a.avatar, a.name || 'Writer') +
       '<div style="flex:1;min-width:0"><div class="epw-card-name">' + esc(a.name || 'Writer') + '</div>' +
       '<div class="epw-card-meta">' + esc(a.email || '') + '</div></div>' +
       '<span class="epw-tag writer">' + (a.pendingSubmissions || 0) + ' waiting</span>' +
@@ -588,7 +623,7 @@ function epwRenderReview(){
   var arrow = '<div class="epw-arrow"><i class="fas fa-arrow-down"></i></div>';
   var editorHtml =
     '<div class="epw-card">' +
-      '<img src="' + esc(ed ? ed.avatar : '') + '" alt=""/>' +
+      photo(ed ? ed.avatar : '', ed ? ed.name : '') +
       '<div style="flex:1;min-width:0"><div class="epw-card-name">' + esc(ed ? ed.name : '—') + '</div>' +
       '<div class="epw-card-meta">' + esc(ed ? (ed.email || '') : '') + '</div></div>' +
       '<span class="epw-tag">' + cur + ' → ' + (cur + 1) + ' assigned</span>' +
@@ -718,7 +753,7 @@ function toast(msg,icon){
 var quotaEd=null;
 function openQuotaModal(ed){
   quotaEd=ed;
-  document.getElementById('quotaEditorInfo').innerHTML='<img src="'+ed.avatar+'" alt=""/><div><div class="qei-name">'+ed.name+'</div><div class="qei-email">'+ed.email+'</div></div>';
+  document.getElementById('quotaEditorInfo').innerHTML=photo(ed.avatar, ed.name)+'<div><div class="qei-name">'+esc(ed.name)+'</div><div class="qei-email">'+esc(ed.email)+'</div></div>';
   document.getElementById('quotaTarget').value=ed.target;
   document.getElementById('quotaInvited').value=ed.invited;
   document.getElementById('quotaRemaining').value=Math.max(0,ed.target-ed.invited);
@@ -875,7 +910,7 @@ function invRenderResults(items, q){
   }
   box.innerHTML = items.map(function(u){
     return '<div class="epw-row inv-user-row" data-inv-uid="' + esc(u.id) + '">' +
-      '<img src="' + esc(u.avatar || '') + '" alt=""/>' +
+      photo(u.avatar, u.name || '') +
       '<div class="epw-row-info"><div class="ep-name">' + esc(u.name || '') + '</div>' +
       '<div class="ep-meta">' + esc(u.email || '') + (u.username ? ' · @' + esc(u.username) : '') + '</div></div>' +
       '<span class="epw-tag ' + (u.role === 'writer' ? 'writer' : '') + '">' + (u.role === 'writer' ? 'Writer' : 'Reader') + '</span>' +
@@ -921,7 +956,7 @@ function invRenderPicked(){
     return;
   }
   box.innerHTML = '<div class="epw-card" style="margin-top:4px">' +
-    '<img src="' + esc(_invUser.avatar || '') + '" alt=""/>' +
+    photo(_invUser.avatar, _invUser.name || '') +
     '<div style="min-width:0">' +
       '<div class="epw-card-name">' + esc(_invUser.name) + (_invUser.locked ? '' : '') + '</div>' +
       '<div class="epw-card-meta">' + esc(_invUser.email) + '</div>' +
@@ -988,7 +1023,7 @@ function init(){
 
   ChiefEditorSidebar.attach('#dashRoot',{
     activeItem:'senior-editors',title:'Senior Editors',subtitle:'Manage editors, monitor quotas, and review performance',
-    user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'},notifCount:6,
+    user:null,notifCount:6,
     searchPlaceholder:'Search anything...'
   });
 
@@ -1016,24 +1051,54 @@ function init(){
     if(!quotaEd) return;
     var t = parseInt(document.getElementById('quotaTarget').value) || 0;
     if(t < 1){ qtGoto(1); toast('Monthly invite target must be at least 1','fa-triangle-exclamation'); return; }
-    quotaEd.target=t;
-    quotaEd.status=document.getElementById('quotaStatus').value;
-    quotaEd.paymentType=document.getElementById('quotaPayType').value;
-    var deadline=document.getElementById('quotaDeadline').value;
-    if(deadline) quotaEd.deadline=deadline;
-    var note=document.getElementById('quotaNote').value.trim();
-    if(note) quotaEd.quotaNote=note;
-    if(quotaEd.paymentType==='fixed'){
+    var ed = quotaEd;
+    var payload = {
+      target: t,
+      invited: parseInt(document.getElementById('quotaInvited').value) || 0,
+      quotaStatus: document.getElementById('quotaStatus').value,
+      paymentType: document.getElementById('quotaPayType').value,
+      deadline: document.getElementById('quotaDeadline').value || ''
+    };
+    var note = document.getElementById('quotaNote').value.trim();
+    if(note) payload.note = note;
+    if(payload.paymentType==='fixed'){
       var p=document.getElementById('quotaPay').value.trim();
-      if(p) quotaEd.monthlyPay=p;
+      if(p) payload.monthlyPay=p;
+      payload.revenueShare='';
     } else {
       var rs=document.getElementById('quotaRevenueShare').value.trim();
-      if(rs) quotaEd.revenueShare=rs;
-      quotaEd.monthlyPay=rs?rs+' share':'—';
+      payload.revenueShare=rs;
+      payload.monthlyPay=rs||'';
     }
-    document.getElementById('quotaModal').classList.remove('show');
-    toast('Quota updated for '+quotaEd.name,'fa-bullseye');
-    quotaEd=null;renderStats();applyFilters();
+    var btn = this;
+    btn.disabled = true;
+    // Pending invites and active editors persist through different endpoints.
+    var save = ed.kind === 'invite'
+      ? ChiefEditorData.patchInvite(ed.id, payload)
+      : ChiefEditorData.patchSeniorEditor(ed.id, payload);
+    save.then(function(saved){
+      // Re-read authoritative fields from the saved row so the card matches
+      // the database after a refresh.
+      if(saved){
+        ed.target = saved.target !== undefined ? saved.target : t;
+        ed.invited = saved.invited !== undefined ? saved.invited : payload.invited;
+        ed.paymentType = saved.paymentType || payload.paymentType;
+        ed.monthlyPay = saved.monthlyPay !== undefined ? saved.monthlyPay : payload.monthlyPay;
+        ed.revenueShare = saved.revenueShare || '';
+        ed.deadline = saved.deadline ? String(saved.deadline).split('T')[0] : payload.deadline;
+        ed.status = (saved.quotaStatus || saved.status || payload.quotaStatus);
+      } else {
+        ed.target=t; ed.invited=payload.invited; ed.quotaStatus=payload.quotaStatus;
+        ed.paymentType=payload.paymentType; ed.monthlyPay=payload.monthlyPay;
+        ed.revenueShare=payload.revenueShare; ed.deadline=payload.deadline;
+        ed.status=payload.quotaStatus;
+      }
+      document.getElementById('quotaModal').classList.remove('show');
+      toast('Quota saved for '+ed.name,'fa-bullseye');
+      quotaEd=null;renderStats();applyFilters();
+    }).catch(function(err){
+      toast('Could not save quota: '+(err && err.message || 'server error'),'fa-triangle-exclamation');
+    }).then(function(){ btn.disabled = false; });
   });
 
   document.getElementById('invPayType').addEventListener('change',toggleInvPayFields);
@@ -1082,15 +1147,22 @@ function init(){
     }
     if(editingInviteId){
       var ex=ALL.find(function(x){return x.id===editingInviteId;});
-      if(ex){
-        ex.name=name; ex.email=email; ex.target=target;
-        ex.paymentType=pt; ex.monthlyPay=payVal; ex.revenueShare=revShare;
-        if(deadline) ex.deadline=deadline;
+      var patch={name:name,target:target,paymentType:pt,monthlyPay:monthlyPay,revenueShare:revShare};
+      if(deadline) patch.deadline=deadline;
+      if(note) patch.note=note;
+      ChiefEditorData.patchInvite(editingInviteId, patch).then(function(saved){
+        if(ex){
+          ex.name=name; ex.email=email; ex.target=target;
+          ex.paymentType=pt; ex.monthlyPay=monthlyPay; ex.revenueShare=revShare;
+          if(deadline) ex.deadline=deadline;
+        }
         toast('Senior editor updated','fa-circle-check');
-      }
-      editingInviteId=null;
-      document.getElementById('inviteModal').classList.remove('show');
-      renderStats();applyFilters();
+        editingInviteId=null;
+        document.getElementById('inviteModal').classList.remove('show');
+        renderStats();applyFilters();
+      }).catch(function(err){
+        toast('Could not save: '+(err && err.message || 'server error'),'fa-triangle-exclamation');
+      });
       return;
     }
     ChiefEditorData.createInvite({name:name,email:email,target:target,monthlyPay:monthlyPay,paymentType:pt,revenueShare:revShare,deadline:deadline,note:note}).then(function(editor){

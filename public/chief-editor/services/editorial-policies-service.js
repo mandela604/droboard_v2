@@ -177,7 +177,7 @@ async function loadData() {
 function init() {
   const shell = ChiefEditorSidebar.attach('#policiesRoot',{
     activeItem:'editorial-policies',title:'Editorial Policies',subtitle:'Content guidelines & standards',
-    user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6
+    user:null,notifCount:6
   });
 
   ov = document.getElementById('modalOverlay');

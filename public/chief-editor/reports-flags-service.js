@@ -34,7 +34,7 @@ function init(){
     activeItem: 'reports-flags',
     title: 'Story Reports',
     subtitle: 'Flagged stories across your senior editors',
-    user: { name: 'Adaeze Bello', role: 'Chief Editor', avatar: 'https://i.pravatar.cc/100?img=9' },
+    user: null,
     notifCount: 6,
     searchPlaceholder: 'Search anything…'
   });

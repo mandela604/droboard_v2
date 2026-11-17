@@ -29,7 +29,7 @@ async function init(){
   if(_acInitDone) return;
   _acInitDone = true;
 
-  const shell = ChiefEditorSidebar.attach('#contractsRoot',{activeItem:'author-contracts',title:'Author Contracts',subtitle:'Manage contracts & offers',user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},notifCount:6});
+  const shell = ChiefEditorSidebar.attach('#contractsRoot',{activeItem:'author-contracts',title:'Author Contracts',subtitle:'Manage contracts & offers',user:null,notifCount:6});
   var d = null;
   try{ d = await callBackend('/author-contracts'); }catch(e){ d = null; }
   if(!d){

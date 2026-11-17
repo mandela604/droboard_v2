@@ -26,27 +26,34 @@ function openModal(id){ document.getElementById(id).classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
 /* ══════════════════ PROFILE (read-only — editor platform account) ══════════════════ */
-const USE_PROFILE_API = false;
-const PROFILE_API = API_BASE + '/profile';
-const PROFILE_DEFAULTS = {
-  name:'Adaeze Bello', email:'adaeze.bello@droboard.io', phone:'+234 802 555 0134',
-  bio:'Chief Editor overseeing platform-wide editorial quality, senior editor performance, and author agreements.',
-  avatar:'https://i.pravatar.cc/140?img=9',
-};
+const PROFILE_API = '/api/users/me';
+const FALLBACK_AV = '../assets/droboard-icon.png';
 async function fetchEditorProfile(){
-  if (USE_PROFILE_API) {
-    try {
-      const res = await fetch(PROFILE_API, { credentials:'include' });
-      if (!res.ok) throw new Error('profile API failed');
-      return await res.json();
-    } catch (e) { /* fall through to demo */ }
-  }
-  await new Promise(function(r){ setTimeout(r, 120); });
-  return Object.assign({}, PROFILE_DEFAULTS);
+  try {
+    const res = await fetch(PROFILE_API, { credentials:'include' });
+    if (res.ok) {
+      const u = await res.json();
+      return {
+        name: u.fullName || u.name || u.username || '',
+        email: u.email || '',
+        phone: u.phone || '',
+        bio: u.bio || '',
+        avatar: u.avatar || '',
+      };
+    }
+  } catch (e) {}
+  // Session fallback — never a demo persona.
+  try {
+    const s = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+    return { name: s.name || '', email: '', phone: '', bio: '', avatar: s.avatar || '' };
+  } catch (e) {}
+  return { name: '', email: '', phone: '', bio: '', avatar: '' };
 }
 function renderEditorProfile(p){
-  document.getElementById('profileAvatarImg').src = p.avatar || PROFILE_DEFAULTS.avatar;
-  document.getElementById('profileHeadName').textContent = p.name || '';
+  var img = document.getElementById('profileAvatarImg');
+  img.src = p.avatar || FALLBACK_AV;
+  img.onerror = function(){ this.onerror = null; this.src = FALLBACK_AV; };
+  document.getElementById('profileHeadName').textContent = p.name || 'Editor';
   document.getElementById('pName').value = p.name || '';
   document.getElementById('pEmail').value = p.email || '';
   document.getElementById('pPhone').value = p.phone || '';
@@ -69,7 +76,7 @@ let pendingDanger = null;
 function init(){
   const shell = ChiefEditorSidebar.attach('#dashRoot',{
     activeItem:'settings', title:'Settings', subtitle:'Manage your profile, security, and platform preferences',
-    user:{name:'Adaeze Bello',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=9'}, notifCount:6,
+    user:null, notifCount:6,
     searchPlaceholder:'Search anything…',
   });
 

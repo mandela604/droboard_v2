@@ -18,7 +18,10 @@ function isExpired(inv) {
   return new Date(inv.expiresAt).getTime() < Date.now();
 }
 
-const QUOTA_KEYS = ['target', 'invited', 'paymentType', 'monthlyPay', 'revenueShare', 'deadline', 'note'];
+// `quotaStatus` (on-track / behind / ahead) is the chief's review label and is
+// distinct from the account `status` (active / suspended / …), which patch
+// validates separately. Both persist across refreshes.
+const QUOTA_KEYS = ['target', 'invited', 'paymentType', 'monthlyPay', 'revenueShare', 'deadline', 'note', 'quotaStatus'];
 
 function hashToken(t) {
   return crypto.createHash('sha256').update(String(t)).digest('hex');
@@ -207,6 +210,15 @@ function parseDeadline(v) {
   if (isNaN(d.getTime())) throw err('bad_deadline', 400);
   return d;
 }
+// The UI lets the chief type "$3,200" or "20%". Invite rows store numbers, so
+// normalize payment fields before writing — a raw string used to throw a
+// Mongoose CastError and fail the whole invite save with a 500.
+function payNumber(v) {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
 
 async function createInvite(data, invitedBy) {
   const email = String(data.email || '').toLowerCase().trim();
@@ -223,8 +235,8 @@ async function createInvite(data, invitedBy) {
     name: data.name, email,
     target: data.target !== undefined ? data.target : 0,
     paymentType: data.paymentType || '',
-    monthlyPay: data.monthlyPay !== undefined ? data.monthlyPay : 0,
-    revenueShare: data.revenueShare !== undefined ? data.revenueShare : 0,
+    monthlyPay: payNumber(data.monthlyPay) || 0,
+    revenueShare: payNumber(data.revenueShare) || 0,
     deadline: parseDeadline(data.deadline),
     note: data.note || '',
     status: 'pending',
@@ -264,9 +276,11 @@ async function patchInvite(id, data) {
   const inv = await EditorInvite.findOne({id: id});
   if (!inv) throw err('not_found', 404);
   if (inv.status !== 'pending') throw err('not_pending', 409);
-  ['name', 'target', 'paymentType', 'monthlyPay', 'revenueShare', 'note'].forEach(k => {
+  ['name', 'target', 'paymentType', 'note'].forEach(k => {
     if (data[k] !== undefined) inv[k] = data[k];
   });
+  if (data.monthlyPay !== undefined) inv.monthlyPay = payNumber(data.monthlyPay);
+  if (data.revenueShare !== undefined) inv.revenueShare = payNumber(data.revenueShare);
   if (data.deadline !== undefined) inv.deadline = parseDeadline(data.deadline);
   await inv.save();
   return stripInvite(inv);

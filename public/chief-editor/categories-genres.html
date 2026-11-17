@@ -241,7 +241,7 @@
 .btn-cancel{background:var(--input-bg);color:var(--text);border:1px solid var(--input-border)}
 </style>
 
-<script src="shared/chief-editor-sidebar.js"></script>
+<script src="shared/chief-editor-sidebar.js?v=2"></script>
 <script src="categories-genres-service.js"></script>
 <script>
 (async function(){
@@ -251,7 +251,7 @@ ChiefEditorSidebar.attach('#dashboardRoot',{
   activeItem:'categories-genres',
   title:'Categories & Genres',
   subtitle:'Organize and manage all categories and genres',
-  user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},
+  user:null,
   notifCount:8,
   searchPlaceholder:'Search by category or genre name...'
 });

@@ -40,6 +40,26 @@ router.get('/senior-editors/invites', ...guard,
 
 router.get('/senior-editors/:id', ...guard, validate(idParam), ctrl.get);
 
+const inviteBody = z.object({
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(160),
+  target: z.number().min(0).optional(),
+  paymentType: z.string().max(40).optional(),
+  monthlyPay: z.union([z.number(), z.string()]).optional(),
+  revenueShare: z.union([z.number(), z.string()]).optional(),
+  deadline: z.string().max(40).optional(),
+  note: z.string().max(500).optional(),
+}).strict();
+
+// Register the literal `invites` path BEFORE /senior-editors/:id — Express
+// matches in declaration order, otherwise the wildcard swallows the id and
+// invite edits 404 as a missing editor.
+router.patch('/senior-editors/invites/:id', ...guard, audit('chief.editors.invite.patch'),
+  validate(z.object({
+    params: z.object({ id: z.string().max(60) }).strict(),
+    body: inviteBody.partial(),
+  }).strict()), ctrl.patchInvite);
+
 router.patch('/senior-editors/:id', ...guard, audit('chief.editors.patch'),
   validate(z.object({
     params: z.object({ id: z.string().max(60) }).strict(),
@@ -52,28 +72,12 @@ router.patch('/senior-editors/:id', ...guard, audit('chief.editors.patch'),
       revenueShare: z.union([z.number(), z.string()]).optional(),
       deadline: z.string().max(40).optional(),
       note: z.string().max(500).optional(),
+      quotaStatus: z.string().max(40).optional(),
     }).strict(),
   }).strict()), ctrl.patch);
 
-const inviteBody = z.object({
-  name: z.string().min(1).max(120),
-  email: z.string().email().max(160),
-  target: z.number().min(0).optional(),
-  paymentType: z.string().max(40).optional(),
-  monthlyPay: z.union([z.number(), z.string()]).optional(),
-  revenueShare: z.union([z.number(), z.string()]).optional(),
-  deadline: z.string().max(40).optional(),
-  note: z.string().max(500).optional(),
-}).strict();
-
 router.post('/senior-editors/invites', ...guard, audit('chief.editors.invite'),
   validate(z.object({ body: inviteBody }).strict()), ctrl.createInvite);
-
-router.patch('/senior-editors/invites/:id', ...guard, audit('chief.editors.invite.patch'),
-  validate(z.object({
-    params: z.object({ id: z.string().max(60) }).strict(),
-    body: inviteBody.partial(),
-  }).strict()), ctrl.patchInvite);
 
 router.post('/senior-editors/:id/resend-invite', ...guard, audit('chief.editors.invite.resend'),
   validate(idParam), ctrl.resendInvite);

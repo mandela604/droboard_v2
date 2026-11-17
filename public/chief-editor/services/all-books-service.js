@@ -23,7 +23,7 @@ ChiefEditorSidebar.attach('#booksRoot',{
   activeItem:'all-books',
   title:'All Books',
   subtitle:'Browse every title on the platform',
-  user:{name:'Reina Morgan',role:'Chief Editor',avatar:'https://i.pravatar.cc/100?img=47'},
+  user:null,
   notifCount:9,
   searchPlaceholder:'Search everything...',
 });

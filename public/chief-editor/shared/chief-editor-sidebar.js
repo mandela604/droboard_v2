@@ -80,6 +80,12 @@
       background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;
       color:var(--text-muted);font-size:14px;flex-shrink:0;}
     .ces-notif-btn:hover{border-color:var(--accent);color:var(--accent);}
+    .ces-user-chip{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 4px;border:1px solid var(--border);border-radius:30px;flex-shrink:0;background:var(--card);}
+    .ces-user-chip img,.ces-user-ph{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+    .ces-user-ph{display:flex;align-items:center;justify-content:center;background:var(--accent-bg);color:var(--accent);font-size:13px;}
+    .ces-user-txt{line-height:1.25;}
+    .ces-user-txt b{font-size:12px;display:block;}
+    .ces-user-txt span{font-size:10px;color:var(--text-faint);}
     .ces-notif-badge{position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;font-size:9px;
       font-weight:800;padding:1px 5px;border-radius:20px;min-width:16px;text-align:center;line-height:1.4;}
     .ces-main{flex:1;padding:22px 28px 40px;overflow-x:hidden;}
@@ -187,6 +193,21 @@
       return `<i class="fas fa-bell"></i>${notifCount > 0 ? `<span class="ces-notif-badge">${notifCount}</span>` : ''}`;
     }
 
+    /* Real signed-in chief editor — no demo persona. Starts neutral and is
+       replaced with the DB user (name + avatar) as soon as /users/me resolves. */
+    function profileHtml(u) {
+      const name = _esc((u && u.name) || '');
+      const role = _esc((u && u.role) || 'Chief Editor');
+      const av = (u && u.avatar)
+        ? `<img src="${_esc(u.avatar)}" alt="${name}" onerror="this.onerror=null;this.src='../assets/droboard-icon.png'"/>`
+        : `<span class="ces-user-ph"><i class="fas fa-user"></i></span>`;
+      return `${av}<div class="ces-user-txt"><b>${name}</b><span>${role}</span></div>`;
+    }
+    function paintUser(u) {
+      const el = document.getElementById(instId + '-user');
+      if (el) el.innerHTML = profileHtml(u);
+    }
+
     function render() {
       container.innerHTML = `
         <div class="ces-app" id="${instId}">
@@ -215,6 +236,7 @@
               </div>
               <div class="ces-topbar-right">
                 <div class="ces-search"><i class="fas fa-search"></i><input type="text" placeholder="${_esc(searchPlaceholder)}" id="${instId}-search"/></div>
+                <div class="ces-user-chip" id="${instId}-user">${profileHtml(null)}</div>
                 <button class="ces-notif-btn" id="${instId}-notif">${notifHtml()}</button>
               </div>
             </header>
@@ -244,6 +266,27 @@
     }
 
     render();
+
+    // Resolve the real logged-in editor from the session/backend.
+    (function resolveViewer() {
+      var local = null;
+      try {
+        var s = (window.AuthSession && AuthSession.getSync && AuthSession.getSync()) || {};
+        if (s.name) local = { name: s.name, avatar: s.avatar || '', role: 'Chief Editor' };
+      } catch (e) {}
+      if (local) paintUser(local);
+      fetch('/api/users/me', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (u) {
+          if (!u) return;
+          paintUser({
+            name: u.fullName || u.name || u.username || '',
+            avatar: u.avatar || '',
+            role: 'Chief Editor',
+          });
+        })
+        .catch(function () {});
+    })();
 
     return {
       setActive(key) {
