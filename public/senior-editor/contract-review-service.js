@@ -51,7 +51,10 @@
 
   async function loadContractTemplates() {
     try {
-      const templates = await callApi('/templates');
+      // Templates live on their own route, not under /contract-applications.
+      const res = await fetch('/api/senior-editor/contract-templates', { credentials: 'include' });
+      if (!res.ok) throw new Error('API error ' + res.status);
+      const templates = await res.json();
       contractTemplates = templates || [];
       populateContractTypeFilter();
       return contractTemplates;
