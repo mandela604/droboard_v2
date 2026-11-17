@@ -1001,7 +1001,16 @@
       if (adPlacement && adPlacement.interval) adGap = adPlacement.interval;
       document.getElementById('loadingState').style.display = 'none';
       STORIES_CACHE = stories;
-      BASE_POSTS = posts;
+      // A post created on the official page is published by the page, whoever
+      // on staff wrote it. On the reader feed it must carry Droboard's identity
+      // (the page feed already does this in mapPost).
+      BASE_POSTS = (posts || []).map(function(p){
+        if (!p || p.page !== 'droboard') return p;
+        return Object.assign({}, p, {
+          name: 'Droboard', handle: '@droboard', fullName: 'Droboard',
+          avatar: '../assets/droboard-icon.png',
+        });
+      });
       AD_POOLS = adPools || {}; AD_GAP = adGap;
       stampFeedPins(BASE_POSTS);
       FEED_POSTS = interleaveAds(BASE_POSTS, AD_POOLS, AD_GAP);

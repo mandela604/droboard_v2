@@ -20,6 +20,10 @@ async function main() {
     const sa = require('./services/superadmin.service');
     const seeded = await sa.ensureSystemRoles();
     if (seeded.created) console.log('seeded system roles:', seeded.slugs.join(', '));
+    // The official @droboard page must exist as a real account for its profile,
+    // Follow button and follower count to work on a fresh database.
+    const accounts = await require('./services/users.service').ensurePlatformAccounts();
+    if (accounts.created.length) console.log('created platform accounts:', accounts.created.join(', '));
     // Fresh databases have no admin. ADMIN_EMAILS is the documented way in;
     // without it the console pages load but every API answers 403.
     if (env.adminEmails.length) {

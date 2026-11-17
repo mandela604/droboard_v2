@@ -561,6 +561,28 @@ async function resolveTarget(target) {
   return t;
 }
 
+/* The official @droboard page is a REAL account, so its profile, follower
+   count and Follow button behave like any other's (GET /api/users/droboard,
+   POST /api/users/droboard/follow). It cannot log in (no password hash) and
+   this runs on every boot, so a fresh dev DB and production both get it. */
+async function ensurePlatformAccounts() {
+  if (await User.exists({ username: 'droboard' })) return { created: [] };
+  const doc = await User.create({
+    fullName: 'Droboard',
+    username: 'droboard',
+    email: 'page-droboard@droboard.app',
+    passwordHash: null,
+    authProvider: 'local',
+    roles: ['reader'],
+    primaryRole: 'reader',
+    avatar: '',
+    bio: 'The official Droboard account. Announcements, writer shoutouts, live debates and story picks from the team.',
+    status: 'active',
+    settings: { theme: 'dark', notifications: true, privacy: 'public', readingActivity: true },
+  });
+  return { created: [String(doc.id || doc._id)] };
+}
+
 async function follow({ userId, target }) {
   const t = await resolveTarget(target);
   if (String(t.id) === String(userId)) { const e = new Error('self'); e.status = 400; throw e; }
@@ -742,6 +764,6 @@ module.exports = {
   getSettings, updateSettings,
   followersOf, followingOf, follow, unfollow,
   blockUser, unblockUser, listBlocks, muteUser, unmuteUser, listMutes,
-  mutedIds, blockedIds, publicShape,
+  mutedIds, blockedIds, publicShape, ensurePlatformAccounts,
   becomeWriter, checkUsername, exportData,
 };
