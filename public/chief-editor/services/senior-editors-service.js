@@ -95,6 +95,7 @@ function loadData(){
         status: q.quotaStatus || (e.status === 'active' ? 'on-track' : (e.status || 'on-track')),
         accountStatus: e.status || 'active',
         authorsManaged: e.assignedAuthors || 0,
+        assignedCount: (e.explicitAssigned !== undefined ? e.explicitAssigned : (e.assignedAuthors || 0)),
         joined: dateOnly(e.createdAt),
         openReports: e.openReports || 0,
         target: q.target || 0,
@@ -256,7 +257,7 @@ function pendingCard(e){
 function activeCard(e){
   var pct=Math.min(100,Math.round(e.invited/e.target*100));
   var sl=e.status==='behind'?'Behind':e.status==='ahead'?'Ahead':'On track';
-  var ac=(assignments[e.id]||[]).length;
+  var ac=(e.assignedCount !== undefined ? e.assignedCount : (assignments[e.id]||[]).length);
   var h='<div class="ed-card" data-card-id="'+e.id+'"><div class="ed-top">';
   h+=photo(e.avatar, e.name, 'ed-avatar');
   h+='<div class="ed-name-wrap"><div class="ed-name">'+e.name;

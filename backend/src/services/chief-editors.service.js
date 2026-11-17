@@ -78,11 +78,53 @@ function editorShape(u, extra) {
     bio: u.bio, country: u.country, roles: u.roles, primaryRole: u.primaryRole,
     status: u.status, createdAt: u.createdAt, updatedAt: u.updatedAt,
     followers: extra.followers || 0,
-    assignedAuthors: asg ? (asg.authorIds || []).length : 0,
+    // AUTHORS = everyone under this editor (explicit assignments + writers who
+    // joined with their invite code + authors of books assigned for review).
+    // ASSIGNED = only the explicit EditorAssignment selections.
+    assignedAuthors: (extra.authorCounts && extra.authorCounts.total) || 0,
+    explicitAssigned: (extra.authorCounts && extra.authorCounts.assigned)
+      || (asg ? (asg.authorIds || []).length : 0),
     openReports: extra.openReports || 0,
     quota: (asg && asg.quota) || {},
     assignment: asg,
   };
+}
+
+// One query per collection for the whole page (never per editor). A writer can
+// reach an editor by three routes; a Set dedupes so the same person is counted
+// once even when two routes apply.
+async function authorCountsMap(users) {
+  const ids = users.map(u => String(u.id));
+  const oidToId = {};
+  users.forEach(u => { oidToId[String(u._id)] = String(u.id); });
+  const sets = {};
+  users.forEach(u => { sets[String(u.id)] = new Set(); });
+  const [assigns, referred, books] = await Promise.all([
+    EditorAssignment.find({ editorId: { $in: ids } }).select('editorId authorIds').lean().catch(() => []),
+    User.find({ roles: 'writer', referredByUserId: { $in: Object.keys(oidToId) } })
+      .select('id referredByUserId').lean().catch(() => []),
+    Book.find({ assignedSeId: { $in: ids } }).select('authorId assignedSeId').lean().catch(() => []),
+  ]);
+  const explicit = {};
+  assigns.forEach(a => {
+    const eid = String(a.editorId);
+    explicit[eid] = (a.authorIds || []).length;
+    (a.authorIds || []).forEach(id => { if (sets[eid]) sets[eid].add(String(id)); });
+  });
+  referred.forEach(w => {
+    const eid = oidToId[String(w.referredByUserId)];
+    if (eid && sets[eid]) sets[eid].add(String(w.id));
+  });
+  books.forEach(b => {
+    const eid = String(b.assignedSeId);
+    if (eid && sets[eid] && b.authorId) sets[eid].add(String(b.authorId));
+  });
+  const out = {};
+  users.forEach(u => {
+    const id = String(u.id);
+    out[id] = { total: sets[id].size, assigned: explicit[id] || 0 };
+  });
+  return out;
 }
 
 // Pending Report rows attributed to each editor (seId) — the list card's
@@ -109,13 +151,14 @@ async function listSeniorEditors({ q, status, sort, page, pageSize, limit }) {
   const { pg, lim } = pgOf({ page, pageSize, limit });
   const users = await User.find(filter).lean();
   const ids = users.map(u => String(u.id));
-  const [fmap, amap, rmap] = await Promise.all([
-    followersMap(ids), assignmentsMap(ids), openReportsMap(ids),
+  const [fmap, amap, rmap, acmap] = await Promise.all([
+    followersMap(ids), assignmentsMap(ids), openReportsMap(ids), authorCountsMap(users),
   ]);
   let items = users.map(u => editorShape(u, {
     followers: fmap[String(u.id)] || 0,
     assignment: amap[String(u.id)] || null,
     openReports: rmap[String(u.id)] || 0,
+    authorCounts: acmap[String(u.id)] || { total: 0, assigned: 0 },
   }));
   const s = sort || 'newest';
   if (s === 'name') items.sort((a, b) => String(a.fullName || '').localeCompare(String(b.fullName || '')));
@@ -158,10 +201,11 @@ async function loadSeniorOr404(id) {
 }
 
 async function decorate(u) {
-  const [fmap, asg, rmap] = await Promise.all([
+  const [fmap, asg, rmap, acmap] = await Promise.all([
     followersMap([String(u.id)]),
     EditorAssignment.findOne({ editorId: String(u.id) }).lean(),
     openReportsMap([String(u.id)]),
+    authorCountsMap([u]),
   ]);
   const [books] = await Promise.all([
     Book.countDocuments({ authorId: String(u.id) }).catch(() => 0),
@@ -170,6 +214,7 @@ async function decorate(u) {
     followers: fmap[String(u.id)] || 0,
     assignment: asg || null,
     openReports: rmap[String(u.id)] || 0,
+    authorCounts: acmap[String(u.id)] || { total: 0, assigned: 0 },
   }), { books });
 }
 
