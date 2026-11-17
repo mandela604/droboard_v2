@@ -263,7 +263,13 @@ function renderRows(){
     : 'Past feature actions. Refeature puts a book back into its section.';
 
   if(!slice.length){
-    host.innerHTML='<div class="empty-msg"><i class="fas fa-inbox"></i><br/>'+(FILTER_Q?'Nothing matches "'+esc(FILTER_Q)+'"':'Nothing here yet')+'</div>';
+    const emptyMsg = TAB==='featured'
+      ? 'No stories are featured yet. Open the <b>Add story</b> tab to put one on Discover.'
+      : TAB==='add' ? 'No published books match this search.' : 'No past feature actions found.';
+    host.innerHTML='<div class="empty-msg"><i class="fas fa-inbox"></i><br/>'+emptyMsg+
+      (TAB==='featured'?'<br/><button class="main-tab on" id="emptyAddBtn" style="margin-top:14px"><i class="fas fa-plus"></i> Add story</button>':'')+'</div>';
+    const addBtn=$('emptyAddBtn');
+    if(addBtn) addBtn.addEventListener('click',function(){ TAB='add'; PAGE=1; FILTER_Q=''; render(); });
     renderPager(pages, rows.length); return;
   }
   host.innerHTML=slice.map(function(r, i){
