@@ -441,7 +441,9 @@
 
   async function wireComponents(data) {
     const pool = (data.moreStories || []).map((s, i) => ({
-      id: `ds-${i}`, img: s.img, title: s.title, author: s.author,
+      // Keep the real book id: the browse overlay opens bridge.html?id=<id>,
+      // and a synthetic ds-N id sends the reader to a non-existent book.
+      id: s.id, img: s.img, title: s.title, author: s.author,
       genre: GENRE_MAP[s.genre] || s.genre.toLowerCase(), cat: s.genre,
       preview: s.preview, views: `${70 + (i * 9) % 260}k`, likes: `${8 + (i * 3) % 40}k`,
       badge: i % 6 === 0 ? 'hot' : i % 5 === 0 ? 'new' : '',

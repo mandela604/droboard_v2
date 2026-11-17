@@ -216,7 +216,6 @@
   let LIVE_PLATFORM_ADS = [];
 
   const PAGE_SIZE = 15;      // infinite-scroll page size
-  const POOL_SIZE = 42;      // looped stories per open (~40-45)
   const AD_INTERVAL = 6;     // insert an ad slot every N stories (both list and grid modes)
 
   /* ═══════════════════════ STATE ═══════════════════════ */
@@ -297,13 +296,19 @@
       return [];
     }
     let expanded = [];
-    // Only loop stories if we actually have some; otherwise the pool stays
-    // empty and the real "No stories found" empty state is shown.
+    // ONE ROW PER WHOLE BOOK. Never loop/pad the configured list: repeating the
+    // same titles down the overlay reads like chapters of one story and breaks
+    // the book's real id (which is how a row opens bridge.html). Duplicate ids
+    // in the source are dropped so each book appears exactly once.
     if (!_stories.length) return [];
-    for (let i = 0; i < POOL_SIZE; i++) {
-      const base = _stories[i % _stories.length];
-      expanded.push(Object.assign({ type: 'story' }, base, { id: base.id + '-' + i, img: base.img || base.cover || '' }));
-    }
+    const seenBooks = new Set();
+    _stories.forEach(function (base) {
+      if (!base) return;
+      const key = String(base.id || base.title || base.cover || '').trim();
+      if (!key || seenBooks.has(key)) return;
+      seenBooks.add(key);
+      expanded.push(Object.assign({ type: 'story' }, base, { img: base.img || base.cover || '' }));
+    });
     if (_mode === 'genre' && _filter !== 'all') {
       if (_filter === 'completed') {
         // "completed" is a status, not a genre. Prefer explicit status fields;
