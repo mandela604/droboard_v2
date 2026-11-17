@@ -98,18 +98,22 @@ async function authorCountsMap(users) {
   const oidToId = {};
   users.forEach(u => { oidToId[String(u._id)] = String(u.id); });
   const sets = {};
-  users.forEach(u => { sets[String(u.id)] = new Set(); });
+  const assignedSets = {};
+  users.forEach(u => {
+    sets[String(u.id)] = new Set();
+    assignedSets[String(u.id)] = new Set();
+  });
   const [assigns, referred, books] = await Promise.all([
     EditorAssignment.find({ editorId: { $in: ids } }).select('editorId authorIds').lean().catch(() => []),
     User.find({ roles: 'writer', referredByUserId: { $in: Object.keys(oidToId) } })
       .select('id referredByUserId').lean().catch(() => []),
     Book.find({ assignedSeId: { $in: ids } }).select('authorId assignedSeId').lean().catch(() => []),
   ]);
-  const explicit = {};
   assigns.forEach(a => {
     const eid = String(a.editorId);
-    explicit[eid] = (a.authorIds || []).length;
-    (a.authorIds || []).forEach(id => { if (sets[eid]) sets[eid].add(String(id)); });
+    (a.authorIds || []).forEach(id => {
+      if (sets[eid]) { sets[eid].add(String(id)); assignedSets[eid].add(String(id)); }
+    });
   });
   referred.forEach(w => {
     const eid = oidToId[String(w.referredByUserId)];
@@ -117,12 +121,17 @@ async function authorCountsMap(users) {
   });
   books.forEach(b => {
     const eid = String(b.assignedSeId);
-    if (eid && sets[eid] && b.authorId) sets[eid].add(String(b.authorId));
+    if (eid && sets[eid] && b.authorId) {
+      sets[eid].add(String(b.authorId));
+      // A book whose review was assigned to this editor is an assignment of
+      // its author too — the reader who uploaded it is now under this editor.
+      assignedSets[eid].add(String(b.authorId));
+    }
   });
   const out = {};
   users.forEach(u => {
     const id = String(u.id);
-    out[id] = { total: sets[id].size, assigned: explicit[id] || 0 };
+    out[id] = { total: sets[id].size, assigned: assignedSets[id].size };
   });
   return out;
 }
