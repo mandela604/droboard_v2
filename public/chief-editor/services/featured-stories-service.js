@@ -392,6 +392,18 @@ async function reload(){
 }
 
 async function init(){
+  // Mount the shared Chief Editor shell (sidebar + topbar). It also injects
+  // the page's CSS variables — without it --accent is undefined and the
+  // active tab's white text renders invisible on a white background.
+  if(window.ChiefEditorSidebar){
+    ChiefEditorSidebar.attach('#fsRoot',{
+      activeItem:'featured-stories',
+      title:'Featured Stories',
+      subtitle:'Manage which stories appear across Discover',
+      notifCount:0,
+      searchPlaceholder:'Search stories, genres...',
+    });
+  }
   const close=$('sheetClose'); if(close) close.addEventListener('click',closeDetail);
   const backdrop=$('sheetBackdrop');
   if(backdrop) backdrop.addEventListener('click',function(e){ if(e.target===backdrop) closeDetail(); });
