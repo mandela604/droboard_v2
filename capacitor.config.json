@@ -3,10 +3,10 @@
   "appName": "Droboard",
   "webDir": "public",
   "server": {
-    "url": "https://iread.netlify.app/Pages/discover.html",
+    "url": "https://droboard-v2.onrender.com/Pages/discover.html",
     "cleartext": false,
     "allowNavigation": [
-      "iread.netlify.app"
+      "droboard-v2.onrender.com"
     ]
   },
   "android": {
