@@ -109,7 +109,9 @@ async function loadAll(){
   Object.keys(_tags).forEach(function(k){ delete _tags[k]; });
   Object.keys(tagMap).forEach(function(k){ _tags[k]=tagMap[k]; });
 
-  _sections = SECTION_DEFAULTS.slice();
+  // Mutate in place too — the UI captured this array at module load.
+  _sections.length = 0;
+  SECTION_DEFAULTS.forEach(function(s){ _sections.push(s); });
   sections.forEach(function(s){
     var key=String(s.key||s.id||'');
     if(!key || _sections.some(function(x){ return x.id===key; })) return;
