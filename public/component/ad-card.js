@@ -130,7 +130,9 @@
      (offerRef / storyId) is the real destination; only a real story row falls
      back to its own id. */
   function storyHref(s) {
-    const real = (s.offerRef && s.offerRef.id) || s.storyId || s.bookId || '';
+    const m = /bridge\.html\?id=([^&\s]+)/.exec(String(s.url || ''));
+    const fromUrl = m ? decodeURIComponent(m[1]) : '';
+    const real = (s.offerRef && s.offerRef.id) || s.storyId || s.bookId || fromUrl || '';
     const id = real || s.id || (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     return `bridge.html?id=${encodeURIComponent(id)}`;
   }

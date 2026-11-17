@@ -731,6 +731,10 @@
     if (_draft.format === 'spotlight' || _draft.format === 'book') {
       _draft.fields.url = 'bridge.html?id=' + encodeURIComponent(s.id || '');
       set('url', _draft.fields.url);
+      /* The story link is structural, not just a URL string: the ad card
+         builds its destination from the attached story, so a pick here is
+         what makes "Read Now" open the real book. */
+      if (s.id) _draft.offerRef = { kind: 'story', id: String(s.id), name: s.title || '' };
     }
     _imgDataUrl = '';
     collect();
