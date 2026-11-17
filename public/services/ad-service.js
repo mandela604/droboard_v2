@@ -33,14 +33,27 @@
   /* ── Placement map (kill switches + slot flags) ──────────────────────── */
   /* Live only — one request per page-load, cached in memory so repeated
      calls within the same page load cost nothing extra. */
-  var _placements = null, _placementsAt = 0;
+  var _placements = null, _placementsAt = 0, _ent = null;
   function backendPlacements() {
     if (_placements && Date.now() - _placementsAt < 10 * 60 * 1000) return Promise.resolve(_placements);
-    return getInventory('placements').then(function (j) {
-      _placements = j || {};
-      _placementsAt = Date.now();
-      return _placements;
-    }).catch(function (e) { throw e; });
+    // /api/ads/placements returns the page -> placement map directly.
+    return fetch(`${API_BASE}/ads/placements`, { credentials: 'include' })
+      .then(function (res) { return res.ok ? res.json() : {}; })
+      .then(function (j) {
+        _placements = j || {};
+        _placementsAt = Date.now();
+        return _placements;
+      }).catch(function (e) { throw e; });
+  }
+
+  /* Per-slot config from the placement map: kill switch, format pin, cap. */
+  function slotCfg(placement, slot) {
+    if (!slot || !placement || !placement.slots) return null;
+    var raw = placement.slots[slot];
+    if (raw === undefined || raw === null) return null;
+    if (typeof raw === 'boolean') return { enabled: raw };
+    if (typeof raw === 'object') return raw;
+    return null;
   }
 
   /* Placement config for a page: { interval, cycle?, topPromo? } */
@@ -63,18 +76,18 @@
     // Merge Pass: ad-free everywhere except Discover.
     try {
       if (!window.DroboardAdsFreeEverywhere) {
-        const ent = myEntitlements();
-        if (ent && ent.adsFreeEverywhere && page !== 'discover') return { pools: {} };
-      } else if (page !== 'discover') return { pools: {} };
+        const ent = await myEntitlements();
+        if (ent && ent.adsFreeEverywhere && page !== 'discover') return {};
+      } else if (page !== 'discover') return {};
     } catch (e) { throw e; }
     const inv = await getInventory(page, slot);
     // backend kill switch (marketing toggle) empties pools in any mode
     try {
       const map = await backendPlacements();
       const live = map && map[page];
-      if (live && live.enabled === false) return { pools: {} };
+      if (live && live.enabled === false) return {};
       var cfg = slotCfg(live, slot);
-      if (cfg && cfg.enabled === false) return { pools: {} };
+      if (cfg && cfg.enabled === false) return {};
     } catch (e) { throw e; }
     const pools = inv.pools || {};
     // slot programming — live mode has no client-side format filter;
@@ -90,7 +103,7 @@
         }
       }
     } catch (e) { throw e; }
-    return { pools };
+    return pools;
   }
 
   /* Public: the resolved config for ONE slot id — kill switch, format pin,
@@ -129,13 +142,12 @@
    silent fallback to stale demo data. */
   /* ——————————————————————————————————————————————————————————————————————— */
   async function getPromoSlides(opts) {
-    try {
-      const r = await getInventory('promo', opts && opts.slot);
-      const pools = await getAds({ page, slot: opts && opts.slot });
-      const placement = (inv && inv.placement) || { interval: 4 };
-      const slides = (pools.promo || []).slice(0, 5);
-      return { slides, placement, pools };
-    } catch (e) { throw e; }
+    const page = opts && opts.page, genre = opts && opts.genre, slot = opts && opts.slot;
+    const pools = await getAds({ page, slot });
+    return (pools.promo || []).filter(function (s) {
+      if (!genre) return true;
+      return !s.genre || s.genre === genre;
+    });
   }
 
   /* Entitlements: one request per page load. The in-flight guard stops the
