@@ -13,6 +13,10 @@ const postSchema = new mongoose.Schema({
   heading: { type: String, default: '' }, // text posts: optional bold heading (post-card)
   image: { type: String, default: '' }, // upload or URL (post + announcement)
   pinned: { type: Boolean, default: false, index: true },
+  // Which PAGE this post belongs to ('' = the general feed). The official
+  // Droboard page owns its own posts, so its feed never shows the whole
+  // platform's posts.
+  page: { type: String, default: '', index: true },
   likesCount: { type: Number, default: 0 },
   likedBy: [{ type: String, ref: 'User' }],
   commentsCount: { type: Number, default: 0 },

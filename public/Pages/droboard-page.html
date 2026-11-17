@@ -180,7 +180,6 @@ a{color:inherit;text-decoration:none}
         <div class="pg-stat"><div class="pg-stat-num r" id="statFollowers"></div><div class="pg-stat-label">Followers</div></div>
         <div class="pg-stat"><div class="pg-stat-num b" id="statPosts"></div><div class="pg-stat-label">Posts</div></div>
         <div class="pg-stat"><div class="pg-stat-num g" id="statWritersFeatured"></div><div class="pg-stat-label">Featured</div></div>
-        <div class="pg-stat"><div class="pg-stat-num">2021</div><div class="pg-stat-label">Founded</div></div>
       </div>
       <div class="pg-tabs" id="pgTabs">
         <div class="pg-tab active" data-tab="all">✨ All</div>
@@ -215,9 +214,6 @@ a{color:inherit;text-decoration:none}
           <div class="coll-scroll" id="collectionsGrid"></div>
         </div>
         <div style="font-size:13px;color:var(--tx-body);line-height:1.65;padding:2px 0 12px" id="aboutBlurb">Droboard is a home for stories, debates and the readers who live for a good plot twist. This page is run by the Droboard team — we post announcements, feature standout writers, host community debates and recommend stories worth your 2am reading session.</div>
-        <div class="about-item"><div class="about-icon"><i class="fas fa-calendar-alt" style="color:var(--acc)"></i></div><div><div class="about-label">Founded</div><div class="about-val">March 2021 · Lagos, Nigeria 🇳🇬</div></div></div>
-        <div class="about-item"><div class="about-icon"><i class="fas fa-users" style="color:var(--acc)"></i></div><div><div class="about-label">Community</div><div class="about-val">Announcements, debates and story picks from the team</div></div></div>
-        <div class="about-item"><div class="about-icon"><i class="fas fa-envelope" style="color:var(--acc)"></i></div><div><div class="about-label">Contact</div><div class="about-val" id="aboutContact">hello@droboard.app · support.droboard.app</div></div></div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-link" style="color:var(--acc)"></i></div><div><div class="about-label">Links</div><div class="about-val" id="aboutLinks" style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap"></div></div></div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-gavel" style="color:var(--acc)"></i></div><div><div class="about-label">Community Guidelines</div><ul class="rules-list" id="aboutRules"><li>Be kind — debate the story, not the person.</li><li>Tag spoilers so everyone gets to feel the twist.</li><li>No harassment of writers or fellow readers.</li><li>Shoutouts and story picks are curated by the team, not paid placements.</li></ul></div></div>
       </div>
@@ -241,10 +237,10 @@ a{color:inherit;text-decoration:none}
 <script src="../component/share-modal.js?v=7"></script>
 <script src="../component/status-viewer.js?v=17"></script>
 <script src="../component/status-ring.js?v=5"></script>
-  <script src="../services/status-service.js?v=11"></script>
+  <script src="../services/status-service.js?v=13"></script>
 <script src="../shared/status-loader.js"></script>
 <script src="../component/report-sheet.js"></script>
-<script src="../component/comment-section.js?v=19"></script>
+<script src="../component/comment-section.js?v=22"></script>
 <script src="../component/dots-menu.js?v=2"></script>
 <script src="../component/reaction-picker.js?v=5"></script>
 <script src="../component/post-card.js?v=9"></script>
@@ -259,12 +255,12 @@ a{color:inherit;text-decoration:none}
 <script src="../services/auth-session.js?v=4"></script>
 <script src="../services/league-service.js"></script>
 <script src="../component/expiry-chips.js?v=8"></script>
-<script src="../component/droboard-post-composer.js?v=27"></script>
+<script src="../component/droboard-post-composer.js?v=28"></script>
 <!-- canModerate() lives here; without it the staff stats button stays hidden. -->
 <script src="../shared/ui-helpers.js"></script>
 <script src="../shared/insights-tracker.js?v=3"></script>
 <!-- Call-and-render: service + controller (no inline data) -->
-<script src="../services/droboard-page-service.js?v=15"></script>
+<script src="../services/droboard-page-service.js?v=18"></script>
 <script>DroboardOfficial.init(); InsightsTracker.hit('droboard');</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

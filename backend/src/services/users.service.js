@@ -497,8 +497,9 @@ async function searchUsers({ q, page, limit }) {
   }
   const [total, rows] = await Promise.all([
     User.countDocuments(filter),
+    // `id` (the public id) must come along — callers address users by it.
     User.find(filter).sort({ createdAt: -1 }).skip((pg - 1) * lim).limit(lim)
-      .select('username fullName avatar roles emailVerified bio').lean(),
+      .select('id username fullName avatar roles emailVerified bio').lean(),
   ]);
   return {
     items: rows.map(r => Object.assign(toFollowRow(r, false), { id: r.id, roles: r.roles })),

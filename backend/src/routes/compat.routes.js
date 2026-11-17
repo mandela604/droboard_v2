@@ -15,7 +15,10 @@ router.get('/droboard-page/posts', generalLimiter,
   }).strict() })),
   async (req, res) => {
     const posts = require('../services/posts.service');
-    return base.wrap(res, async () => posts.listPosts(req.valid.query));
+    // The page feed shows the page's OWN posts only — not everyone's.
+    return base.wrap(res, async () => posts.listPosts(
+      Object.assign({}, req.valid.query, { surface: 'droboard' })
+    ));
   });
 
 router.get('/droboard-page/collections', generalLimiter,

@@ -62,6 +62,9 @@ async function createPost(payload){
   const allowed = ['announcement','post','debate','shoutout','repost','forum-poll','ama'];
   if (!payload || !payload.type || allowed.indexOf(payload.type) === -1) throw new Error('Invalid post type');
   if (!payload.text && !payload.title && !payload.shoutout && !payload.storyRef && !payload.debateData && !payload.poll) throw new Error('Post needs content');
+  // Every post made here belongs to the page — that is what keeps the page
+  // feed showing the page's own posts instead of the whole platform's.
+  const body = Object.assign({}, payload, { page: 'droboard' });
   if (editingId){
     // The composer always "creates"; while an edit is open we redirect the
     // same call to PATCH so nothing is duplicated and nothing is faked.
@@ -69,14 +72,14 @@ async function createPost(payload){
     const j = await api('/posts/' + encodeURIComponent(id), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
     return Object.assign({ _editedId: id }, j);
   }
   return await api('/posts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
@@ -122,7 +125,7 @@ function mapPost(p){
   if (mapped.type === 'repost') mapped.type = 'recommendation';
   if(mapped.type==='shoutout' && mapped.shoutout && mapped.shoutout.id){
     const s = mapped.shoutout;
-    const name = s.name || 'Droboard Writer';
+    const name = s.name || 'Unknown';
     const av   = s.avatar || DROBOARD_LOGO;
     return Object.assign({}, mapped, { avatar: DROBOARD_LOGO, name: mapped.name || 'Droboard', shoutout:Object.assign({}, s, { name:name, avatar:av, following:!!FOLLOW_STATE[s.id], _writerId:s.id }) });
   }
@@ -183,6 +186,22 @@ function switchTab(tab){
   const pf=document.getElementById('panel-feed'); if(pf) pf.style.display = tab==='about'?'none':'block';
   const pa=document.getElementById('panel-about'); if(pa) pa.style.display = tab==='about'?'block':'none';
   if(tab!=='about') renderFeed();
+}
+
+// Show the page body (the empty state hides it until there is something to
+// show — a manager's first post must bring the page back).
+function showRoot(){
+  var ls=document.getElementById('loadingState'); if(ls) ls.style.display='none';
+  var es=document.getElementById('emptyState'); if(es) es.style.display='none';
+  var rs=document.getElementById('droboardRoot'); if(rs) rs.style.display='block';
+}
+// The page's own numbers, read from the posts the page owns.
+function renderPageStats(){
+  var featured={}; POSTS.forEach(function(p){ if(p.type==='shoutout'&&p.shoutout&&p.shoutout.id) featured[p.shoutout.id]=1; });
+  var wf=document.getElementById('statWritersFeatured');
+  if(wf) wf.textContent=String(Object.keys(featured).length);
+  var sp=document.getElementById('statPosts');
+  if(sp) sp.textContent=fmtN(feedTotal);
 }
 
 function renderFeed(){
@@ -529,7 +548,7 @@ function attachPostCard(){
       let statBits='';
       const st=s.stats||{};
       if(role==='Reader'){
-        statBits='<span><b style="color:var(--tx-high)">'+esc(String(s.readingHours||0))+'</b>h read</span><span><b style="color:var(--tx-high)">'+esc(String(s.chaptersRead||0))+'</b> chapters</span><span><b style="color:var(--tx-high)">'+esc(String(s.streak||0))+'</b> day streak</span>';
+        statBits='<span><b style="color:var(--tx-high)">'+esc(String(s.readingHours||0))+'</b>h read</span><span><b style="color:var(--tx-high)">'+esc(String(s.chaptersRead||0))+'</b> books finished</span><span><b style="color:var(--tx-high)">'+esc(String(s.streak||0))+'</b> day streak</span>';
       } else {
         const reads=st.reads!=null? (st.reads>=1000? (st.reads/1000|0)+'k' : st.reads) : '';
         const followers=st.followers!=null? st.followers : '';
@@ -597,8 +616,17 @@ function attachPostCard(){
       } catch(err) { toast('Failed to update follow'); }
       return;
     }
-    if(e.target.closest('[data-shout-open]')){ toast('👤 Opening profile…'); return; }
-    if(e.target.closest('[data-story-chip]')){ toast('📖 Opening story…'); return; }
+    if(e.target.closest('[data-shout-open]')){
+      // Open the person the shoutout is about — their real profile.
+      const open=e.target.closest('[data-shout-open]');
+      const id=open.getAttribute('data-shout-open');
+      const post=findPostAnywhere(id);
+      const s=(post && post.shoutout)||{};
+      const handle=String(s.handle||'').replace(/^@/,'')||String(s.id||'');
+      if(handle) location.href='profile.html?handle='+encodeURIComponent(handle);
+      else toast('Profile unavailable');
+      return;
+    }
     if(e.target.closest('[data-ama-open]')){ toast('🎙 Joining Droboard Live…'); return; }
     if(e.target.closest('[data-image-open]')){ toast('🖼 Viewing…'); return; }
   });
@@ -691,7 +719,9 @@ function initCollections(){
 
   /* ── Page info (bio / links / guidelines) ──
      No backend route exists for page-info saves, so this panel renders the
-     page's static copy and the edit entry point stays hidden. */
+     page's own copy only — nothing here is a live number, so nothing is
+     dressed up as one. The bio stays in the markup; the fabricated contact
+     rows (founded date, social handles, support address) are gone. */
   const DEFAULT_RULES=['Be kind — debate the story, not the person.','Tag spoilers so everyone gets to feel the twist.','No harassment of writers or fellow readers.','Shoutouts and story picks are curated by the team, not paid placements.'];
   const SOCIAL_ICONS={ instagram:'fab fa-instagram', x:'fab fa-x-twitter', facebook:'fab fa-facebook', tiktok:'fab fa-tiktok', youtube:'fab fa-youtube', linkedin:'fab fa-linkedin', threads:'fab fa-threads', snapchat:'fab fa-snapchat', whatsapp:'fab fa-whatsapp', telegram:'fab fa-telegram', website:'fas fa-globe' };
   function getAbout(){
@@ -699,9 +729,9 @@ function initCollections(){
     return {
       bio: null, // null keeps the markup's static bio
       blurb: null,
-      email: 'hello@droboard.app',
-      support: 'support.droboard.app',
-      links: [ { network:'instagram', handle:'@droboard.app' }, { network:'x', handle:'@droboard' } ],
+      email: '',
+      support: '',
+      links: [],
       rules: DEFAULT_RULES.slice()
     };
   }
@@ -710,12 +740,12 @@ function initCollections(){
     const a=getAbout();
     setText('pageBio', a.bio);
     if(a.blurb) setText('aboutBlurb', a.blurb);
-    setText('aboutContact', a.email+' · '+a.support);
+    setText('aboutContact', a.email&&a.support ? a.email+' · '+a.support : '');
     const linksBox=document.getElementById('aboutLinks');
-    if(linksBox) linksBox.innerHTML=a.links.map(function(l){
+    if(linksBox) linksBox.innerHTML=a.links.length ? a.links.map(function(l){
       const icon=SOCIAL_ICONS[l.network]||'fas fa-globe';
       return '<span style="color:var(--blue);font-size:12px;white-space:nowrap"><i class="'+icon+'"></i> '+esc(l.handle)+'</span>';
-    }).join('') || '<span style="font-size:11px;color:var(--tx-faint)">No links yet</span>';
+    }).join('') : '<span style="font-size:11px;color:var(--tx-faint)">No links published</span>';
     const ul=document.getElementById('aboutRules'); if(ul) ul.innerHTML=a.rules.map(function(r){return '<li>'+esc(r)+'</li>'}).join('');
     const eb=document.getElementById('aboutEditBtn'); if(eb) eb.style.display='none'; // page-info saving has no backend route yet
   }
@@ -854,8 +884,11 @@ function wirePageChrome(){
       if(t && t.tagName==='IMG'){
         if(t.dataset.fallbackApplied) return;
         t.dataset.fallbackApplied='1';
+        // No stock photos and no random faces — a missing avatar falls back to
+        // the Droboard mark, a missing cover to a plain surface.
         var isAv = (t.closest && t.closest('.av-ring,.dpm-av,.drb-shout-av')) || (t.width && t.width<=60);
-        t.src = isAv ? 'https://i.pravatar.cc/150?img=12' : 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=400&h=400&fit=crop';
+        if(isAv){ t.src = DROBOARD_LOGO; }
+        else { t.removeAttribute('src'); t.style.background='var(--l2,#f0f0f0)'; }
       }
     }, true);
   }
@@ -886,8 +919,30 @@ async function init(){
     const fp=await fetchPosts(1);
     POSTS=fp.posts||[]; feedTotal=fp.total||POSTS.length;
     loadPageProfile().then(renderFollowUI);
+    // composer — manager-gated server-side; the composer posts via
+    // DroboardPageData.createPost and hands the created card back here.
+    // It mounts BEFORE the empty-state check, so a page with no posts yet
+    // still gives its manager the composer (the first post has to start
+    // somewhere).
+    try{ if(global.DroboardComposer) await global.DroboardComposer.mount('#composerMount', { onPosted:function(p){
+      if(p && p._editedId){
+        replaceInPOSTS(p);
+        renderFeed(); toast('✅ Post updated!');
+        return;
+      }
+      editingId=null; // fresh compose — never keep a stale edit target
+      if(p && p.id){
+        POSTS.unshift(p);
+        feedTotal=Math.max(feedTotal, POSTS.length);
+        showRoot();
+        renderFeed();
+        renderPageStats();
+        toast('Posted to @droboard');
+      }
+    } }); }catch(e){}
     if(!POSTS.length){
-      if(ls) ls.style.display='none'; if(es) es.style.display='block'; return;
+      if(ls) ls.style.display='none'; if(rs) rs.style.display='block'; if(es) es.style.display='none';
+      return;
     }
     if(ls) ls.style.display='none'; if(rs) rs.style.display='block';
     renderFollowUI();
@@ -899,21 +954,10 @@ async function init(){
     renderFeed();
     initSpotlight();
     initCollections();
+    renderPageStats();
     const wf=document.getElementById('statWritersFeatured'); if(wf) wf.textContent = (function(){ const ids=new Set(); POSTS.forEach(function(p){ if(p.type==='shoutout'&&p.shoutout&&p.shoutout.id) ids.add(p.shoutout.id); }); return ids.size; })();
     const sp=document.getElementById('statPosts'); if(sp) sp.textContent=fmtN(feedTotal);
-    const lm=document.getElementById('loadMoreBtn'); if(lm) lm.addEventListener('click', loadMore);
-    paintLoadMoreBtn();
-    // composer — manager-gated server-side; the composer posts via
-    // DroboardPageData.createPost and hands the created card back here.
-    try{ if(global.DroboardComposer) DroboardComposer.mount('#composerMount', { onPosted:function(p){
-      if(p && p._editedId){
-        replaceInPOSTS(p);
-        renderFeed(); toast('✅ Post updated!');
-        return;
-      }
-      editingId=null; // fresh compose — never keep a stale edit target
-      if(p && p.id){ POSTS.unshift(p); renderFeed(); toast('Posted to @droboard'); }
-    } }); }catch(e){}
+    const lm=document.getElementById('loadMoreBtn'); if(lm) lm.addEventListener('click', loadMore);    paintLoadMoreBtn();
     renderMainSupport();
     const pmb=document.getElementById('pageMenuBtn'); if(pmb) pmb.addEventListener('click', openPageMenu);
     // expose for inline onclicks

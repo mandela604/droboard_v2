@@ -11,27 +11,91 @@
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 
-function canPost(){ try{ return global.DroboardPageData && DroboardPageData.canCurrentManage('post'); }catch(e){ return false; } }
-function canManageRoles(){ try{ return global.DroboardPageData && DroboardPageData.canCurrentManage('manage_roles'); }catch(e){ return false; } }
+// The page is managed by staff — the server decides who, so these ask it.
+// (They are promises: a plain truthy check used to show the composer to
+// everyone, including readers.)
+function canPost(){ try{ return global.DroboardPageData && global.DroboardPageData.canCurrentManage ? global.DroboardPageData.canCurrentManage('post') : Promise.resolve(false); }catch(e){ return Promise.resolve(false); } }
+function canManageRoles(){ try{ return global.DroboardPageData && global.DroboardPageData.canCurrentManage ? global.DroboardPageData.canCurrentManage('manage_roles') : Promise.resolve(false); }catch(e){ return Promise.resolve(false); } }
 
-// ── Data helpers ──
-function getWriterPool(){
-  // 1) dedicated demo pool so behaviour is testable without depending on global seed order
-  var pool=[];
-  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_USERS) pool=global.DroboardPageSeed.DROBOARD_COMPOSER_USERS.slice(); }catch(e){}
-  try{ if(!pool.length && typeof WRITER_STATUSES!=='undefined') pool=WRITER_STATUSES.filter(function(w){return !w.isYou}); }catch(e){}
-  // 2) include readers so shoutout search finds them too
-  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_READERS) pool=pool.concat(global.DroboardPageSeed.DROBOARD_COMPOSER_READERS.slice()); }catch(e){}
-  return pool;
+// ── Data helpers (LIVE — the platform's own users and stories) ──
+function apiGet(path){
+  return fetch(path, { credentials:'include' }).then(function(res){
+    if(!res.ok) throw new Error('Request failed ('+res.status+')');
+    return res.json();
+  });
 }
-function getStoryPool(){
-  try{ if(global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COMPOSER_STORIES) return global.DroboardPageSeed.DROBOARD_COMPOSER_STORIES.slice(); }catch(e){}
-  try{ if(global.STORIES) return global.STORIES; }catch(e){}
-  try{
-    var c=global.DroboardPageSeed && global.DroboardPageSeed.DROBOARD_COLLECTIONS;
-    if(c) return c.map(function(x,i){ return { id:'story'+i, title:x.name, cover:(x.covers&&x.covers[0])||'', author:'Droboard', genre:'', stats:{ reads:0 } }; });
-  }catch(e){}
-  return [];
+// Shoutout picker: search the platform's real users — writers AND readers.
+function searchUsers(q){
+  return apiGet('/api/users?q='+encodeURIComponent(q)+'&limit=8').then(function(j){
+    return (j.items||[]).map(function(u){
+      const roles = u.roles || [];
+      const isWriter = u.isWriter !== undefined ? !!u.isWriter : roles.indexOf('writer')!==-1;
+      return {
+        id: u.id || u.handle || u.username || '',
+        name: u.name || u.username || u.fullName || 'Unknown',
+        handle: u.handle || u.username || '',
+        avatar: u.avatar || u.av || '',
+        role: isWriter ? 'Writer' : 'Reader',
+        isWriter: isWriter,
+        verified: !!u.verified,
+      };
+    });
+  });
+}
+// Story picker: the platform's real catalogue (GET /feed/discover/stories).
+function searchStories(q){
+  return apiGet('/api/feed/discover/stories?limit=40').then(function(j){
+    const items = j.items || [];
+    const needle = String(q||'').trim().toLowerCase();
+    const rows = needle
+      ? items.filter(function(s){
+          return String(s.title||'').toLowerCase().indexOf(needle)!==-1
+            || String(s.author||'').toLowerCase().indexOf(needle)!==-1
+            || String(s.authorName||'').toLowerCase().indexOf(needle)!==-1;
+        })
+      : items;
+    return rows.slice(0,8).map(function(s){
+      return {
+        id: s.id, title: s.title,
+        cover: s.cover || s.img || '',
+        author: s.authorName || s.author || '',
+        authorHandle: s.author || '',
+        genre: s.genre || s.cat || '',
+        reads: s.reads || 0,
+        chapters: s.chapters || 0,
+      };
+    });
+  });
+}
+// The picked person's LIVE stats (reads / followers / books for a writer, the
+// reading profile for a reader) — read from their profile, never invented.
+function loadUserStats(u){
+  return apiGet('/api/users/'+encodeURIComponent(u.handle||u.id)).then(function(j){
+    const p = j.profile || j.user || j.data || j || {};
+    const st = p.stats || {};
+    const rs = p.readingStats || {};
+    const isWriter = p.isWriter !== undefined ? !!p.isWriter : !!u.isWriter;
+    return Object.assign({}, u, {
+      stats: { reads: st.reads||0, followers: st.followers||0, books: st.books||0 },
+      books: p.books || [],
+      readingHours: rs.hoursRead != null ? rs.hoursRead : (st.readingHours||0),
+      chaptersRead: rs.booksFinished != null ? rs.booksFinished : 0,
+      streak: rs.dayStreak != null ? rs.dayStreak : (st.streak||0),
+      isWriter: isWriter,
+      role: isWriter ? 'Writer' : 'Reader',
+    });
+  }).catch(function(){ return u; });
+}
+// Real image upload (POST /api/uploads/image) — no data-URL blobs.
+function uploadImage(file){
+  var fd = new FormData();
+  fd.append('file', file);
+  return fetch('/api/uploads/image', { method:'POST', credentials:'include', body: fd })
+    .then(function(res){
+      if(!res.ok) throw new Error('Image upload failed ('+res.status+')');
+      return res.json();
+    })
+    .then(function(j){ return (j && j.url) || ''; });
 }
 
 // ── Overlay composer ──
@@ -205,40 +269,47 @@ function bindBodyEvents(){
     inp.addEventListener('input', updatePostBtn);
     wrap.appendChild(inp);
   });
-  // shoutout search
+  // shoutout search — LIVE: the platform's own users
   const uSearch=document.getElementById('drbUserSearch');
   if(uSearch){
     renderUserPicked();
+    let uTimer=null, uSeq=0;
     uSearch.addEventListener('input', function(){
-      const q=this.value.trim().toLowerCase();
+      const q=this.value.trim();
       const drop=document.getElementById('drbUserDrop');
+      clearTimeout(uTimer);
       if(!q){ drop.classList.remove('open'); return; }
-      const pool=getWriterPool();
-      const hits=pool.filter(function(w){ return w.name.toLowerCase().indexOf(q)!==-1 || w.id.toLowerCase().indexOf(q)!==-1 || (w.handle||'').toLowerCase().indexOf(q)!==-1; }).slice(0,6);
-      if(!hits.length){ drop.classList.remove('open'); return; }
-      drop.innerHTML=hits.map(function(w){
-        const role=w.role||'Writer';
-        let statsHtml;
-        if(role==='Reader'){
-          statsHtml='<span><b>'+esc(String(w.readingHours||0))+'</b>h read</span><span><b>'+esc(String(w.chaptersRead||0))+'</b> chapters</span><span><b>'+esc(String(w.streak||0))+'</b> day streak</span>';
-        } else {
-          const reads=w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '—';
-          const followers=w.stats&&w.stats.followers || 0;
-          const books=(w.books&&w.books.length)||0;
-          statsHtml='<span><b>'+esc(reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String(books))+'</b> books</span>';
-        }
-        return '<div class="drb-user-opt" data-wid="'+escAttr(w.id)+'"><img class="drb-user-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-user-info"><div class="drb-user-name">'+esc(w.name)+'</div><div class="drb-user-meta">@'+esc(w.id)+' · '+role+(w.isLive?' · 🔴 Live':'')+'</div><div class="drb-user-stats">'+statsHtml+'</div></div></div>';
-      }).join('');
-      drop.classList.add('open');
-      drop.querySelectorAll('[data-wid]').forEach(function(el){
-        el.addEventListener('click', function(){
-          const w=getWriterPool().find(function(x){return x.id===el.dataset.wid});
-          _pickedUser=w||null;
-          document.getElementById('drbUserSearch').value='';
-          drop.classList.remove('open');
-          renderUserPicked(); updatePostBtn();
+      const seq=++uSeq;
+      uTimer=setTimeout(function(){
+        searchUsers(q).then(function(hits){
+          if(seq!==uSeq) return;           // a newer keystroke won
+          if(!hits.length){ drop.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx-muted,#666)">No one on Droboard matches "'+esc(q)+'"</div>'; drop.classList.add('open'); return; }
+          drop.innerHTML=hits.map(function(w){
+            const role=w.role||'Writer';
+            return '<div class="drb-user-opt" data-wid="'+escAttr(w.id)+'"><img class="drb-user-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-user-info"><div class="drb-user-name">'+esc(w.name)+'</div><div class="drb-user-meta">@'+esc(w.handle||w.id)+' · '+esc(role)+(w.verified?' · ✓':'')+'</div></div></div>';
+          }).join('');
+          drop.classList.add('open');
+          drop.querySelectorAll('[data-wid]').forEach(function(el){
+            el.addEventListener('click', function(){
+              const w=hits.find(function(x){return String(x.id)===el.dataset.wid});
+              if(!w) return;
+              _pickedUser=w;
+              document.getElementById('drbUserSearch').value='';
+              drop.classList.remove('open');
+              renderUserPicked(); updatePostBtn();
+              // Pull the person's live numbers (reads/followers/books, or their
+              // reading profile) so the shoutout card shows the real thing.
+              loadUserStats(w).then(function(full){
+                _pickedUser=full;
+                renderUserPicked(); updatePostBtn();
+              });
+            });
+          });
+        }).catch(function(){
+          drop.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx-muted,#666)">Could not search — try again</div>';
+          drop.classList.add('open');
         });
-      });
+      }, 250);
     });
   }
   // image attach (post + announcement only)
@@ -258,10 +329,20 @@ function bindBodyEvents(){
   if(imgFile) imgFile.addEventListener('change', function(){
     const f=imgFile.files && imgFile.files[0]; if(!f) return;
     if(!f.type.startsWith('image/')) return;
-    // TODO backend: upload to /api/uploads, store returned URL. Local preview for now.
-    const rd=new FileReader();
-    rd.onload=function(){ _pickedImage=String(rd.result||''); if(imgUrl) imgUrl.value=''; refreshImgPreview(); };
-    rd.readAsDataURL(f);
+    // Real upload to /api/uploads/image — the post stores the returned URL,
+    // never a local data blob.
+    imgPreview.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--tx-muted,#666)"><i class="fas fa-circle-notch fa-spin"></i> Uploading image…</div>';
+    imgPreview.classList.add('show');
+    uploadImage(f).then(function(url){
+      if(!url) throw new Error('no url');
+      _pickedImage=url;
+      if(imgUrl) imgUrl.value='';
+      refreshImgPreview();
+    }).catch(function(e){
+      imgPreview.classList.remove('show');
+      imgPreview.innerHTML='';
+      toast('Image upload failed — try again');
+    });
   });
   if(imgUrl) imgUrl.addEventListener('input', function(){
     const v=imgUrl.value.trim();
@@ -277,32 +358,40 @@ function bindBodyEvents(){
   if(imgClear) imgClear.addEventListener('click', function(){
     _pickedImage=''; if(imgUrl) imgUrl.value=''; if(imgFile) imgFile.value=''; refreshImgPreview();
   });
-  // story search
+  // story search — LIVE: the platform's catalogue
   const sSearch=document.getElementById('drbStorySearch');
   if(sSearch){
     renderStoryPicked();
+    let sTimer=null, sSeq=0;
     sSearch.addEventListener('input', function(){
-      const q=this.value.trim().toLowerCase();
+      const q=this.value.trim();
       const drop=document.getElementById('drbStoryDrop');
+      clearTimeout(sTimer);
       if(!q){ drop.classList.remove('open'); return; }
-      const pool=getStoryPool();
-      const hits=pool.filter(function(s){ return (s.title||'').toLowerCase().indexOf(q)!==-1 || (s.author||s.writer||'').toLowerCase().indexOf(q)!==-1; }).slice(0,6);
-      if(!hits.length){ drop.classList.remove('open'); return; }
-      drop.innerHTML=hits.map(function(s){
-        return '<div class="drb-story-opt" data-sid="'+escAttr(s.id||s.title)+'"><img class="drb-story-cover" src="'+escAttr(s.cover||'')+'"/><div class="drb-story-info"><div class="drb-story-title">'+esc(s.title||'')+'</div><div class="drb-story-meta">'+esc(s.author||s.writer||'')+' · '+(s.genre||'')+'</div></div></div>';
-      }).join('');
-      drop.classList.add('open');
-      drop.querySelectorAll('[data-sid]').forEach(function(el){
-        el.addEventListener('click', function(){
-          const sid=el.dataset.sid;
-          const pool2=getStoryPool();
-          const found=pool2.find(function(x){return (x.id||x.title)===sid});
-          _pickedStory=found||{ id:sid, title:el.querySelector('.drb-story-title').textContent, cover:el.querySelector('img').src, author:'' };
-          document.getElementById('drbStorySearch').value='';
-          drop.classList.remove('open');
-          renderStoryPicked(); updatePostBtn();
+      const seq=++sSeq;
+      sTimer=setTimeout(function(){
+        searchStories(q).then(function(hits){
+          if(seq!==sSeq) return;
+          if(!hits.length){ drop.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx-muted,#666)">No published story matches "'+esc(q)+'"</div>'; drop.classList.add('open'); return; }
+          drop.innerHTML=hits.map(function(s){
+            const meta=[s.author||s.authorHandle||'', s.genre||'', s.chapters? s.chapters+' chapters':'', s.reads? s.reads+' reads':''].filter(Boolean).join(' · ');
+            return '<div class="drb-story-opt" data-sid="'+escAttr(s.id||'')+'"><img class="drb-story-cover" src="'+escAttr(s.cover||'')+'" alt=""/><div class="drb-story-info"><div class="drb-story-title">'+esc(s.title||'')+'</div><div class="drb-story-meta">'+esc(meta)+'</div></div></div>';
+          }).join('');
+          drop.classList.add('open');
+          drop.querySelectorAll('[data-sid]').forEach(function(el){
+            el.addEventListener('click', function(){
+              const found=hits.find(function(x){return String(x.id)===el.dataset.sid});
+              _pickedStory=found||null;
+              document.getElementById('drbStorySearch').value='';
+              drop.classList.remove('open');
+              renderStoryPicked(); updatePostBtn();
+            });
+          });
+        }).catch(function(){
+          drop.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx-muted,#666)">Could not load stories — try again</div>';
+          drop.classList.add('open');
         });
-      });
+      }, 250);
     });
   }
 }
@@ -314,20 +403,23 @@ function renderUserPicked(){
   const role=w.role||'Writer';
   let statsHtml;
   if(role==='Reader'){
-    statsHtml='<span><b>'+esc(String(w.readingHours||0))+'</b>h read</span><span><b>'+esc(String(w.chaptersRead||0))+'</b> chapters</span><span><b>'+esc(String(w.streak||0))+'</b> day streak</span>';
+    statsHtml='<span><b>'+esc(String(w.readingHours||0))+'</b>h read</span><span><b>'+esc(String(w.chaptersRead||0))+'</b> books finished</span><span><b>'+esc(String(w.streak||0))+'</b> day streak</span>';
   } else {
-    const reads=w.stats&&w.stats.reads? (w.stats.reads>=1000? (w.stats.reads/1000|0)+'k' : w.stats.reads) : '—';
-    const followers=w.stats&&w.stats.followers||0;
-    statsHtml='<span><b>'+esc(reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String((w.books&&w.books.length)||0))+'</b> books</span>';
+    const st=w.stats||{};
+    const reads=st.reads||0;
+    const followers=st.followers||0;
+    const books=st.books||((w.books&&w.books.length)||0);
+    statsHtml='<span><b>'+esc(reads>=1000? (reads/1000|0)+'k' : reads)+'</b> reads</span><span><b>'+esc(String(followers))+'</b> followers</span><span><b>'+esc(String(books))+'</b> books</span>';
   }
-  box.innerHTML='<div class="drb-picked"><img class="drb-picked-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-picked-info"><div class="drb-picked-name">@'+esc(w.name)+'</div><div class="drb-picked-tag">'+esc(w.id)+' · '+(w.isLive?'🔴 Live':esc(role))+'</div><div class="drb-picked-stats">'+statsHtml+'</div></div><button class="drb-picked-x" id="drbClearUser"><i class="fas fa-xmark"></i></button></div>';
+  box.innerHTML='<div class="drb-picked"><img class="drb-picked-av" src="'+escAttr(w.avatar||'')+'"/><div class="drb-picked-info"><div class="drb-picked-name">@'+esc(w.name)+'</div><div class="drb-picked-tag">'+esc(w.handle||w.id)+' · '+esc(role)+'</div><div class="drb-picked-stats">'+statsHtml+'</div></div><button class="drb-picked-x" id="drbClearUser"><i class="fas fa-xmark"></i></button></div>';
   box.querySelector('#drbClearUser').addEventListener('click', function(){ _pickedUser=null; renderUserPicked(); updatePostBtn(); });
 }
 function renderStoryPicked(){
   const box=document.getElementById('drbStoryPicked'); if(!box) return;
   if(!_pickedStory){ box.innerHTML=''; return; }
   const s=_pickedStory;
-  box.innerHTML='<div class="drb-story-picked"><img src="'+escAttr(s.cover||'')+'" alt=""/><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--tx-high,#161616);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.title||'')+'</div><div style="font-size:11px;color:var(--tx-muted,#666);margin-top:2px">'+esc(s.author||s.writer||'')+'</div></div><button class="drb-picked-x" id="drbClearStory"><i class="fas fa-xmark"></i></button></div>';
+  const sMeta=[s.author||'', s.genre||'', s.chapters? s.chapters+' chapters':'', s.reads? s.reads+' reads':''].filter(Boolean).join(' · ');
+  box.innerHTML='<div class="drb-story-picked"><img src="'+escAttr(s.cover||'')+'" alt=""/><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--tx-high,#161616);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.title||'')+'</div><div style="font-size:11px;color:var(--tx-muted,#666);margin-top:2px">'+esc(sMeta)+'</div></div><button class="drb-picked-x" id="drbClearStory"><i class="fas fa-xmark"></i></button></div>';
   box.querySelector('#drbClearStory').addEventListener('click', function(){ _pickedStory=null; renderStoryPicked(); updatePostBtn(); });
 }
 
@@ -366,7 +458,7 @@ async function doPost(){
       if(!_pickedStory) throw new Error('Search and select a story');
       const note=document.getElementById('drbText')?.value.trim();
       base.type='repost'; base.note=note||undefined;
-      base.storyRef={ cat:_pickedStory.genre||'📚 Pick', title:_pickedStory.title, cover:_pickedStory.cover, writer:_pickedStory.author||_pickedStory.writer||'Droboard' };
+      base.storyRef={ id:_pickedStory.id||'', cat:_pickedStory.genre||'📚 Pick', title:_pickedStory.title, cover:_pickedStory.cover, writer:_pickedStory.author||_pickedStory.authorHandle||'', author:_pickedStory.author||_pickedStory.authorHandle||'' };
     } else if(_cur==='forum-poll'){
       const q=document.getElementById('drbPollQ')?.value.trim();
       const opts=[...document.querySelectorAll('[data-poll-opt]')].map(function(i){return i.value.trim()}).filter(Boolean);
@@ -398,8 +490,9 @@ function buildManagers(){
   const box=document.createElement('div');
   box.style.cssText='background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:14px';
   async function render(){
-    const list = global.DroboardPageData ? global.DroboardPageData.getManagers() : [];
-    const iCanManage = canManageRoles();
+    let list = [];
+    try { list = global.DroboardPageData ? global.DroboardPageData.getManagers() : []; } catch(e){ list = []; }
+    const iCanManage = await canManageRoles();
     box.innerHTML=''
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><b style="font-size:12px;font-weight:800;color:var(--tx-high)"><i class="fas fa-shield-halved" style="color:var(--acc)"></i> Page managers</b><span style="font-size:10px;color:var(--tx-muted)">'+list.length+' · admins can edit</span></div>'
       + list.map(function(m){
@@ -430,19 +523,21 @@ function buildManagers(){
 global.DroboardComposer = {
   open:open, close:close,
   mount:function(sel, opts){
-    // legacy mount — now just opens overlay if manager, hides otherwise
+    // The composer is for page managers only — ask the server who we are
+    // before showing the button (the old truthy-promise check showed it to
+    // every reader).
     const el=typeof sel==='string'? document.querySelector(sel) : sel;
-    if(!el || !canPost()) { if(el) el.style.display='none'; return null; }
-    // create a trigger button in the mount
-    el.style.display='block';
-    el.innerHTML='<button id="drbOpenComposer" style="width:100%;padding:12px;border:1px solid var(--bd);border-radius:14px;background:var(--l1);color:var(--tx-muted);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px"><i class="fas fa-pen" style="color:var(--acc)"></i> New post on @droboard — tap to compose</button>';
-    const btn=el.querySelector('#drbOpenComposer');
+    if(!el) return null;
     _onPosted = opts && opts.onPosted;
-    btn.addEventListener('click', function(){ open(); });
-    // keep onPosted for later opens
-    const origOpen=open;
     global.DroboardComposer._onPosted=_onPosted;
-    return el;
+    return canPost().then(function(ok){
+      if(!ok){ el.style.display='none'; el.innerHTML=''; return null; }
+      el.style.display='block';
+      el.innerHTML='<button id="drbOpenComposer" style="width:100%;padding:12px;border:1px solid var(--bd);border-radius:14px;background:var(--l1);color:var(--tx-muted);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px"><i class="fas fa-pen" style="color:var(--acc)"></i> New post on @droboard — tap to compose</button>';
+      const btn=el.querySelector('#drbOpenComposer');
+      btn.addEventListener('click', function(){ open(); });
+      return el;
+    }).catch(function(){ el.style.display='none'; return null; });
   }
 };
 // keep managers same
