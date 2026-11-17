@@ -109,9 +109,12 @@ async function main() {
       'reactions', 'team', 'statusRing', 'statuses', 'repliesCount', 'mine'].every(k => card[k] !== undefined),
     Object.keys(card));
   check('reader card is authored as the actor (mine=true)', card.mine === true, card.mine);
-  check('reactions object exposes the 8 rids + userRx', (() => {
+  check('reactions object exposes the canonical rids + userRx', (() => {
     const rx = card.reactions || {};
-    return ['fire','cry','broken','shock','mindblown','emo','sus','clap','userRx'].every(k => rx[k] !== undefined);
+    // Read the canonical set from the service so the assertion tracks the
+    // reaction picker instead of a stale hard-coded list of old rid names.
+    const { CARD_RX } = require('../src/services/comments.service');
+    return CARD_RX.concat('userRx').every(k => rx[k] !== undefined);
   })(), card.reactions);
   check('statusRing is "has" while a live Status row exists', card.statusRing === 'has' && (card.statuses || []).length >= 1,
     { ring: card.statusRing, count: (card.statuses || []).length });

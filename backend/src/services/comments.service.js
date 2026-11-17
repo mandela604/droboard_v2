@@ -102,6 +102,13 @@ async function createComment({ authorId, user, data }) {
   if (parentId) {
     parent = await Comment.findOne({ id: parentId }).lean();
     if (!parent) { const e = new Error('no_parent'); e.status = 404; throw e; }
+    // Reject a chapter id that disagrees with the thread being replied to.
+    // A reply belongs to its parent's chapter — never allow a mismatched id
+    // to be "corrected" silently, because that hides a real client bug.
+    if (String(chapterId || '') && String(parent.chapterId || '') &&
+        String(chapterId) !== String(parent.chapterId)) {
+      const e = new Error('chapter_mismatch'); e.status = 400; throw e;
+    }
   }
   if (scope === 'discussion') {
     const { Discussion } = require('../models/social.model');

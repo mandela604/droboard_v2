@@ -1662,7 +1662,10 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     if (o.chapterId && !o.scope) o.scope = 'chapter';
     const body = { scope: o.scope || 'story', text: o.text };
     if (o.storyId) body.storyId = String(o.storyId);
-    if (o.chapterId) body.chapterId = String(o.chapterId);
+    // A reply inherits its chapter from the parent on the backend. Never send
+    // a chapter id of our own here — that is how a mismatched id could arise
+    // in the first place (e.g. replying from a mixed/book-wide view).
+    if (o.chapterId && !o.parentId) body.chapterId = String(o.chapterId);
     if (o.postId) body.postId = String(o.postId);
     if (o.discussionId) body.discussionId = String(o.discussionId);
     if (o.parentId) body.parentId = o.parentId;
