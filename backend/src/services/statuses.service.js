@@ -171,7 +171,7 @@ async function myStatuses({ userId }) {
       return {
         id: o.id, bg: o.bg, quote: o.quote, caption: o.caption,
         time: relTimeLabel(o.createdAt), ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
-        likes: o.likes, views: o.views || 0, viewed: o.viewed, isLive: o.isLive,
+        likes: o.likes, views: o.views || 0, viewed: o.viewed, liked: !!o.liked, isLive: o.isLive,
         storyRef: o.storyRef, expiresAt: o.expiresAt,
       };
     }),

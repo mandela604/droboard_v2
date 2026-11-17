@@ -768,20 +768,30 @@
           },
           postToProfile: async (payload) => {
             const caption = payload.caption || '';
-            // _data.sub = '@username', strip @ for original.name
-            const authorName = (_data.sub || '').replace(/^@/, '');
+            // Author label comes from the signed-in user, not the share sub
+            // (which is a points/season string for the league rank card).
+            let authorName = 'Reader';
+            try {
+              const me = (window.AuthSession && AuthSession.getStoredUser && AuthSession.getStoredUser())
+                || JSON.parse(localStorage.getItem('droboard_user') || '{}') || {};
+              authorName = ('@' + (me.username || me.handle || me.name || 'Reader')).replace(/^@$/, '@Reader');
+            } catch (e) {}
             const body = {
               type: 'repost',
               note: caption,
               original: {
-                id: _data.contentType === 'posts' ? String(_data.contentId || '') : '',
+                id: _data.contentId ? String(_data.contentId) : '',
+                bookId: _data.contentType === 'books' ? String(_data.contentId || '') : '',
                 postId: _data.contentType === 'posts' ? String(_data.contentId || '') : '',
                 link: _data.url || '',
                 name: authorName,
-                avatar: _data.img || '',
+                // The rank card is a data-URL preview only. Never put it in
+                // the post body — it blows past the request size limit. Real
+                // uploaded/media URLs are fine; data: URLs are dropped.
+                avatar: /^https?:\/\//i.test(_data.img || '') ? _data.img : '',
                 time: 'Just now',
                 text: _data.title || '',
-                cover: _data.img || '',
+                cover: /^https?:\/\//i.test(_data.img || '') ? _data.img : '',
                 title: _data.title || '',
               },
             };

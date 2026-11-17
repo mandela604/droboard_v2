@@ -597,15 +597,15 @@
     const TEAMS = options.teams || [];
     const REACTIONS = _rpAvailable() ? window.DroboardReactionPicker.REACTIONS : (options.reactions || DEFAULT_REACTIONS);
     const currentUser = Object.assign({ name: 'You', avatar: null, team: null }, options.currentUser || {});
-    // Demo identity: when the caller leaves the 'You' placeholder, use the
-    // demo session account (Jordan Blake reader / Ada Writes writer via ?as=)
-    // so new posts render with avatar + name like everyone else.
+    // Identity comes only from the real signed-in session (or the host page's
+    // explicit currentUser). No demo personas / "?as=" accounts are injected.
     try {
-      const _ph = !((options.currentUser || {}).name) || (((options.currentUser || {}).name === 'You') && !((options.currentUser || {}).avatar));
-      if (_ph && window.AuthSession && typeof window.AuthSession.getSync === 'function') {
-        const _s = window.AuthSession.getSync() || {};
-        if (_s.name) currentUser.name = _s.name;
-        if (_s.avatar) currentUser.avatar = _s.avatar;
+      const cu = options.currentUser || {};
+      const needsIdentity = !cu.name || (cu.name === 'You' && !cu.avatar);
+      if (needsIdentity && window.AuthSession && typeof window.AuthSession.getSync === 'function') {
+        const s = window.AuthSession.getSync() || {};
+        if (s.name) currentUser.name = s.name;
+        if (s.avatar) currentUser.avatar = s.avatar;
       }
     } catch (e) {}
     // Production identity bridge: when the app sets window.DroboardUser from
@@ -1508,10 +1508,10 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     function bindDelegatedEvents(scopeEl, ns) {
       scopeEl.addEventListener('click', e => {
         const av = e.target.closest('[data-dcs-avatar]');
-        if (av) { openStatusFor(+av.dataset.dcsAvatar); return; }
+        if (av) { openStatusFor(av.dataset.dcsAvatar); return; }
 
         const nm = e.target.closest('[data-dcs-nameclick]');
-        if (nm) { goToProfile(+nm.dataset.dcsNameclick); return; }
+        if (nm) { goToProfile(nm.dataset.dcsNameclick); return; }
 
         const mention = e.target.closest('[data-dcs-mention]');
         if (mention) {
@@ -1523,13 +1523,13 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
         }
 
         const rxb = e.target.closest('[data-dcs-rxbubble]');
-        if (rxb) { toggleRxPopup(+rxb.dataset.dcsRxbubble, ns); return; }
+        if (rxb) { toggleRxPopup(rxb.dataset.dcsRxbubble, ns); return; }
 
         const rxpick = e.target.closest('[data-dcs-rxpick]');
-        if (rxpick) { pickReaction(+rxpick.dataset.dcsRxpick, rxpick.dataset.rid); return; }
+        if (rxpick) { pickReaction(rxpick.dataset.dcsRxpick, rxpick.dataset.rid); return; }
 
         const like = e.target.closest('[data-dcs-like]');
-        if (like && !e.target.closest('.dcs-rx-popup')) { toggleLike(+like.dataset.dcsLike); return; }
+        if (like && !e.target.closest('.dcs-rx-popup')) { toggleLike(like.dataset.dcsLike); return; }
 
         const viewbtn = e.target.closest('[data-dcs-viewthread]');
         if (viewbtn) { openThread(viewbtn.dataset.dcsViewthread); return; }
@@ -1643,6 +1643,9 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     // 'book' = the whole story (its thread + every chapter thread). Anything
     // else keeps the old per-surface behaviour.
     const scope = o.scope || (o.chapterId ? 'chapter' : 'story');
+    // A chapter thread is meaningless without a chapter id — never fall back
+    // to showing every comment on the story.
+    if (scope === 'chapter' && !String(o.chapterId || '')) return [];
     let url = COMMENTS_API + '/comments?scope=' + encodeURIComponent(scope) + '&storyId=' + encodeURIComponent(o.storyId || '');
     if (o.chapterId && scope !== 'book') url += '&chapterId=' + encodeURIComponent(o.chapterId);
     url += '&limit=' + (o.limit || 50);
@@ -1654,6 +1657,9 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
 
   async function postComment(opts) {
     const o = opts || {};
+    // Never silently turn a chapter post into a story post — that is how a
+    // comment written in Ch.1 ends up visible from other chapters.
+    if (o.chapterId && !o.scope) o.scope = 'chapter';
     const body = { scope: o.scope || 'story', text: o.text };
     if (o.storyId) body.storyId = String(o.storyId);
     if (o.chapterId) body.chapterId = String(o.chapterId);

@@ -161,7 +161,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .ch-nav-side.next-ch.locked-next .ch-nav-label{color:var(--gold)}
 .ch-nav-center{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;}
 
-/* COMMENTS ── component (comment-section.js) renders into #commentsPlaceholder;
+/* COMMENTS ── component (comment-section.js?v=22) renders into #commentsPlaceholder;
    zero side padding here: .story-wrap already gives the column edge, same
    as the engagement accordions above and the scroll reader column. */
 .comments-section{padding:0 0 24px;max-width:680px;margin:0 auto;}
@@ -357,7 +357,9 @@ try{
 
     <!-- HERO -->
     <div class="ch-hero fu">
-      <div class="ch-hero-bg" style="background-image:url('https://images.unsplash.com/photo-1519834785169-98be25ec3f84?w=900&q=85')"></div>
+      <!-- Cover is painted from the story's own `cover` by full-reader-service.
+           No demo/stock image ships in the markup. -->
+      <div class="ch-hero-bg" id="chHeroBg"></div>
       <div class="ch-hero-scrim"></div>
       <div class="ch-hero-content">
         <div class="ch-cat-badge"></div>
@@ -509,9 +511,9 @@ try{
 <script src="../component/report-sheet.js"></script>
 <script src="../component/status-viewer.js?v=17"></script>
 <script src="../component/status-ring.js?v=5"></script>
-  <script src="../services/status-service.js?v=11"></script>
+  <script src="../services/status-service.js?v=13"></script>
 <script src="../shared/status-loader.js"></script>
-<script src="../component/comment-section.js?v=19"></script>
+<script src="../component/comment-section.js?v=22"></script>
 <script src="../component/community-cards.js?v=4"></script>
 
 <!-- ── Data ── -->
@@ -529,7 +531,7 @@ try{
 <script src="../services/reader-engagement-service.js?v=3"></script>
 <script src="../services/reader-track.js?v=2"></script>
 <script src="../services/reading-history.js"></script>
-<script src="../services/full-reader-service.js?v=10"></script>
+<script src="../services/full-reader-service.js?v=11"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

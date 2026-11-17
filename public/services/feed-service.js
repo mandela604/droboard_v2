@@ -272,6 +272,7 @@
     const ttl = (ref && (ref.title || '')) || 'Story';
     if (sid) { location.href = '/Pages/bridge.html?id=' + encodeURIComponent(sid); return; }
     if (pid) { location.href = '/Pages/discussion.html?id=' + encodeURIComponent(pid); return; }
+    if (ref && ref.link) { location.href = ref.link; return; }
     toast('📖 ' + ttl);
   }
   function openHubDiscussion(post) {
@@ -429,7 +430,7 @@
   function storyRefFor(post) {
     if (post.type === 'chapter-drop' && post.chapterRef) return { id: post.chapterRef.id || post.chapterRef.bookId, title: post.chapterRef.title, cover: post.chapterRef.cover, author: post.name };
     if ((post.type === 'review' || post.type === 'recommendation') && post.storyRef) return { id: post.storyRef.id, title: post.storyRef.title, cover: post.storyRef.cover, author: post.storyRef.author || post.storyRef.writer };
-    if (post.type === 'repost' && post.original) return { id: post.original.bookId || post.original.storyId || (post.original.id && !post.original.name ? post.original.id : ''), postId: post.original.postId, title: post.original.title || post.original.text, cover: post.original.cover, author: post.original.name };
+    if (post.type === 'repost' && post.original) return { id: post.original.bookId || post.original.storyId || '', postId: post.original.postId, link: post.original.link, title: post.original.title || post.original.text, cover: post.original.cover, author: post.original.name };
     return null;
   }
 

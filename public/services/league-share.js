@@ -43,35 +43,89 @@
   function card(n) {
     const m = readMeta(n);
     try {
+      const W = 600, H = 900;
       const c = document.createElement('canvas');
-      c.width = 540; c.height = 675;
+      c.width = W; c.height = H;
       const x = c.getContext('2d');
       if (!x) return '';
-      const g = x.createLinearGradient(0, 0, 540, 675);
-      g.addColorStop(0, '#1b0b16'); g.addColorStop(.55, '#2a0d1f'); g.addColorStop(1, '#3a1a08');
-      x.fillStyle = g; x.fillRect(0, 0, 540, 675);
-      const gl = x.createRadialGradient(270, 250, 20, 270, 250, 320);
-      gl.addColorStop(0, 'rgba(255,45,85,.28)'); gl.addColorStop(1, 'rgba(255,45,85,0)');
-      x.fillStyle = gl; x.fillRect(0, 0, 540, 675);
-      x.textAlign = 'center';
-      x.fillStyle = '#ff8fab'; x.font = '700 20px system-ui';
-      x.fillText('DROBOARD  ·  READER LEAGUE', 270, 66);
-      x.fillStyle = '#f59e0b'; x.font = '900 34px system-ui';
-      x.fillText('🏆', 270, 132);
-      x.fillStyle = '#fff'; x.font = '900 150px system-ui';
-      x.fillText('#' + m.rank, 270, 285);
-      x.fillStyle = '#ffc2d3'; x.font = '700 26px system-ui';
-      x.fillText('WEEKLY FINISH', 270, 330);
+
+      const round = (rx, ry, w, h, r) => {
+        const rr = Math.min(r, w / 2, h / 2);
+        x.beginPath();
+        x.moveTo(rx + rr, ry);
+        x.arcTo(rx + w, ry, rx + w, ry + h, rr);
+        x.arcTo(rx + w, ry + h, rx, ry + h, rr);
+        x.arcTo(rx, ry + h, rx, ry, rr);
+        x.arcTo(rx, ry, rx + w, ry, rr);
+        x.closePath();
+      };
+      // Shrink the font until the text fits — long handles and big ranks must
+      // never overflow the card or collide with the rows around them.
+      const fit = (text, max, size, weight) => {
+        let s = size;
+        x.font = weight + ' ' + s + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+        while (x.measureText(text).width > max && s > 18) {
+          s -= 2;
+          x.font = weight + ' ' + s + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+        }
+        return s;
+      };
+      const center = (text, y, max, size, weight, color) => {
+        fit(text, max, size, weight);
+        x.fillStyle = color; x.textAlign = 'center';
+        x.fillText(text, W / 2, y);
+      };
+
+      // Backdrop
+      const g = x.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, '#160a16'); g.addColorStop(.5, '#2b0e26'); g.addColorStop(1, '#3a1a0b');
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+      const glow = x.createRadialGradient(W / 2, 300, 30, W / 2, 300, 420);
+      glow.addColorStop(0, 'rgba(255,45,85,.30)'); glow.addColorStop(1, 'rgba(255,45,85,0)');
+      x.fillStyle = glow; x.fillRect(0, 0, W, H);
+      // Inner frame
+      x.strokeStyle = 'rgba(255,215,120,.28)'; x.lineWidth = 2;
+      round(26, 26, W - 52, H - 52, 34); x.stroke();
+
+      // Brand pill
+      x.fillStyle = 'rgba(255,255,255,.07)'; round(W / 2 - 175, 64, 350, 46, 23); x.fill();
+      center('DROBOARD  ·  READER LEAGUE', 94, 320, 19, '700', '#ff9dbb');
+
+      // Medal
+      x.fillStyle = '#f7c948'; x.beginPath(); x.arc(W / 2, 196, 52, 0, Math.PI * 2); x.fill();
+      x.fillStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.arc(W / 2 - 14, 180, 16, 0, Math.PI * 2); x.fill();
+      x.font = '44px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillStyle = '#7a4a05'; x.fillText('🏆', W / 2, 198);
+      x.textBaseline = 'alphabetic';
+
+      // Rank
+      center('#' + m.rank, 360, 470, 168, '900', '#ffffff');
+      center('WEEKLY FINISH', 404, 400, 25, '700', '#ffc2d3');
+
+      // Divider
       x.strokeStyle = 'rgba(255,255,255,.14)'; x.lineWidth = 2;
-      x.beginPath(); x.moveTo(90, 365); x.lineTo(450, 365); x.stroke();
-      x.fillStyle = '#fff'; x.font = '800 38px system-ui';
-      x.fillText(who().slice(0, 22), 270, 425);
-      x.fillStyle = '#f59e0b'; x.font = '900 56px system-ui';
-      x.fillText(m.points + ' pts', 270, 495);
-      x.fillStyle = '#c9a9b8'; x.font = '600 20px system-ui';
-      x.fillText(m.season ? 'Season ' + m.season : 'Reader League', 270, 540);
-      x.fillStyle = '#fff'; x.font = '800 24px system-ui';
-      x.fillText('Read. React. Climb.', 270, 620);
+      x.beginPath(); x.moveTo(110, 442); x.lineTo(W - 110, 442); x.stroke();
+
+      // Name
+      center(who().slice(0, 24), 508, 470, 40, '800', '#ffffff');
+
+      // Points card
+      x.fillStyle = 'rgba(247,201,72,.12)';
+      x.strokeStyle = 'rgba(247,201,72,.45)';
+      round(W / 2 - 190, 542, 380, 122, 26); x.fill(); x.stroke();
+      center(m.points + ' pts', 622, 330, 52, '900', '#f7c948');
+
+      // Season chip
+      if (m.season) {
+        x.fillStyle = 'rgba(255,255,255,.08)';
+        round(W / 2 - 120, 690, 240, 44, 22); x.fill();
+        center('Season ' + m.season, 719, 210, 19, '700', '#d9b9c8');
+      }
+
+      // Footer
+      x.fillStyle = '#ff2d55'; x.beginPath(); x.arc(105, 815, 8, 0, Math.PI * 2); x.fill();
+      center('Read. React. Climb.', 823, 400, 23, '800', '#ffffff');
+      center('droboard.app', 858, 300, 16, '600', 'rgba(255,255,255,.45)');
       return c.toDataURL('image/png');
     } catch (e) { return ''; }
   }

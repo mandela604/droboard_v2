@@ -77,6 +77,9 @@
       storyRef: s.storyRef && s.storyRef.id ? s.storyRef : null,
       time: s.time || 'Just now', ts: s.ts || Date.now(),
       likes: s.likes || 0, views: s.views || 0,
+      // Keep the viewer's own like from the backend — dropping it here made
+      // a loved status paint as unloved again on every refresh.
+      liked: !!s.liked,
       viewed: !!s.viewed, isLive: !!s.isLive, expiresAt: s.expiresAt || null,
     };
   }
@@ -190,6 +193,8 @@
         id: s.id, bg: s.bg, quote: s.quote, caption: s.caption,
         storyRef: s.storyRef || null, viewed: viewed,
         views: s.views || 0, likes: s.likes || 0,
+        // Preserve the viewer's like so the heart survives a refresh.
+        liked: !!s.liked,
         isLive: !!s.isLive, time: s.time,
       };
     });

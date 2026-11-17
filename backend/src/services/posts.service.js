@@ -56,10 +56,14 @@ function normContent(data) {
   // the resharing author.
   if (data.original) {
     const o = data.original;
+    // A repost of a POST carries a post id; a repost of a STORY carries a
+    // book id. Never write a post id into bookId — that made the embedded
+    // card open /Pages/bridge.html?id=<post> and land on "not found".
+    const isPost = o.type === 'post' || !!o.postId;
     data.original = {
       id: o.id || o.bookId || o.storyId || '',
-      bookId: o.bookId || o.storyId || o.id || '',
-      postId: o.postId || (o.type === 'post' ? o.id : '') || '',
+      bookId: o.bookId || o.storyId || (!isPost ? o.id : '') || '',
+      postId: o.postId || (isPost ? o.id : '') || '',
       link: o.link || '',
       name: o.name || '', avatar: o.avatar || '', time: o.time || '',
       text: o.text || '', cover: o.cover || '', title: o.title || '',
@@ -72,6 +76,9 @@ function normContent(data) {
 // before it can be recommended (public/services/reading-history.js).
 const RECOMMEND_MIN_CHAPTERS = 3;
 
+// Roles allowed to publish into a platform page (the official Droboard page).
+const PAGE_POST_ROLES = ['admin', 'senior_editor', 'chief_editor', 'marketing'];
+
 async function createPost({ authorId, data }) {
   if (data.type === 'recommendation' && data.storyRef && data.storyRef.id) {
     const { ReadingProgress } = require('../models/social.model');
@@ -82,6 +89,15 @@ async function createPost({ authorId, data }) {
   }
   const payload = normContent(Object.assign({}, data));
   delete payload.id; // server assigns uuid — composers send demo p_<ts> ids
+  // A post can belong to a platform PAGE (the official Droboard page). Only
+  // staff may post into one — a reader cannot inject themselves into it.
+  if (payload.page) {
+    const { User } = require('../models/user.model');
+    const u = await User.findOne({ id: String(authorId) }).select('roles').lean().catch(() => null);
+    const staff = !!(u && (u.roles || []).some(r => PAGE_POST_ROLES.includes(String(r))));
+    if (staff) payload.page = String(payload.page).slice(0, 40);
+    else delete payload.page;
+  }
   const post = await Post.create(Object.assign({}, payload, { authorId }));
   await counters.bump(post.authorId, 'postCount', 1);
   return (await shape([post], authorId))[0];
@@ -158,10 +174,13 @@ async function shape(docs, viewerId) {
   return list.map(p => toCard(p, am[String(p.authorId)], viewerId, rx[String(p.id)]));
 }
 
-async function listPosts({ tab, type, authorId, page, limit, viewerId, excluded, skipTotal }) {
+async function listPosts({ tab, type, authorId, page, limit, viewerId, excluded, skipTotal, surface }) {
   const filter = {};
   if (type) filter.type = type;
   if (authorId) filter.authorId = authorId;
+  // `surface` = the platform page that owns these posts (e.g. 'droboard').
+  // Without it the list is the general feed.
+  if (surface) filter.page = String(surface);
   // FIX 6: hide blocked/muted authors from feeds.
   // `excluded` is the mute+block set the caller already resolved for the whole
   // request (the feed resolves it once and hands it to every query). Without
