@@ -200,8 +200,16 @@
   /* Pull the stored catalog once per load so a marketing edit lands on the
      next page view rather than the next deploy. Nothing awaits it — this
      page's own matching may use the previous copy, which is the same
-     behaviour as the ad inventory cache. */
-  try { if (window.DroboardAudienceRules) DroboardAudienceRules.refresh(); } catch (e) {}
+     behaviour as the ad inventory cache. The endpoint needs a session, so
+     guests skip it instead of logging a 401 on every public page load. */
+  try {
+    var signedIn = false;
+    try {
+      signedIn = window.AuthSession && typeof AuthSession.isGuest === 'function'
+        ? !AuthSession.isGuest() : !!localStorage.getItem('droboard_session');
+    } catch (e) {}
+    if (signedIn && window.DroboardAudienceRules) DroboardAudienceRules.refresh();
+  } catch (e) {}
 
   window.DroboardAudience = {
     signals: signals,
