@@ -295,6 +295,7 @@ async function savePlot({ book, data }) {
 // not just the ones that already applied.
 async function listContracts({ userId }) {
   const ids = await authorIds(userId);
+  await repairOrphanVerifications(userId);
   const scope = { authorId: { $in: ids } };
   const [books, apps, verification, contracts] = await Promise.all([
     Book.find(scope).sort({ updatedAt: -1 })
@@ -422,6 +423,30 @@ function ageFromDob(dob) {
 // One identity record per writer. Age is recomputed here — the client's
 // number is never trusted. Photos are mandatory: an application without
 // them cannot be reviewed.
+// Legacy rows born before the userId fix have `userId: null`, so the author's
+// contract page and the SE approval queue point at different records. Reparent
+// (and collapse duplicates of) any orphan that matches this writer by email or
+// name so one approval is seen everywhere. Safe to call on every read/write.
+async function repairOrphanVerifications(userId, u) {
+  u = u || await User.findOne(require('./user-ref').userRefFilter([userId])).select('email fullName').lean();
+  if (!u) return;
+  const match = [
+    ...(u.email ? [{ email: String(u.email).toLowerCase() }] : []),
+    ...(u.fullName ? [{ name: u.fullName }] : []),
+  ];
+  if (!match.length) return;
+  const orphans = await AuthorVerification.find({
+    userId: { $in: [null, '', undefined] }, $or: match,
+  }).lean().catch(() => []);
+  for (const o of orphans) {
+    // If the author already owns a row, delete the orphan — keep the owned one
+    // as the single source of truth. Otherwise reparent it.
+    const owned = await AuthorVerification.findOne({ userId: { $in: await authorIds(userId) } }).select('id').lean();
+    if (owned && String(owned.id) !== String(o.id)) await AuthorVerification.deleteOne({ id: o.id });
+    else await AuthorVerification.updateOne({ id: o.id }, { $set: { userId: String(userId) } });
+  }
+}
+
 async function saveIdentity({ userId, kyc, idFiles }) {
   const front = idFiles && idFiles.front && idFiles.front[0];
   const back = idFiles && idFiles.back && idFiles.back[0];
@@ -457,19 +482,7 @@ async function saveIdentity({ userId, kyc, idFiles }) {
     avatar: (u && u.avatar) || '',
   };
   const ids = await authorIds(userId);
-  // Repair legacy orphan rows (userId null) that match this writer by email or
-  // name. They were created before the userId fix and are the reason approving
-  // a verification in the SE console did not unblock the author's contract.
-  const orphans = await AuthorVerification.find({
-    userId: { $in: [null, '', undefined] },
-    $or: [
-      ...(u && u.email ? [{ email: String(u.email).toLowerCase() }] : []),
-      ...(u && u.fullName ? [{ name: u.fullName }] : []),
-    ],
-  }).lean().catch(() => []);
-  for (const o of orphans) {
-    await AuthorVerification.updateOne({ id: o.id }, { $set: { userId: String(userId) } });
-  }
+  await repairOrphanVerifications(userId, u);
   return AuthorVerification.findOneAndUpdate(
     { userId: { $in: ids } },
     {
@@ -493,6 +506,7 @@ async function saveIdentity({ userId, kyc, idFiles }) {
 }
 
 async function getVerification({ userId }) {
+  await repairOrphanVerifications(userId);
   const v = await AuthorVerification.findOne({ userId: { $in: await authorIds(userId) } }).lean();
   if (!v) return { status: 'none', kycType: null, submittedAt: null, hasPhotos: false };
   const photos = v.kyc && v.kyc.idPhotos;
