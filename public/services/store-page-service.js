@@ -86,6 +86,19 @@
   }
 
   /* ── Render helpers ───────────────────────────────────────── */
+  function isGuest() {
+    if (window.RequireAuth && typeof RequireAuth.isGuest === 'function') return !!RequireAuth.isGuest();
+    return !!(window.AuthSession && AuthSession.isGuest && AuthSession.isGuest());
+  }
+
+  function renderGuestBalance() {
+    const el = document.getElementById('balanceCard');
+    if (!el) return;
+    el.innerHTML = '<div class="balance-label">YOUR BALANCE</div>'
+      + '<div class="balance-row"><div class="balance-icon"><i class="fas fa-coins"></i></div>'
+      + '<div class="balance-coins" style="font-size:14px">Sign in to see your coins</div></div>';
+  }
+
   function renderBalance(data) {
     const bal = data.balance || {};
     const coins = Number(bal.coins) || 0;
@@ -228,6 +241,14 @@
   }
 
   function openCheckout(item) {
+    // Guests can read every price, but buying is a write. Remember what they
+    // picked and show the shared login sheet; after sign-in the store reopens
+    // the same checkout instead of making them find the pack again.
+    if (isGuest()) {
+      try { sessionStorage.setItem('dro_store_pending', String(item.id)); } catch (e) {}
+      if (window.RequireAuth) RequireAuth.ensure('complete this purchase');
+      return;
+    }
     if (!window.DroboardPaySheet) { toast('Checkout unavailable — payment sheet failed to load'); return; }
     const amountNGN = ngnOf(item);
     if (!(amountNGN > 0)) { toast('This item has no price yet — check back soon'); return; }
@@ -274,7 +295,7 @@
   /* ── Click handlers ───────────────────────────────────────── */
   function selectPack(id) {
     document.querySelectorAll('.pack-card').forEach((c) => c.classList.toggle('selected', c.dataset.packId === id));
-    const p = (storeData.packs || []).find((x) => x.id === id);
+    const p = (storeData.packs || []).find((x) => x.id === id || x.code === id);
     if (!p) return;
     const bonus = Number(p.bonusCoins) || 0;
     openCheckout({
@@ -287,7 +308,7 @@
   }
 
   function selectBundle(id) {
-    const b = (storeData.bundles || []).find((x) => x.id === id);
+    const b = (storeData.bundles || []).find((x) => x.id === id || x.code === id);
     if (!b) return;
     openCheckout({
       kind: 'bundle', id: b.code || b.id,
@@ -301,8 +322,8 @@
   function selectSub(id) {
     document.querySelectorAll('.sub-card').forEach((c) => c.classList.toggle('selected', c.dataset.subId === id));
     document.querySelectorAll('.merge-card').forEach((c) => c.classList.toggle('selected', c.dataset.subId === id));
-    const s = (storeData.subscriptions || []).find((x) => x.id === id)
-      || (storeData.mergeSub && storeData.mergeSub.id === id ? storeData.mergeSub : null);
+    const s = (storeData.subscriptions || []).find((x) => x.id === id || x.code === id)
+      || (storeData.mergeSub && (storeData.mergeSub.id === id || storeData.mergeSub.code === id) ? storeData.mergeSub : null);
     if (!s) return;
     openCheckout({
       kind: 'sub', id: s.code || s.id,
@@ -315,6 +336,12 @@
 
   /* ── Earn: the shared start→claim protocol ────────────────── */
   function handleEarn(id) {
+    if (isGuest()) {
+      if (window.RequireAuth) return RequireAuth.ensure('claim a reward');
+      location.href = (window.AuthSession && AuthSession.loginUrl)
+        ? AuthSession.loginUrl('store.html') : 'login.html?next=store.html';
+      return;
+    }
     const r = (storeData.adRewards || []).find((x) => x.id === id);
     if (!r) return;
     if (!window.DroboardEarn) { toast('Earn service unavailable'); return; }
@@ -405,6 +432,16 @@
   }
 
   /* ── Init ─────────────────────────────────────────────────── */
+  function resumePending() {
+    let code = null;
+    try { code = sessionStorage.getItem('dro_store_pending'); sessionStorage.removeItem('dro_store_pending'); } catch (e) {}
+    if (!code || !storeData || isGuest()) return;
+    if ((storeData.packs || []).some((x) => x.id === code || x.code === code)) return selectPack(code);
+    if ((storeData.bundles || []).some((x) => x.id === code || x.code === code)) return selectBundle(code);
+    if ((storeData.subscriptions || []).some((x) => x.id === code || x.code === code)
+      || (storeData.mergeSub && (storeData.mergeSub.id === code || storeData.mergeSub.code === code))) return selectSub(code);
+  }
+
   function repaintCatalog() {
     if (!storeData) return;
     renderPacks(storeData.packs);
@@ -417,15 +454,14 @@
     hideState();
     showLoader();
     try {
-      if (window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
-        showState(guestHtml());
-        return;
-      }
+      // The catalog is public: a guest sees every pack and price. The login
+      // gate belongs on the pay action, not on reading the store.
       if (!window.StoreService || !StoreService.fetchStoreData) {
         throw new Error('Store service failed to load');
       }
       storeData = await StoreService.fetchStoreData();
-      renderBalance(storeData);
+      const guest = isGuest();
+      if (guest) renderGuestBalance(); else renderBalance(storeData);
       renderPacks(storeData.packs);
       renderBundles(storeData.bundles);
       renderRewards(storeData.adRewards);
@@ -438,9 +474,11 @@
         DroboardCurrency.onChange(function () { repaintCatalog(); });
       }
       applyTab();
+      if (!guest) setTimeout(resumePending, 300);
       // The catalog endpoint attaches the balance when it can; the wallet
-      // read is the authoritative split ({coins, bonus, paid}).
-      if (StoreService.syncBalance) {
+      // read is the authoritative split ({coins, bonus, paid}). Guests have
+      // no wallet to read, so they keep the sign-in prompt instead.
+      if (!guest && StoreService.syncBalance) {
         StoreService.syncBalance().then(function (bal) {
           if (storeData) { storeData.balance = bal; renderBalance(storeData); }
         });
