@@ -214,7 +214,11 @@
       return;
     }
     document.getElementById('copyCodeBtn').addEventListener('click', async function () {
-      await RS.copyLink(link); toast('📋 Link copied!');
+      await RS.copyLink(link); toast('📋 Code & link copied!');
+    });
+    var copyLinkBtn = document.getElementById('copyLinkBtn');
+    if (copyLinkBtn) copyLinkBtn.addEventListener('click', async function () {
+      await RS.copyLink(link); toast('📋 Invite link copied!');
     });
     document.getElementById('shareBtn').addEventListener('click', async function () {
       var ok = await RS.nativeShare('Join me on Droboard', 'Sign up with my link and I earn 5 coins!', link);
