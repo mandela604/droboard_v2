@@ -64,13 +64,27 @@
     return await res.json();
   }
 
+  function updateEngagementPayload(payload, kind) {
+    const out = {};
+    if (payload.question !== undefined) out.question = payload.question;
+    if (kind === 'debate') {
+      if (payload.motion !== undefined) out.motion = payload.motion;
+      if (payload.forText !== undefined) out.forText = payload.forText;
+      if (payload.againstText !== undefined) out.againstText = payload.againstText;
+    } else if (Array.isArray(payload.opts)) {
+      // The create form uses {t,v} objects; the edit route takes plain labels.
+      out.opts = payload.opts.map(function (o) { return typeof o === 'string' ? o : (o.t || o.label || ''); });
+    }
+    return out;
+  }
+
   async function updateEngagement(bookId, kind, itemId, payload) {
     var res = await fetch(CFG.API_BASE + '/books/' + encodeURIComponent(bookId) + '/engagement/'
       + encodeURIComponent(kind) + '/' + encodeURIComponent(itemId), {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(updateEngagementPayload(payload, kind)),
     });
     if (!res.ok) throw new Error('Could not save (' + res.status + ')');
     return await res.json();
