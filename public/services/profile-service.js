@@ -88,6 +88,7 @@
      catalogue). A failed load is a failed enrichment, not a failed page:
      the pills simply render without labels rather than inventing any. */
   let GENRES_ALL = [];
+  let BOARDS_ALL = [];
   async function loadGenres() {
     try {
       const r = await fetch(API_BASE + '/genres?limit=100', { credentials: 'include' });
@@ -95,6 +96,18 @@
       const j = await r.json();
       GENRES_ALL = ((j && (j.items || j.data)) || []).map(g => ({ id: g.id || g.slug, label: g.name, icon: g.icon || '', members: g.members || '' }));
     } catch (e) { GENRES_ALL = []; }
+    // Boards a reader joins are PARENT categories, tracked by CategoryMembership —
+    // NOT User.genres. The feed uses /categories?isJoined; use the same source here
+    // so the profile's board count can never disagree with the feed menu.
+    try {
+      const r = await fetch(API_BASE + '/categories?limit=50', { credentials: 'include' });
+      const j = r.ok ? await r.json() : {};
+      BOARDS_ALL = ((j && j.items) || []).map(b => ({
+        id: b.id || b.slug, name: b.name,
+        icon: b.icon || 'fa-hashtag', members: b.members || '',
+        joined: !!b.isJoined,
+      }));
+    } catch (e) { BOARDS_ALL = []; }
   }
 
   function fmtN(n) { if (typeof n === 'string') return n; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
@@ -195,15 +208,13 @@
      loadGenres); "joined" is the reader's own genre row on the User —
      both straight from the API, no seeded lineup. */
   function getMyBoardsForProfile(){
-    const all = GENRES_ALL.map(g => ({
-      id: g.id, name: g.label,
-      icon: g.icon || 'fa-layer-group',
-      members: g.members || '',
-    }));
-    const joinedIds = new Set((PROFILE && PROFILE.genres) || []);
+    // Use the live membership flag from /categories (same as the feed). The old
+    // code matched PROFILE.genres — a different field — so every joined board
+    // read as zero on this profile even while the feed showed it.
+    const all = BOARDS_ALL.slice();
     return {
-      joined: all.filter(g => joinedIds.has(g.id)).slice(0, 3),
-      rest: all.filter(g => !joinedIds.has(g.id)),
+      joined: all.filter(b => b.joined).slice(0, 3),
+      rest: all.filter(b => !b.joined),
       all: all,
     };
   }

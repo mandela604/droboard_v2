@@ -173,11 +173,10 @@ async function genreHub(slugOrId, viewerId) {
 
 async function isBoardManager(category, viewerId) {
   if (!viewerId) return false;
-  const [u] = await Promise.all([
-    User.findOne({ id: String(viewerId) }).select('roles').lean().catch(() => null),
-  ]);
-  const roles = ((u && u.roles) || []).map(String);
-  if (roles.some(r => ['admin', 'chief_editor', 'senior_editor'].includes(r))) return true;
+  // Board management is strictly the crew assigned to THIS board by the
+  // admin console (Category.adminIds + moderatorIds). Platform-wide roles
+  // (chief/senior editor, admin) do not grant edit/stats on every board —
+  // a board group belongs only to its owner team.
   const ids = [...(category.adminIds || []), ...(category.moderatorIds || [])].map(String);
   return ids.includes(String(viewerId));
 }
