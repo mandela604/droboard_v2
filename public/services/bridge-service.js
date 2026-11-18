@@ -102,21 +102,15 @@
       : ((s.reactions && s.reactions.counts) ? s.reactions.counts : {});
     const userRx   = agg ? null : ((s.reactions && s.reactions.userRx) || null);
 
-    // Continue reading — from the backend: the chapter the reader stopped in
-    // plus the book-level percentage (finished chapters + the current one's).
+    // Continue reading — one shared component owns the resume chapter + label
+    // so this page and the book reader can never disagree.
     const cr = s.continueReading || null;
-    const firstFreeChapter = rows.find(c => !c.price || c.price === 0) || rows[0] || {};
-    const stopRow = cr && cr.chapterId
-      ? (rows.find(c => String(c.id) === String(cr.chapterId))
-         || rows.find(c => cr.chapterN != null && String(c.n) === String(cr.chapterN))
-         || null)
-      : null;
-    // New story → the first chapter. Started → the chapter they stopped in.
-    const continueChN = stopRow ? stopRow.n : (firstFreeChapter.n || 1);
-    const continueChTitle = stopRow
-      ? (stopRow.title || 'Chapter ' + stopRow.n)
-      : (firstFreeChapter.title || (totalCh ? 'Chapter 1' : '—'));
-    const continuePct = cr ? Math.min(100, Math.max(0, Number(cr.pct) || 0)) : 0;
+    const cont = window.ContinueReadingCard
+      ? ContinueReadingCard.normalize(cr, rows)
+      : { chapterN: 1, chapterId: null, chapterTitle: 'Chapter 1', progress: 0, started: false, chaptersRead: 0, totalChapters: totalCh };
+    const continueChN = cont.chapterN;
+    const continueChTitle = cont.chapterTitle;
+    const continuePct = cont.progress;
     const continueChapterPct = cr ? Math.min(100, Math.max(0, Number(cr.chapterPct) || 0)) : 0;
 
     // hubs: backend sends hubs.board (null when the story has no category
@@ -160,15 +154,15 @@
       },
       likes: (agg && typeof agg.total === 'number') ? agg.total : (s.likes || stats.likes || 0),
       continue: {
-        chapterN: continueChN,
-        chapterId: (cr && cr.chapterId) || null,
-        chapterTitle: continueChTitle,
-        progress: continuePct,
+        chapterN: cont.chapterN,
+        chapterId: cont.chapterId,
+        chapterTitle: cont.chapterTitle,
+        progress: cont.progress,
         chapterPct: continueChapterPct,
-        started: !!(cr && cr.chapterId),
-        chaptersRead: (cr && cr.chaptersRead) || 0,
+        started: cont.started,
+        chaptersRead: cont.chaptersRead,
         finishedChapters: (cr && cr.finishedChapters) || 0,
-        totalChapters: totalCh,
+        totalChapters: cont.totalChapters,
         timeLeft: cr && cr.secondsSpent ? fmtN(cr.secondsSpent) + 's read' : '',
       },
       synopsis: { short: s.synopsis || '' },
@@ -436,16 +430,13 @@
 
   function renderContinue() {
     const c = DATA.continue;
-    document.getElementById('rpTitle').textContent = c.chapterTitle;
-    document.getElementById('rpBarFill').style.width = c.progress + '%';
-    const total = c.totalChapters ? ' · Ch ' + c.chapterN + ' of ' + c.totalChapters : '';
-    // Same "chapters read" count the rating gate uses, so the two never
-    // contradict each other (e.g. 2/3 read vs "Not started yet").
-    const read = c.chaptersRead ? ' · ' + c.chaptersRead + ' chapter' + (c.chaptersRead === 1 ? '' : 's') + ' read' : '';
-    document.getElementById('rpPct').textContent = c.started
-      ? c.progress + '% complete' + total + read
-      : 'Not started yet' + total;
-    document.getElementById('rpLeft').textContent = c.timeLeft || (c.started ? 'Keep reading' : 'Start reading');
+    if (!window.ContinueReadingCard) return;
+    ContinueReadingCard.render({
+      title: document.getElementById('rpTitle'),
+      meta: document.getElementById('rpPct'),
+      sub: document.getElementById('rpLeft'),
+      bar: document.getElementById('rpBarFill'),
+    }, c);
   }
 
   function renderSynopsis() {
@@ -950,19 +941,10 @@
       const raw = await fetchStory(STORY_ID);
       DATA = normalizeStory(raw);
       if (!DATA) throw new Error('Story data was empty');
-      // The reader pages resolve the resume chapter from read-state.lastChapterId.
-      // Use the same source here so both surfaces show the same chapter, while
-      // the percentage stays the whole-book number from the story payload.
-      try {
-        const rs = await getJSON(`${API_BASE}/stories/${encodeURIComponent(STORY_ID)}/read-state`, 'Read state');
-        const lastId = rs && rs.lastChapterId ? String(rs.lastChapterId) : '';
-        const row = lastId && (raw.chapters || []).find(c => String(c.id) === lastId);
-        if (row) {
-          DATA.continue.chapterN = row.n;
-          DATA.continue.chapterId = row.id;
-          DATA.continue.chapterTitle = row.title || DATA.continue.chapterTitle;
-        }
-      } catch (e) { /* keep the story payload's chapter */ }
+      // Resume chapter comes from the story's `continueReading` (the chapter
+      // the reader actually stopped in). We deliberately do NOT re-point it
+      // from read-state.lastChapterId here — that advances past a finished
+      // chapter and made this page disagree with the book reader.
     } catch (err) {
       showError(err.message || 'Failed to load story.');
       return;

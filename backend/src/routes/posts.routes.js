@@ -2,6 +2,9 @@
 const { z } = require('zod');
 const ctrl = require('../controllers/posts.controller');
 const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/guards');
+// Retracting someone's poll/debate vote is a staff correction, not a reader action.
+const retractGuard = requireRole('admin', 'moderator', 'chief_editor', 'senior_editor');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 const { SHARE_CHANNELS } = require('../services/engagement.service');
 
@@ -114,11 +117,11 @@ router.post('/:id/hide', requireAuth, writeLimiter, validate(z.object({ params: 
 router.delete('/:id/hide', requireAuth, writeLimiter, validate(z.object({ params: z.object({ id }) })), ctrl.hide);
 router.post('/:id/poll/vote', requireAuth, writeLimiter, audit('posts.pollVote'),
   validate(z.object({ params: z.object({ id }), body: z.object({ option: z.number().int().min(0).max(10) }).strict() })), ctrl.pollVote);
-router.delete('/:id/poll/vote', requireAuth, writeLimiter, audit('posts.pollRetract'),
+router.delete('/:id/poll/vote', requireAuth, retractGuard, writeLimiter, audit('posts.pollRetract'),
   validate(z.object({ params: z.object({ id }) })), ctrl.pollRetract);
 router.post('/:id/debate/vote', requireAuth, writeLimiter, audit('posts.debateVote'),
   validate(z.object({ params: z.object({ id }), body: z.object({ side: z.enum(['for', 'against']) }).strict() })), ctrl.debateVote);
-router.delete('/:id/debate/vote', requireAuth, writeLimiter, audit('posts.debateRetract'),
+router.delete('/:id/debate/vote', requireAuth, retractGuard, writeLimiter, audit('posts.debateRetract'),
   validate(z.object({ params: z.object({ id }) })), ctrl.debateRetract);
 
 const rid = z.string().min(1).max(40);

@@ -83,13 +83,14 @@ function normalizeLive(b) {
   }));
   const w = b.writer || {};
   const stats = b.stats || {};
-  // continueReading from backend → currentProgress
+  // Continue reading — same shared component as the bridge page.
   const cr = b.continueReading || null;
-  const continueChN = cr && cr.chapterId
-    ? (rows.find(c => c.id === cr.chapterId || String(c.n) === String(cr.chapterId)) || rows[0] || {}).n || 1
-    : 1;
-  const continueChTitle = (rows.find(c => c.n === continueChN) || rows[0] || {}).title || 'Chapter 1';
-  const continuePct = cr ? Math.round(cr.pct || 0) : 0;
+  const cont = window.ContinueReadingCard
+    ? ContinueReadingCard.normalize(cr, rows)
+    : { chapterN: 1, chapterId: null, chapterTitle: 'Chapter 1', progress: 0, started: false, chaptersRead: 0, totalChapters: totalCh };
+  const continueChN = cont.chapterN;
+  const continueChTitle = cont.chapterTitle;
+  const continuePct = cont.progress;
   // similar from backend response
   const similar = (b.similar || []).map(x => ({
     id: x.id, img: x.cover || '', title: x.title || '',
@@ -116,11 +117,12 @@ function normalizeLive(b) {
     },
     totalChapters: totalCh,
     currentProgress: {
-      chapter: continueChN, chapterTitle: continueChTitle,
-      percent: continuePct, cid: cr ? cr.chapterId : null,
+      chapter: cont.chapterN, chapterTitle: cont.chapterTitle,
+      percent: cont.progress, cid: cont.chapterId,
       // Book-level "chapters read" — the same count the rating gate uses.
-      chaptersRead: (cr && cr.chaptersRead) || 0,
-      totalChapters: totalCh,
+      chaptersRead: cont.chaptersRead,
+      totalChapters: cont.totalChapters,
+      started: cont.started,
     },
     genres: [b.genre].filter(Boolean),
     startDate: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—',
@@ -467,13 +469,12 @@ async function refreshStats() {
 }
 
 function paintContinueBanner() {
-  const cp = STORY.currentProgress || {};
-  document.getElementById('cbChName').textContent = cp.chapter ? `Ch${cp.chapter} — ${cp.chapterTitle}` : 'Start reading';
-  const read = cp.chaptersRead ? `${cp.chaptersRead} of ${cp.totalChapters} chapters read` : null;
-  document.getElementById('cbChMeta').textContent = cp.percent > 0
-    ? `${cp.percent}% complete · ${read || ('Ch ' + cp.chapter)}`
-    : (read || 'Not started yet');
-  document.getElementById('cbProgress').style.width = (cp.percent || 0) + '%';
+  if (!window.ContinueReadingCard || !STORY.currentProgress) return;
+  ContinueReadingCard.render({
+    title: document.getElementById('cbChName'),
+    meta: document.getElementById('cbChMeta'),
+    bar: document.getElementById('cbProgress'),
+  }, STORY.currentProgress);
 }
 function paintFollowButton() {
   const btn = document.getElementById('hwFollow');

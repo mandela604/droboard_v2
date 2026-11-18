@@ -3,6 +3,9 @@ const { z } = require('zod');
 const ctrl = require('../controllers/engagement.controller');
 const engagement = require('../services/engagement.service');
 const { requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/guards');
+// Retracting a poll/prediction/debate vote is a staff correction only.
+const retractGuard = requireRole('admin', 'moderator', 'chief_editor', 'senior_editor');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 const { STORY_RX } = require('../services/engagement.service');
 
@@ -158,7 +161,7 @@ router.post('/:bookId/chapters/:key/debate/vote', requireAuth, writeLimiter, aud
     body: z.object({ side: z.enum(['for', 'against']) }).strict(),
   })), ctrl.voteDebate);
 
-router.delete('/:bookId/chapters/:key/:kind', requireAuth, writeLimiter, audit('engagement.retract'),
+router.delete('/:bookId/chapters/:key/:kind', requireAuth, retractGuard, writeLimiter, audit('engagement.retract'),
   validate(z.object({ params: z.object({ bookId: id, key, kind: z.enum(['poll', 'prediction', 'debate']) }) })), ctrl.retract);
 
 /* ── story-wide engagement (book-level poll/prediction/debate) ──
@@ -183,7 +186,7 @@ router.post('/:bookId/engagement/vote', requireAuth, writeLimiter, audit('engage
     }),
   })), ctrl.bookVote);
 
-router.delete('/:bookId/engagement/:kind/:itemId', requireAuth, writeLimiter, audit('engagement.bookRetract'),
+router.delete('/:bookId/engagement/:kind/:itemId', requireAuth, retractGuard, writeLimiter, audit('engagement.bookRetract'),
   validate(z.object({
     params: z.object({ bookId: id, kind: z.enum(['poll', 'prediction', 'debate']), itemId: z.string().min(1).max(40) }),
   })), ctrl.bookRetract);
