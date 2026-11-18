@@ -27,25 +27,16 @@ function pickTarget(ch, kind) {
   return null;
 }
 
-/* A chapter poll/prediction is a bet on what the NEXT chapter reveals. Once a
-   later chapter is live the answer is public, so voting must close — but votes
-   already cast settle against the chapter number captured at vote time, NOT
-   against the reader's reading progress. Debates never auto-close; only an
-   explicitly set end time can close one. */
-const LIVE_CHAPTER_STATUS = ['live', 'published'];
+/* Expiry is the ONLY thing that closes an engagement — and only when the
+   author actually set an end time. A chapter going live or a book being
+   completed never auto-closes a poll/prediction/debate: the author's timer is
+   the single source of truth. An item with no expiry stays open forever. */
+function expired(item) {
+  return !!(item && item.expiresAt && new Date(item.expiresAt) < new Date());
+}
 async function chapterVoteClosed(chapter, kind) {
-  if (kind === 'debate') {
-    const t = chapter.debate;
-    return !!(t && t.expiresAt && new Date(t.expiresAt) < new Date());
-  }
-  const t = pickTarget(chapter, kind);
-  if (t && t.expiresAt && new Date(t.expiresAt) < new Date()) return true;
-  const later = await Chapter.exists({
-    bookId: chapter.bookId,
-    n: { $gt: Number(chapter.n) },
-    status: { $in: LIVE_CHAPTER_STATUS },
-  });
-  return !!later;
+  if (kind === 'debate') return expired(chapter.debate);
+  return expired(pickTarget(chapter, kind));
 }
 
 async function vote({ chapter, userId, kind, option }) {
@@ -283,14 +274,13 @@ function shapeStoryEngagement(book, myVotes) {
     out[key] = (book[key] || []).map(raw => {
       const item = plain(raw) || {};
       const mine = votes[kind + ':' + item.id];
-      const expired = !!(item.expiresAt && new Date(item.expiresAt) < new Date());
+      const isExpired = expired(item);
       const shaped = {
         id: item.id, kind,
         chapter: item.chapter == null ? null : item.chapter,
         expiresAt: item.expiresAt || null,
-        // Book polls/predictions stay open until the book is marked complete.
-        // Debates never auto-close — only an explicitly set end time closes one.
-        closed: expired || (kind !== 'debate' && book.status === 'completed'),
+        // Only the author's timer closes an item — never the book's status.
+        closed: isExpired,
         myVote: mine === undefined ? null : mine,
       };
       if (kind === 'debate') {
@@ -356,12 +346,7 @@ async function bookVote({ bookId, userId, kind, id, option }) {
   if (!list) { const e = new Error('bad_kind'); e.status = 400; throw e; }
   const item = list.find(p => String(p.id) === String(id));
   if (!item) { const e = new Error('not_found'); e.status = 404; throw e; }
-  if (item.expiresAt && new Date(item.expiresAt) < new Date()) { const e = new Error('closed'); e.status = 409; throw e; }
-  // Book-wide polls/predictions close when the book is marked complete; book
-  // debates keep taking sides regardless of completion.
-  if (kind !== 'debate' && book.status === 'completed') {
-    const e = new Error('closed'); e.status = 409; throw e;
-  }
+  if (expired(item)) { const e = new Error('closed'); e.status = 409; throw e; }
 
   let optionIdx;
   if (kind === 'debate') {
@@ -848,9 +833,79 @@ async function debateMetadata({ debateId, bookId, chapterId, viewerId }) {
   };
 }
 
+/* Result reports go out ONLY for items the author gave an end time to. Once
+   that time passes, every voter gets one result notification (deduped by the
+   notification `key`, so a retried cron run cannot spam them). An item with no
+   expiry never closes and therefore never notifies. */
+async function notifyExpiredEngagement() {
+  const now = new Date();
+  const { notify } = require('./notifications.service');
+  let sent = 0;
+  const resultLine = opts => (opts || []).map(o => `${o.t || 'Option'}: ${o.v || 0}`).join('  ·  ');
+
+  const chapters = await Chapter.find({
+    $or: [
+      { 'poll.expiresAt': { $lte: now, $ne: null } },
+      { 'prediction.expiresAt': { $lte: now, $ne: null } },
+    ],
+  }).select('id bookId n title poll prediction').catch(() => []);
+  for (const ch of chapters) {
+    const book = await Book.findOne({ id: String(ch.bookId) }).select('title').lean().catch(() => null);
+    for (const kind of ['poll', 'prediction']) {
+      const item = ch[kind];
+      if (!expired(item)) continue;
+      const voters = await EngagementVote.find({ chapterId: String(ch.id), kind }).select('userId').lean().catch(() => []);
+      for (const v of voters) {
+        await notify({
+          recipientId: String(v.userId),
+          type: kind === 'poll' ? 'poll_closed' : 'prediction_settled',
+          title: kind === 'poll' ? 'Poll results are in' : 'Prediction results are in',
+          desc: `${(book && book.title) || 'Your story'} · Ch.${ch.n} — ${resultLine(item.opts)}`,
+          link: `/Pages/full-reader.html?story=${ch.bookId}&ch=${ch.n}`,
+          linkLabel: 'See results',
+          key: `${kind}-closed:${ch.id}:${v.userId}`,
+        });
+        sent++;
+      }
+    }
+  }
+
+  const books = await Book.find({
+    $or: [
+      { 'polls.expiresAt': { $lte: now, $ne: null } },
+      { 'predictions.expiresAt': { $lte: now, $ne: null } },
+    ],
+  }).select('id title polls predictions').catch(() => []);
+  for (const book of books) {
+    for (const kind of ['poll', 'prediction']) {
+      const list = book[kind === 'poll' ? 'polls' : 'predictions'] || [];
+      for (const item of list) {
+        if (!expired(item)) continue;
+        const voters = await EngagementVote.find({
+          bookId: String(book.id), chapterId: '', kind, itemId: String(item.id),
+        }).select('userId').lean().catch(() => []);
+        for (const v of voters) {
+          await notify({
+            recipientId: String(v.userId),
+            type: kind === 'poll' ? 'poll_closed' : 'prediction_settled',
+            title: kind === 'poll' ? 'Poll results are in' : 'Prediction results are in',
+            desc: `${book.title || 'Your story'} — ${resultLine(item.opts)}`,
+            link: `/Pages/full-reader.html?story=${book.id}`,
+            linkLabel: 'See results',
+            key: `${kind}-closed:${book.id}:${item.id}:${v.userId}`,
+          });
+          sent++;
+        }
+      }
+    }
+  }
+  return { sent };
+}
+
 module.exports = {
   loadChapter, vote, retract, results, trackProgress, readState,
   bookEngagement, bookVote, bookRetract, debateMetadata,
+  notifyExpiredEngagement,
   // The story detail read builds the same engagement block, so it borrows the
   // mapper instead of growing a second one.
   shapeStoryEngagement, storyVotes, ENGAGEMENT_LISTS,
