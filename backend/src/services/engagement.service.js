@@ -27,7 +27,31 @@ function pickTarget(ch, kind) {
   return null;
 }
 
+/* A chapter poll/prediction is a bet on what the NEXT chapter reveals. Once a
+   later chapter is live the answer is public, so voting must close — but votes
+   already cast settle against the chapter number captured at vote time, NOT
+   against the reader's reading progress. Debates never auto-close; only an
+   explicitly set end time can close one. */
+const LIVE_CHAPTER_STATUS = ['live', 'published'];
+async function chapterVoteClosed(chapter, kind) {
+  if (kind === 'debate') {
+    const t = chapter.debate;
+    return !!(t && t.expiresAt && new Date(t.expiresAt) < new Date());
+  }
+  const t = pickTarget(chapter, kind);
+  if (t && t.expiresAt && new Date(t.expiresAt) < new Date()) return true;
+  const later = await Chapter.exists({
+    bookId: chapter.bookId,
+    n: { $gt: Number(chapter.n) },
+    status: { $in: LIVE_CHAPTER_STATUS },
+  });
+  return !!later;
+}
+
 async function vote({ chapter, userId, kind, option }) {
+  if (await chapterVoteClosed(chapter, kind)) {
+    const e = new Error('closed'); e.status = 409; throw e;
+  }
   if (kind === 'debate') {
     if (option !== 'for' && option !== 'against') { const e = new Error('bad_side'); e.status = 400; throw e; }
     try {
@@ -83,12 +107,18 @@ async function results({ chapter, userId }) {
   // Must be plain: base.wrap's normalize() walks every key, and a live
   // subdocument's $parent/$__ point back at the parent doc forever.
   const c = chapter.toObject({ virtuals: false });
+  const closed = {
+    poll: await chapterVoteClosed(chapter, 'poll'),
+    prediction: await chapterVoteClosed(chapter, 'prediction'),
+    debate: await chapterVoteClosed(chapter, 'debate'),
+  };
   return {
     poll: c.poll || null,
     prediction: c.prediction || null,
     debate: c.debate || null,
     authorNote: c.authorNote || '',
     myVotes,
+    closed,
   };
 }
 
@@ -253,11 +283,14 @@ function shapeStoryEngagement(book, myVotes) {
     out[key] = (book[key] || []).map(raw => {
       const item = plain(raw) || {};
       const mine = votes[kind + ':' + item.id];
+      const expired = !!(item.expiresAt && new Date(item.expiresAt) < new Date());
       const shaped = {
         id: item.id, kind,
         chapter: item.chapter == null ? null : item.chapter,
         expiresAt: item.expiresAt || null,
-        closed: !!(item.expiresAt && new Date(item.expiresAt) < new Date()),
+        // Book polls/predictions stay open until the book is marked complete.
+        // Debates never auto-close — only an explicitly set end time closes one.
+        closed: expired || (kind !== 'debate' && book.status === 'completed'),
         myVote: mine === undefined ? null : mine,
       };
       if (kind === 'debate') {
@@ -324,6 +357,11 @@ async function bookVote({ bookId, userId, kind, id, option }) {
   const item = list.find(p => String(p.id) === String(id));
   if (!item) { const e = new Error('not_found'); e.status = 404; throw e; }
   if (item.expiresAt && new Date(item.expiresAt) < new Date()) { const e = new Error('closed'); e.status = 409; throw e; }
+  // Book-wide polls/predictions close when the book is marked complete; book
+  // debates keep taking sides regardless of completion.
+  if (kind !== 'debate' && book.status === 'completed') {
+    const e = new Error('closed'); e.status = 409; throw e;
+  }
 
   let optionIdx;
   if (kind === 'debate') {

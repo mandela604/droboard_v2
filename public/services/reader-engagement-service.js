@@ -71,16 +71,17 @@
       + '<div style="display:' + (open ? 'block' : 'none') + '">' + bodyHtml + '</div></div>';
   }
 
-  function pollBody(key, poll) {
+  function pollBody(key, poll, closed) {
     var P = pal();
     var tot = poll.opts.reduce(function (s, o) { return s + o.v; }, 0) || 1;
     var voted = votedIndex(key, 'poll');
+    var locked = voted >= 0 || !!closed;
     return '<div class="re-poll-body" style="background:' + P.body + ';border-radius:0 0 12px 12px;padding-bottom:4px">'
       + '<div style="margin:2px 14px 0;border-top:1px solid ' + P.hair + '"></div>'
       + '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:' + P.ink + '">' + esc(poll.q) + '</div>'
       + '<div style="padding:0 14px 6px">' + poll.opts.map(function (o, i) {
         var pct = Math.round(o.v / tot * 100);
-        var locked = voted >= 0, isMine = locked && voted === i;
+        var isMine = voted === i;
         var cardBg = isMine ? P.optPollVoted : P.optPoll;
         var dim = (locked && !isMine) ? 'opacity:.5;' : '';
         var cur = locked ? 'cursor:default;' : 'cursor:pointer;';
@@ -88,19 +89,20 @@
           + '<div style="position:absolute;left:0;top:0;bottom:0;background:rgba(255,0,80,.09);width:' + pct + '%"></div>'
           + '<div style="position:relative;display:flex;justify-content:space-between;gap:8px"><span style="font-size:12px;font-weight:600;color:' + P.ink + '">' + esc(o.t) + '</span><span style="font-size:11px;font-weight:800;color:#ff4d7a">' + pct + '%</span></div></div>';
       }).join('') + '</div>'
-      + '<div style="padding:8px 14px;font-size:10px;color:' + P.sub + ';display:flex;justify-content:space-between"><span>' + fmtN(tot) + ' votes</span><span>' + (voted >= 0 ? 'Vote counted' : 'Tap to vote') + '</span></div>'
+      + '<div style="padding:8px 14px;font-size:10px;color:' + P.sub + ';display:flex;justify-content:space-between"><span>' + fmtN(tot) + ' votes</span><span>' + (closed ? 'Closed' : voted >= 0 ? 'Vote counted' : 'Tap to vote') + '</span></div>'
       + '</div>';
   }
 
-  function predBody(key, pred) {
+  function predBody(key, pred, closed) {
     var P = pal();
     var tot = pred.opts.reduce(function (s, o) { return s + o.v; }, 0) || 1;
     var voted = votedIndex(key, 'pred');
+    var locked = voted >= 0 || !!closed;
     return '<div class="re-pred-body" style="background:' + P.body + ';border-radius:0 0 12px 12px;padding-bottom:4px">'
       + '<div style="padding:10px 14px;font-size:13px;font-weight:700;color:' + P.ink + '">' + esc(pred.q) + '</div>'
       + '<div style="padding:0 14px 6px">' + pred.opts.map(function (o, i) {
         var pct = Math.round(o.v / tot * 100);
-        var locked = voted >= 0, isMine = locked && voted === i;
+        var isMine = voted === i;
         var cardBg = isMine ? P.optPredVoted : P.optPred;
         var dim = (locked && !isMine) ? 'opacity:.5;' : '';
         var cur = locked ? 'cursor:default;' : 'cursor:pointer;';
@@ -108,7 +110,7 @@
           + '<div style="position:absolute;left:0;top:0;bottom:0;background:rgba(167,139,250,.12);width:' + pct + '%"></div>'
           + '<div style="position:relative;display:flex;justify-content:space-between;gap:8px"><span style="font-size:12px;font-weight:600;color:' + P.ink + '">' + esc(o.t) + '</span><span style="font-size:11px;font-weight:800;color:#a78bfa">' + pct + '%</span></div></div>';
       }).join('') + '</div>'
-      + '<div style="padding:8px 14px;font-size:10px;color:' + P.sub + ';display:flex;justify-content:space-between"><span>' + fmtN(tot) + ' predicts</span><span>' + (voted >= 0 ? 'Prediction saved' : 'Tap to predict') + '</span></div>'
+      + '<div style="padding:8px 14px;font-size:10px;color:' + P.sub + ';display:flex;justify-content:space-between"><span>' + fmtN(tot) + ' predicts</span><span>' + (closed ? 'Closed' : voted >= 0 ? 'Prediction saved' : 'Tap to predict') + '</span></div>'
       + '</div>';
   }
 
@@ -131,14 +133,15 @@
     if (!eng) return '';
     var ov = overrides[key] || {};
     var lbl = ov.chapterLabel ? ' · ' + ov.chapterLabel : '';
+    var closed = eng.closed || {};
     var parts = authorNoteCard(eng.authorNote);
     if (eng.poll && eng.poll.q && eng.poll.opts && eng.poll.opts.length) {
       var pollTot = eng.poll.opts.reduce(function (s, o) { return s + o.v; }, 0);
-      parts += accordionShell(key, 'poll', '📊', 'Poll' + lbl, fmtN(pollTot) + ' votes · tap to expand', pollBody(key, eng.poll));
+      parts += accordionShell(key, 'poll', '📊', 'Poll' + lbl, fmtN(pollTot) + ' votes · ' + (closed.poll ? 'closed' : 'tap to expand'), pollBody(key, eng.poll, closed.poll));
     }
     if (eng.prediction && eng.prediction.q && eng.prediction.opts && eng.prediction.opts.length) {
       var predTot = eng.prediction.opts.reduce(function (s, o) { return s + o.v; }, 0);
-      parts += accordionShell(key, 'pred', '🔮', 'Prediction' + lbl, fmtN(predTot) + ' predicts · tap to expand', predBody(key, eng.prediction));
+      parts += accordionShell(key, 'pred', '🔮', 'Prediction' + lbl, fmtN(predTot) + ' predicts · ' + (closed.prediction ? 'closed' : 'tap to expand'), predBody(key, eng.prediction, closed.prediction));
     }
     if (eng.debate && eng.debate.motion) {
       var debTot = (eng.debate.forV || 0) + (eng.debate.agV || 0);
@@ -212,6 +215,7 @@
           debate: j.debate || null,
           authorNote: j.authorNote || '',
           myVotes: j.myVotes || {},
+          closed: j.closed || {},
         };
       });
   }
@@ -324,7 +328,7 @@
       rerender(key);
     },
     votePoll: function (key, idx) {
-      if (votedIndex(key, 'poll') >= 0) return;
+      if ((cache[key] && cache[key].closed && cache[key].closed.poll) || votedIndex(key, 'poll') >= 0) return;
       if (liveInfo[key]) { liveVote(key, 'poll', { option: idx }); return; }
       var eng = cache[key];
       if (!eng || !eng.poll || !eng.poll.opts[idx]) return;
@@ -335,7 +339,7 @@
       toast('Vote counted');
     },
     votePred: function (key, idx) {
-      if (votedIndex(key, 'pred') >= 0) return;
+      if ((cache[key] && cache[key].closed && cache[key].closed.prediction) || votedIndex(key, 'pred') >= 0) return;
       if (liveInfo[key]) { liveVote(key, 'prediction', { option: idx }); return; }
       var eng = cache[key];
       if (!eng || !eng.prediction || !eng.prediction.opts[idx]) return;
