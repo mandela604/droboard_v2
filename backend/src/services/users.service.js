@@ -243,10 +243,12 @@ async function profile(handle, viewerId) {
     isFollowing = !!f;
     isBlocked = !!b;
   }
-  // books (writers) — card shape the Books tab consumes
-  // Only show published/ongoing/completed books — never drafts or under-review
+  // books (writers) — card shape the Books tab consumes.
+  // A submitted book is a real, reader-visible state ("Under Review"), not a
+  // draft: the author must be able to see their submission on their profile.
+  // Drafts / scheduled / rejected stay private to the author's own consoles.
   const bookDocs = isWriter
-    ? await Book.find({ authorId: u.id, status: { $in: ['ongoing', 'completed', 'published'] } }).sort({ createdAt: -1 }).limit(50)
+    ? await Book.find({ authorId: u.id, status: { $in: ['ongoing', 'completed', 'published', 'under_review'] } }).sort({ createdAt: -1 }).limit(50)
       .select('id title cover genre reads likes rating chapterCount status').lean()
     : [];
   const books = bookDocs.map(b => ({
