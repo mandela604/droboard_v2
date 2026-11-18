@@ -482,14 +482,9 @@
         openShareModal({ title: post.text ? post.text.slice(0, 60) : post.name + "'s post", sub: '@' + post.name, img: post.image || '', url: '/Pages/discussion.html?id=' + encodeURIComponent(post.id), contentId: post.id, contentType: 'posts' });
       },
       onSave: (post) => {
-        /* A post that carries a story saves the STORY (the save sheet owns
-           the story/collection lists); every other post is saved as a post
-           row, which is what the library's Saved tab reads. */
-        const ref = storyRefFor(post);
-        if (ref && ref.id && window.openSaveModal) {
-          openSaveModal({ title: ref.title, sub: 'by @' + ref.author, img: ref.cover, storyId: ref.id });
-          return;
-        }
+        // A tap on a post's bookmark saves THE POST. The story save sheet is
+        // for story cards; routing post taps there wrote a LibraryItem with a
+        // post id, which the Saved tab (Post.savedBy) could never show.
         api('POST', '/posts/' + encodeURIComponent(post.id) + '/save')
           .then(r => {
             post.saved = !!r.saved;

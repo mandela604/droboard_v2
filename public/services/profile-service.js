@@ -63,7 +63,13 @@
     return REAL_IS_WRITER;
   }
 
-  const STATUS_LABEL = { ongoing: 'Ongoing', completed: 'Completed', paused: 'Paused' };
+  /* Real backend book states — kept in sync with component/book-card.js so a
+     submitted book reads "Under Review" instead of falling back to Ongoing. */
+  const STATUS_LABEL = {
+    published: 'Published', ongoing: 'Ongoing', draft: 'Draft',
+    under_review: 'Under Review', scheduled: 'Scheduled', paused: 'Paused',
+    rejected: 'Rejected', completed: 'Completed',
+  };
 
   /* ── Live transport (same contract as feed-service) ─────────────── */
   const API_BASE = '/api';
@@ -801,7 +807,18 @@
         if (!window.openShareModal) return;
         openShareModal({ title: post.text ? post.text.slice(0, 60) : PROFILE.name, sub: PROFILE.name, img: post.avatar || '', url: '/Pages/discussion.html?id=' + encodeURIComponent(post.id), contentId: post.id, contentType: 'posts' });
       },
-        onSave: (post) => { if (!window.openSaveModal) return; openSaveModal({ title: post.chapterRef?.title || post.storyRef?.title || PROFILE.name, sub: PROFILE.name, img: post.chapterRef?.cover || post.storyRef?.cover || PROFILE.avatar, storyId: post.id, type: 'post' }); },
+        onSave: (post) => {
+          // Bookmark on a post = Post.savedBy, which the Library Saved tab
+          // reads. The story save sheet would store a LibraryItem with a post
+          // id and silently lose the save.
+          api('POST', '/posts/' + encodeURIComponent(post.id) + '/save')
+            .then((r) => {
+              post.saved = !!r.saved;
+              if (window.DroboardPostCard) DroboardPostCard.update(post);
+              toast(post.saved ? '🔖 Saved!' : 'Removed from saved');
+            })
+            .catch((e) => toast(e.message || 'Could not save this post'));
+        },
         onDots: (post, anchorEl) => { try { window._lastDotsAnchor = anchorEl || null; } catch(e){} if (window.DroboardDotsMenu) DroboardDotsMenu.open(post, anchorEl); },
         onJoinAma: () => toast('🎙️ Joining AMA…'),
         onPollVote: (post, i) => {

@@ -601,8 +601,10 @@ function attachPostCard(){
     onOpenPost:function(post){ goDiscussion(post.id); },
     onSave:function(post){
       const orig=findPostAnywhere(post.id); if(!orig) return;
-      if(window.openSaveModal){ window.openSaveModal({ title:orig.title||(orig.text?orig.text.substring(0,60):'Droboard post'), sub:'@droboard · Official Page', img:orig.image||(orig.storyRef&&orig.storyRef.cover)||DROBOARD_LOGO, storyId:orig.id, type:'post' }); }
-      else { toggleSaveAPI(orig); }
+      // Posts save through Post.savedBy — that is what the Library Saved tab
+      // reads and what lights the bookmark on reload. The save sheet is only
+      // for actual story cards.
+      toggleSaveAPI(orig);
     },
     onShare:function(post){ window.openShareModal({ title:post.title||post.quote||(post.text?post.text.substring(0,60):'Droboard'), sub:'@droboard · Official Page', img:post.image||(post.storyRef&&post.storyRef.cover)||DROBOARD_LOGO, url:'https://droboard.app/droboard/post/'+post.id }); },
     onDotsAction:function(action, post){
@@ -610,7 +612,7 @@ function attachPostCard(){
       if(action==='less') return toast("👁️ You'll see less of this.");
       if(action==='follow') return toast('✅ You already follow @droboard!');
       if(action==='share'){ window.openShareModal({ title:post.title||'Droboard', sub:'@droboard', img:DROBOARD_LOGO, url:'https://droboard.app/droboard/post/'+post.id }); return; }
-      if(action==='save'){ window.openSaveModal({ title:post.title||post.quote||'Droboard post', sub:'@droboard', img:post.image||DROBOARD_LOGO, storyId:post.id, type:'post' }); return; }
+      if(action==='save'){ const orig=findPostAnywhere(post.id); if(orig) toggleSaveAPI(orig); return; }
     },
     onPollVote:function(post, oi){ const orig=findPostAnywhere(post.id); if(orig&&orig.poll) pollVoteAPI(orig, oi); },
     onDebateVote:function(post, side){ const orig=findPostAnywhere(post.id); if(orig&&orig.debateData) debateVoteAPI(orig, side); },

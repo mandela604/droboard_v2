@@ -475,19 +475,50 @@ async function discoverStories({ page, limit, viewerId, section, genre, sort, ta
 }
 
 async function libraryStats(userId) {
-  const [lib, prog] = await Promise.all([
+  const [lib, prog, statusMap] = await Promise.all([
     LibraryItem.find({ userId }).lean(),
     ReadingProgress.find({ userId }).lean(),
+    libraryStatusMap(userId),
   ]);
-  const inProgress = lib.filter(s => s.status === 'progress').length;
-  const finished = lib.filter(s => s.status === 'finished').length;
+  // The shelves are the library list; progress/finished live in history and
+  // ReadingProgress. Count the same rows the tabs actually render.
+  const shelved = lib.filter(i => i.list === 'library');
+  const distinct = new Set(shelved.map(i => String(i.storyId)));
+  let inProgress = 0, finished = 0;
+  distinct.forEach((sid) => {
+    const s = statusMap[sid];
+    if (s === 'finished') finished++;
+    else if (s === 'progress') inProgress++;
+  });
   const words = prog.reduce((s, p) => s + (p.wordsRead || 0), 0);
   return { inProgress, finished, hoursRead: Math.round(words / 200 / 60) };
+}
+
+/* The Library shelf stores its rows with list='library' and status='unread'.
+   Reading actually writes `progress`/`finished` to the 'continue'/'history'
+   lists and to ReadingProgress. Without merging those, the In Progress and
+   Finished tabs filter rows that can never match and always render empty. */
+async function libraryStatusMap(userId) {
+  const [hist, cont, prog] = await Promise.all([
+    LibraryItem.find({ userId, list: 'history' }).select('storyId status').lean(),
+    LibraryItem.find({ userId, list: 'continue' }).select('storyId status').lean(),
+    ReadingProgress.find({ userId }).select('storyId pct finished').lean(),
+  ]);
+  const map = {};
+  prog.forEach((p) => {
+    const sid = String(p.storyId);
+    if (p.finished || (p.pct || 0) >= 100) map[sid] = 'finished';
+    else if ((p.pct || 0) > 0) map[sid] = 'progress';
+  });
+  cont.forEach((i) => { if (i.status === 'progress') map[String(i.storyId)] = 'progress'; });
+  hist.forEach((i) => { if (i.status === 'finished') map[String(i.storyId)] = 'finished'; });
+  return map;
 }
 
 async function libraryList(userId, list) {
   const items = await LibraryItem.find({ userId, list }).sort({ updatedAt: -1 }).lean();
   if (!items.length) return [];
+  const statusMap = list === 'library' ? await libraryStatusMap(userId) : null;
   const books = await Book.find({ id: { $in: items.map(i => i.storyId) } }).lean();
   const bm = {};
   books.forEach(b => { bm[b.id] = b; });
@@ -498,7 +529,7 @@ async function libraryList(userId, list) {
     const card = cardShape(b, am[b.authorId]);
     card.ch = 'Ch. ' + (i.currentChN || 0);
     card.pct = i.pct || 0;
-    card.status = i.status;
+    card.status = statusMap ? (statusMap[String(i.storyId)] || i.status || 'unread') : i.status;
     return card;
   }).filter(Boolean);
 }
