@@ -450,14 +450,28 @@ async function saveIdentity({ userId, kyc, idFiles }) {
     idPhotos: { front: frontUrl, back: backUrl },
   };
 
-  const u = await User.findOne(require('./user-ref').userRefFilter([userId])).select('fullName email avatar').lean();
+  const u = await User.findOne(require('./user-ref').userRefFilter([userId])).select('id fullName email avatar').lean();
   const profile = {
     name: (u && u.fullName) || '',
     email: (u && u.email) || '',
     avatar: (u && u.avatar) || '',
   };
+  const ids = await authorIds(userId);
+  // Repair legacy orphan rows (userId null) that match this writer by email or
+  // name. They were created before the userId fix and are the reason approving
+  // a verification in the SE console did not unblock the author's contract.
+  const orphans = await AuthorVerification.find({
+    userId: { $in: [null, '', undefined] },
+    $or: [
+      ...(u && u.email ? [{ email: String(u.email).toLowerCase() }] : []),
+      ...(u && u.fullName ? [{ name: u.fullName }] : []),
+    ],
+  }).lean().catch(() => []);
+  for (const o of orphans) {
+    await AuthorVerification.updateOne({ id: o.id }, { $set: { userId: String(userId) } });
+  }
   return AuthorVerification.findOneAndUpdate(
-    { userId: { $in: await authorIds(userId) } },
+    { userId: { $in: ids } },
     {
       $set: {
         ...profile,

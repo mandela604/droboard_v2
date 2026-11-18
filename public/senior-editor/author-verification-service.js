@@ -155,12 +155,21 @@
     const panel = window.KycPanel && typeof KycPanel.html === 'function'
       ? KycPanel.html(r)
       : '<div class="sub-note">Identity details are unavailable on this page.</div>';
+    // Only a PENDING request is actionable. Approved/rejected are final —
+    // show the outcome, never an Approve/Reject/Close action row.
+    const decided = r.status !== 'pending';
     const reason = r.status === 'rejected'
       ? '<div class="rej-box"><div class="rej-lbl"><i class="fas fa-circle-exclamation"></i> Reason for rejection</div>'
         + '<div class="sub-note">' + esc(r.reviewNote || 'No reason recorded.') + '</div></div>'
+      : r.status === 'approved'
+      ? '<div class="rej-box" style="border-color:rgba(28,157,91,.3);background:var(--green-bg,#e6f8ef)"><div class="rej-lbl" style="color:#1c9d5b"><i class="fas fa-circle-check"></i> Identity approved</div>'
+        + '<div class="sub-note">This writer is verified and can sign contracts. No further action needed.</div></div>'
       : '<div class="rej-box"><div class="rej-lbl"><i class="fas fa-comment-dot"></i> Reject with a reason</div>'
         + '<textarea class="rej-text" data-rej-text="' + esc(r.id) + '" placeholder="Tell the author exactly what to fix…"></textarea>'
         + '<div class="rej-actions"><button class="sub-btn no" data-reject="' + esc(r.id) + '"><i class="fas fa-xmark"></i> Reject request</button></div></div>';
+    const actions = decided ? '' :
+      '<div class="sub-actions"><button class="sub-btn ok" data-approve="' + esc(r.id) + '"><i class="fas fa-check"></i> Approve identity</button>'
+      + '<button class="sub-btn close" data-close-detail><i class="fas fa-xmark"></i> Close</button></div>';
     return '<tr class="detail-row"><td colspan="6"><div class="sub-inner">'
       + '<div class="sub-head"><img class="sub-avatar" src="' + avatar(r.avatar) + '" alt=""/>'
       + '<div class="sub-head-t"><h3>' + esc(label(r)) + '</h3><p>' + esc(r.email || '') + '</p>'
@@ -172,10 +181,8 @@
       + '<div class="sub-card"><label>Request ID</label><b>' + esc(r.id) + '</b></div>'
       + '</div>'
       + panel
-      + (r.status === 'pending'
-        ? '<div class="sub-actions"><button class="sub-btn ok" data-approve="' + esc(r.id) + '"><i class="fas fa-check"></i> Approve identity</button>'
-          + '<button class="sub-btn close" data-close-detail><i class="fas fa-xmark"></i> Close</button></div>' + reason
-        : '<div class="sub-actions"><button class="sub-btn close" data-close-detail><i class="fas fa-xmark"></i> Close</button></div>' + reason)
+      + actions
+      + reason
       + '</div></td></tr>';
   }
 
