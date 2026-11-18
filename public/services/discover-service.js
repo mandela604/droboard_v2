@@ -580,6 +580,11 @@
 
     if (window.ScrollKeep) ScrollKeep.restore();
     pageLoader.classList.add('hidden');
+    // Warm the View All ad pools while the reader is still looking at the page,
+    // so the first tap opens with ads already in hand instead of waiting.
+    setTimeout(function () {
+      if (window.BrowseOverlay && typeof BrowseOverlay.prefetch === 'function') BrowseOverlay.prefetch();
+    }, 600);
     setTimeout(() => {
       pageLoader.remove();
       // Let theme-chrome.js re-sync status bar to the actual page theme

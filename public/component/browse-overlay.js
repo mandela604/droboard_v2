@@ -487,23 +487,52 @@
      The cadence (every N stories + which formats rotate) is programmed in the
      marketing module, not here. */
   async function _loadLiveAds() {
-    LIVE_PROMO = []; LIVE_BOOK_ADS = []; LIVE_PLATFORM_ADS = [];
+    // Build into locals and publish once, so a background refresh can never
+    // blank the pools while a page is being rendered from them.
+    const promo = [], book = [], platform = [];
     try {
       if (!window.AdService) return;
-      const pools = await AdService.getAds({ page: 'discover' });
-      if (!pools) return;
-      LIVE_PROMO = Array.isArray(pools.promo) ? pools.promo : [];
-      LIVE_BOOK_ADS = Array.isArray(pools.book) ? pools.book : [];
-      LIVE_PLATFORM_ADS = Array.isArray(pools.platform) ? pools.platform : [];
-      if (typeof AdService.getPlacement === 'function') {
-        const place = await AdService.getPlacement('discover');
-        const every = place && parseInt(place.interval, 10);
-        if (every > 0) _adInterval = every;
-        if (place && Array.isArray(place.cycle) && place.cycle.length) {
-          _adCycle = place.cycle.map(String).slice(0, 10);
-        }
+      // Both reads go out together: the placement map and the pools are
+      // independent, and waiting for one before asking the other is the whole
+      // reason a View All used to sit on "Loading…" behind two round trips.
+      const both = await Promise.all([
+        AdService.getAds({ page: 'discover' }),
+        (typeof AdService.getPlacement === 'function'
+          ? AdService.getPlacement('discover')
+          : Promise.resolve(null)).catch(() => null),
+      ]);
+      const pools = both[0];
+      if (pools) {
+        if (Array.isArray(pools.promo)) promo.push.apply(promo, pools.promo);
+        if (Array.isArray(pools.book)) book.push.apply(book, pools.book);
+        if (Array.isArray(pools.platform)) platform.push.apply(platform, pools.platform);
+      }
+      const place = both[1];
+      const every = place && parseInt(place.interval, 10);
+      if (every > 0) _adInterval = every;
+      if (place && Array.isArray(place.cycle) && place.cycle.length) {
+        _adCycle = place.cycle.map(String).slice(0, 10);
       }
     } catch (e) { /* ignore — ad-free is the safe default */ }
+    LIVE_PROMO = promo; LIVE_BOOK_ADS = book; LIVE_PLATFORM_ADS = platform;
+  }
+
+  /* Ad pools are warmed when the page settles, so a View All usually opens
+     with the pools already in hand (one request per page visit, not one per
+     tap). A stale cache is refreshed in the background instead of blocking. */
+  const ADS_TTL = 5 * 60 * 1000;   // marketing edits land within 5 minutes
+  const ADS_WAIT = 900;            // never let ads gate content longer than this
+  let _adsP = null, _adsAt = 0;
+
+  function _warmAds(force) {
+    if (!force && _adsP && Date.now() - _adsAt < ADS_TTL) return _adsP;
+    if (_adsP && !force) {
+      // still serve the old pools immediately, refresh underneath
+      _loadLiveAds().then(() => { _adsAt = Date.now(); }).catch(() => {});
+      return _adsP;
+    }
+    _adsP = _loadLiveAds().then(() => { _adsAt = Date.now(); }).catch(() => {});
+    return _adsP;
   }
 
   /* ═══════════════════════ BUILD (once) ═══════════════════════ */
@@ -810,7 +839,15 @@
     // Load live promo + ad pools from the ad inventory, then render the promo
     // slider and rebuild the story pool (ads interleave into the pool). No
     // hardcoded demo ads ever — if the API returns empty, those slots stay blank.
-    _loadLiveAds().then(function () {
+    //
+    // The pools are normally already warm (discover-service calls prefetch()),
+    // so this resolves in the same tick. If they are not, give them at most
+    // ADS_WAIT: content must never queue behind an ad request.
+    const warmed = _warmAds();
+    const capped = new Promise(function (resolve) {
+      setTimeout(resolve, ADS_WAIT);
+    });
+    Promise.race([warmed, capped]).then(function () {
       if (seq !== _openSeq) return;   // a newer open() owns the list now
       _adsReady = true;   // opens the gate: the first page renders WITH its ads
       _renderPromo();
@@ -830,7 +867,7 @@
 
   function isOpen() { return _isOpen; }
 
-  window.BrowseOverlay = { open, close, isOpen, configure };
+  window.BrowseOverlay = { open, close, isOpen, configure, prefetch: _warmAds };
 
   /* ═══════════════════════ ZERO-JS TRIGGER ═══════════════════════ */
   document.addEventListener('click', e => {
