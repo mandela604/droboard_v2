@@ -98,6 +98,9 @@ function loadBooks(){
         category: b.category,
         lastChapter: b.chapters?.length || b.lastChapter || 0
       }));
+      // The dropdown was built at boot before this fetch resolved — rebuild
+      // it now so "Continue an existing story" lists the real books.
+      buildDropdownMenu();
     })
     .catch(() => { MY_BOOKS = []; });
 }
