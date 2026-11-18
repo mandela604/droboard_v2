@@ -784,6 +784,17 @@
     document.body.style.overflow = 'hidden';
     _isOpen = true;
 
+    /* Wipe the previous section BEFORE showing anything. The ad pools load
+       over the network, so waiting for them left the old section's cards on
+       screen inside the new section's frame — a View All that "opens the last
+       list first". The list starts empty with the loader, then fills. */
+    _page = 1; _loading = false; _hasMore = true;
+    _storyCount = 0; _writersPlaced = false; _adIndex = 0;
+    _listEl.innerHTML = '';
+    _emptyEl.classList.remove('show');
+    _loaderEl.classList.remove('hidden');
+    _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading…';
+
     // Load live promo + ad pools from the ad inventory, then render the promo
     // slider and rebuild the story pool (ads interleave into the pool). No
     // hardcoded demo ads ever — if the API returns empty, those slots stay blank.

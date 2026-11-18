@@ -219,9 +219,12 @@ async function discoverData(viewerId, taste) {
   // Base pools for other sections (topBooks already returns render-ready cards)
   // One mute+block resolution shared by all four topBooks calls.
   const excludedP = excludedAuthors(viewerId);
-  const [trending, recent, completed, writers, rated] = await Promise.all([
+  const [trendingPool, fresh, updatedPool, completed, writers, rated] = await Promise.all([
     excludedP.then(ex => topBooks({ reads: -1 }, 20, viewerId, null, ex)),
-    excludedP.then(ex => topBooks({ updatedAt: -1 }, 12, viewerId, null, ex)),
+    // New Releases is "newest added", not "newest touched": createdAt keeps the
+    // row distinct from Recently Updated and lets NEW mean one thing.
+    excludedP.then(ex => topBooks({ createdAt: -1 }, 10, viewerId, null, ex)),
+    excludedP.then(ex => topBooks({ updatedAt: -1 }, 10, viewerId, null, ex)),
     excludedP.then(ex => topBooks({ reads: -1 }, 10, viewerId, ['completed'], ex)),
     topWriters(10),
     excludedP.then(ex => topBooks({ rating: -1 }, 10, viewerId, null, ex)),
@@ -237,19 +240,38 @@ async function discoverData(viewerId, taste) {
   const recAm = await authorMap(recTop.map(b => b.authorId));
   const recommended = recTop.map(b => cardShape(b, recAm[b.authorId]));
 
+  // Shorts are a format row of their own, so no card needs a "short" chip.
+  const shortRaw = await Book.find(Object.assign(bookBaseFilter(viewerId, ex), { kind: 'short' }))
+    .sort({ reads: -1, _id: -1 }).limit(10).lean();
+  const shortAm = await authorMap(shortRaw.map(b => b.authorId));
+
+  /* Row tags are computed here, per row — never stored on the book: the same
+     title is HOT in Top Romance and untagged in Complete, and the row is the
+     only thing that knows which story it is telling. */
+  const withRank = (cards) => cards.map((c, i) => (i < 10 ? Object.assign({}, c, { rank: i + 1 }) : c));
+  const withBadge = (cards, badge, withChapter) => cards.map(c => Object.assign({}, c, { badge },
+    withChapter ? { meta: 'Ch. ' + (c.chapters || 0) } : {}));
+  const trending = withRank(trendingPool.slice(0, 10));
+  // Top Romance swaps the star line for an engagement tag: the rating is what
+  // put these books in the row, so repeating it says nothing. Top 3 by reads
+  // are HOT, the rest NEW.
+  const topRomance = trendingPool.filter(t => /romance/i.test(t.genre)).slice(0, 8)
+    .map((c, i) => Object.assign({}, c, { badge: i < 3 ? 'hot' : 'new', rating: 0, cat: '' }));
+
   return {
     heroes,
     topRated: rated,
-    topRomance: trending.filter(t => /romance/i.test(t.genre)).slice(0, 8),
+    topRomance,
     trending,
     // The reader page loads collections from /api/collections?sort=popular,
     // so this row is filled client-side rather than duplicated here.
     collections: [],
-    newReleases: recent,
+    newReleases: withBadge(fresh, 'new'),
     editorsPicks,
     recommended,
     complete: completed,
-    recentlyUpdated: recent,
+    recentlyUpdated: withBadge(updatedPool, 'update', true),
+    shortStories: shortRaw.map(b => cardShape(b, shortAm[b.authorId])),
     moreStories: trending,
     topWriters: writers,
   };
@@ -343,8 +365,9 @@ const SECTION_SORT = {
   trending: { reads: -1, _id: -1 },
   top_romance: { reads: -1, _id: -1 },
   recently_updated: { updatedAt: -1, _id: -1 },
-  new_releases: { updatedAt: -1, _id: -1 },
+  new_releases: { createdAt: -1, _id: -1 },
   complete: { reads: -1, _id: -1 },
+  short: { reads: -1, _id: -1 },
   all: { updatedAt: -1, _id: -1 },
 };
 const SORT_SECTION = {
@@ -420,6 +443,25 @@ async function discoverStories({ page, limit, viewerId, section, genre, sort, ta
   if (genreRx) filter.genre = genreRx;
   if (key === 'top_rated') filter.rating = { $gt: 0 };
   if (key === 'complete') filter.status = 'completed';
+  if (key === 'short') filter.kind = 'short';
+
+  // Trending: the row shows 10 ranked cards and View All can walk up to 25, so
+  // the rank is the position in that 25, not the position on the page.
+  if (key === 'trending') {
+    const all = await Book.find(filter).sort({ reads: -1, _id: -1 }).limit(25).lean();
+    const start = (pg - 1) * lim;
+    const pageBooks = all.slice(start, start + lim);
+    const am = await authorMap(pageBooks.map(b => b.authorId));
+    return {
+      items: pageBooks.map((b, i) => {
+        const card = cardShape(b, am[b.authorId]);
+        const pos = start + i;
+        if (pos < 10) card.rank = pos + 1;
+        return card;
+      }),
+      hasMore: start + lim < all.length,
+    };
+  }
 
   const order = SECTION_SORT[key] || (genreRx ? { reads: -1, _id: -1 } : { updatedAt: -1, _id: -1 });
   const [books, total] = await Promise.all([

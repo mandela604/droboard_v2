@@ -560,6 +560,7 @@
     DiscoverCard.renderRow('romanceRow', data.topRomance, 'No romance picks right now.');
     DiscoverCard.renderRow('trendingRow', data.trending, 'Nothing trending right now.');
     DiscoverCard.renderRow('newRow', data.newReleases, 'No new releases yet.');
+    DiscoverCard.renderRow('shortRow', data.shortStories, 'No short stories yet.');
     DiscoverCard.renderRow('editorRow', data.editorsPicks, "No editor's picks yet.");
     DiscoverCard.renderRow('recRow', data.recommended, 'No recommendations yet.');
     DiscoverCard.renderRow('completeRow', data.complete, 'No completed stories yet.');

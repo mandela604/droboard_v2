@@ -95,9 +95,11 @@ let extra = '';
     // Continue-reading is the only card that carries `ch`, and there the
     // progress bar is the whole point: rating must not win the branch.
     if (s.ch) extra = `<div class="dc-cont-ch">${esc(s.ch)}</div>${s.pct != null ? `<div class="dc-prog-track"><div class="dc-prog-fill" style="width:${s.pct}%"></div></div>` : ''}`;
+    // Recently Updated publishes `meta` (latest chapter) — that is the whole
+    // point of the row, so it outranks the star line.
+    else if (s.meta) extra = `<div class="dc-scard-meta">${esc(s.meta)}</div>`;
     else if (s.rating) extra = `<div class="dc-scard-rating">★ ${parseFloat(s.rating).toFixed(1)}</div>`;
     else if (s.cat) extra = `<div class="dc-scard-cat">${esc(s.cat)}</div>`;
-    else if (s.meta) extra = `<div class="dc-scard-meta">${esc(s.meta)}</div>`;
     const author = s.author
       ? `<a class="dc-scard-author" href="${profileHref(s.author)}" onclick="event.stopPropagation()">${esc(s.author)}</a>`
       : '';
