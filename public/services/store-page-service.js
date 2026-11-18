@@ -110,7 +110,10 @@
      back to the server's naira string rather than inventing a price. */
   function readerPrice(item) {
     const C = window.DroboardCurrency;
-    if (C && typeof C.resolve === 'function') {
+    // No country yet = geo has not answered. The reader currency defaults to
+    // USD in that state, and quoting dollars to a naira reader is worse than
+    // showing the server's own price, so wait for geo before switching.
+    if (C && typeof C.resolve === 'function' && C.get && C.get().country) {
       try {
         const r = C.resolve(item);
         if (r && r.ok && r.currency && r.price) return String(r.price);
@@ -122,7 +125,7 @@
   /* What the provider will actually charge, in the currency shown. */
   function chargeFor(item) {
     const C = window.DroboardCurrency;
-    if (C && typeof C.resolve === 'function') {
+    if (C && typeof C.resolve === 'function' && C.get && C.get().country) {
       try {
         const r = C.resolve(item);
         const n = r && r.ok && r.currency ? parseFloat(String(r.price).replace(/[^0-9.]/g, '')) : NaN;
