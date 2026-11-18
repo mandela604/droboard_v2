@@ -64,6 +64,24 @@
     return await res.json();
   }
 
+  async function updateEngagement(bookId, kind, itemId, payload) {
+    var res = await fetch(CFG.API_BASE + '/books/' + encodeURIComponent(bookId) + '/engagement/'
+      + encodeURIComponent(kind) + '/' + encodeURIComponent(itemId), {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('Could not save (' + res.status + ')');
+    return await res.json();
+  }
+  function existingFor(book, kind) {
+    var eg = book.engagements || {};
+    var list = kind === 'poll' ? (eg.polls || [])
+      : kind === 'prediction' ? (eg.predictions || []) : (eg.debates || []);
+    return list[0] || null;
+  }
+
   function onCreated(book, item) {
     if (window.AuthorDrawer) window.AuthorDrawer.toast('Live on ' + book.title + '.');
     // Re-read from the server so the new item (and its real id + totals)
@@ -76,11 +94,14 @@
     window.DroboardBookCard.configure({
       onEngage: function (book, anchorEl, kind) {
         if (!window.DroboardEngagementCreator) return;
+        const existing = existingFor(book, kind);
         window.DroboardEngagementCreator.open({
           bookId: book.id,
           bookTitle: book.title,
           kind: kind, // picker chose Poll / Prediction / Debate
+          existing: existing,
           submit: function (payload) { return createEngagement(book.id, payload); },
+          onUpdate: function (payload) { return updateEngagement(book.id, kind, existing.id, payload); },
           onCreated: function (item) { onCreated(book, item); },
         });
       }

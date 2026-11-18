@@ -237,9 +237,12 @@
     _el.querySelector('.dec-body').innerHTML = _bodyHtml();
     const foot = _el.querySelector('.dec-foot');
     foot.querySelector('.dec-btn.go').disabled = _state.busy;
+    const editing = !!(_ctx && _ctx.existing);
     foot.querySelector('.dec-btn.go').innerHTML = _state.busy
-      ? '<i class="fas fa-circle-notch fa-spin"></i>Creating'
-      : '<i class="fas fa-plus"></i>Create ' + (_isDebate() ? 'debate' : _state.kind === 'prediction' ? 'prediction' : 'poll');
+      ? '<i class="fas fa-circle-notch fa-spin"></i>' + (editing ? 'Saving' : 'Creating')
+      : (editing
+          ? '<i class="fas fa-check"></i> Save changes'
+          : '<i class="fas fa-plus"></i>Create ' + (_isDebate() ? 'debate' : _state.kind === 'prediction' ? 'prediction' : 'poll'));
     if (scroll) scroll.scrollTop = at;
   }
 
@@ -322,7 +325,9 @@
     _render();
     try {
       let item = payload;
-      if (typeof _ctx.submit === 'function') {
+      if (_ctx.existing && typeof _ctx.onUpdate === 'function') {
+        item = await _ctx.onUpdate(payload);
+      } else if (typeof _ctx.submit === 'function') {
         item = await _ctx.submit(payload);
       }
       // A host submit() that returns nothing still gets a usable row locally.
@@ -411,8 +416,20 @@
     _state = _newState(o.bookTitle);
     // Picker handed us a kind (Poll / Prediction / Debate) — land on that tab.
     if (o.kind && TYPES.some(function (t) { return t.kind === o.kind; })) _state.kind = o.kind;
-    _el.querySelector('[data-sub]').textContent =
-      'Readers see this on every chapter of ' + (o.bookTitle || 'your story') + '.';
+    // Editing an existing engagement? Pre-fill the form with the live values
+    // so the author sees exactly what readers currently see.
+    const e = o.existing;
+    if (e) {
+      _state.question = e.q || '';
+      _state.motion = e.motion || '';
+      const opts = (e.opts || []).map(function (x) { return x && (x.t || x.label) || ''; }).filter(Boolean);
+      _state.opts = opts.length ? opts : ['', ''];
+      _state.forText = e.forText || '';
+      _state.againstText = e.againstText || '';
+    }
+    _el.querySelector('[data-sub]').textContent = e
+      ? 'Editing the live engagement on ' + (o.bookTitle || 'this story') + '.'
+      : 'Readers see this on every chapter of ' + (o.bookTitle || 'your story') + '.';
     _render();
     _el.classList.add('on');
     document.body.style.overflow = 'hidden';

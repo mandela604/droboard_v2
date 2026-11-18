@@ -71,6 +71,10 @@
     .dbc-status.pending{background:var(--warning-soft,#fef3e2);color:#b7690a}
     .dbc-status.under_review{background:var(--warning-soft,#fef3e2);color:#b7690a}
     .dbc-status.revision{background:var(--danger-soft,#fdeaea);color:#c92a2a}
+    /* Story-wide engagement markers (only when the book actually has them) */
+    .dbc-eng{display:inline-flex;align-items:center;gap:3px;margin-left:6px}
+    .dbc-eng-ico{font-size:10.5px;line-height:1;filter:grayscale(.15)}
+    .dbc-pop-kind-existing{color:var(--success,#22c55e);font-size:10px}
 
     /* Three-dot trigger in the title row */
     .dbc-menu-btn{
@@ -206,8 +210,16 @@
     const cover = b.cover || b.img || '';
     const chevIcon = b.chevron === 'down' ? 'fa-chevron-down' : 'fa-chevron-right';
     const chev = b.chevron === 'none' ? '' : '<i class="fas ' + chevIcon + ' dbc-chev"></i>';
+    // Only show engagement icons for kinds this book actually has.
+    const eg = b.engagements || {};
+    const engIcons = [
+      (eg.polls || []).length ? '<span class="dbc-eng-ico" title="Poll">📊</span>' : '',
+      (eg.predictions || []).length ? '<span class="dbc-eng-ico" title="Prediction">🔮</span>' : '',
+      (eg.debates || []).length ? '<span class="dbc-eng-ico" title="Debate">⚔️</span>' : '',
+    ].filter(Boolean).join('');
+    const eng = engIcons ? '<span class="dbc-eng">' + engIcons + '</span>' : '';
     const foot = (b.status === false && !b.statusLabel) ? ''
-      : '<div class="dbc-foot"><span class="dbc-status ' + _esc(statusClass) + '">' + _esc(label) + '</span></div>';
+      : '<div class="dbc-foot"><span class="dbc-status ' + _esc(statusClass) + '">' + _esc(label) + '</span>' + eng + '</div>';
     const trailing = b.trailing ? '<div class="dbc-trailing">' + b.trailing + '</div>' : '';
     // Three-dot menu button with author-wide actions (story-wide engagement, etc.)
     // No inline onclick: the card owns navigation, so the menu is intercepted in
@@ -377,11 +389,13 @@
         '<div class="dbc-pop-sub">Runs across every chapter of ' + _esc(book.title || 'this story') + '.</div>' +
       '</div>' +
       _kinds().map(function (t) {
+        const list = (book.engagements || {})[t.kind === 'poll' ? 'polls' : t.kind === 'prediction' ? 'predictions' : 'debates'] || [];
+        const has = list.length > 0;
         return '<button type="button" class="dbc-pop-item" role="menuitem" data-kind="' + _esc(t.kind) + '">' +
           '<span class="dbc-pop-ico ' + _esc(t.kind) + '"><i class="fas ' + _esc(String(t.icon || '').split(' ')[0]) + '"></i></span>' +
           '<span class="dbc-pop-txt">' +
-            '<span class="dbc-pop-lbl">' + _esc(t.label) + '</span>' +
-            '<span class="dbc-pop-hint">' + _esc(t.hint || '') + '</span>' +
+            '<span class="dbc-pop-lbl">' + _esc(t.label) + (has ? ' <span class="dbc-pop-kind-existing">✓ created</span>' : '') + '</span>' +
+            '<span class="dbc-pop-hint">' + _esc(has ? 'Edit what readers see' : (t.hint || '')) + '</span>' +
           '</span>' +
           '<i class="fas fa-chevron-right"></i>' +
         '</button>';
