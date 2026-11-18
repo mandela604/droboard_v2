@@ -210,6 +210,11 @@ async function applyReferral(newUser, rawCode) {
   const inviter = await User.findOne({ referralCode: code }).select('_id username').lean();
   if (!inviter) return { inviterId: null, invalid: true };
   if (String(inviter._id) === String(newUser._id)) return { inviterId: null, self: true };
+  // The inviter's PUBLIC id must be used everywhere: stats/list are queried by
+  // req.user.id (the public uuid). Storing the raw _id here made every referral
+  // invisible on the refer page even though signup credited the coins.
+  const ownerPublicId = await publicUserId(inviter._id);
+  const inviteePublicId = await publicUserId(newUser._id);
   // Link invitee -> inviter (best-effort; never fails signup)
   try {
     await User.updateOne({ _id: newUser._id }, { $set: { referredByUserId: String(inviter._id) } });
@@ -217,18 +222,18 @@ async function applyReferral(newUser, rawCode) {
   let doc = null;
   try {
     doc = await Referral.create({
-      code, ownerId: String(inviter._id),
-      referredUserId: String(newUser._id), referredHandle: newUser.username || '',
+      code, ownerId: ownerPublicId,
+      referredUserId: inviteePublicId, referredHandle: newUser.username || '',
       status: 'joined', signupRewarded: false, readRewarded: false, earnedCoins: 0,
     });
   } catch (e) {
-    if (e.code !== 11000) return { inviterId: String(inviter._id) };
-    doc = await Referral.findOne({ ownerId: String(inviter._id), referredUserId: String(newUser._id) });
-    if (!doc) return { inviterId: String(inviter._id) };
+    if (e.code !== 11000) return { inviterId: ownerPublicId };
+    doc = await Referral.findOne({ ownerId: ownerPublicId, referredUserId: inviteePublicId });
+    if (!doc) return { inviterId: ownerPublicId };
   }
-  if (doc && doc.signupRewarded) return { inviterId: String(inviter._id), stage1: { credited: false, duplicate: true } };
+  if (doc && doc.signupRewarded) return { inviterId: ownerPublicId, stage1: { credited: false, duplicate: true } };
   const r = await creditInviter({
-    inviterId: String(inviter._id), inviteeId: String(newUser._id),
+    inviterId: ownerPublicId, inviteeId: inviteePublicId,
     stage: 'stage1', coins: env.referralStage1Coins,
   });
   if (r.credited) {
@@ -244,11 +249,15 @@ async function applyReferral(newUser, rawCode) {
 // Called whenever reading progress is recorded. Credits stage-2 (+2) once the
 // invitee totals >= REFERRAL_READ_SECONDS within REFERRAL_WINDOW_DAYS of signup.
 async function checkReadReward(inviteeId) {
-  const invitee = await User.findOne(userRefFilter([inviteeId])).select('_id createdAt referredByUserId').lean();
+  const invitee = await User.findOne(userRefFilter([inviteeId])).select('_id id createdAt referredByUserId').lean();
   if (!invitee || !invitee.referredByUserId) return { qualified: false };
   const ageMs = Date.now() - new Date(invitee.createdAt).getTime();
   if (ageMs > env.referralWindowDays * 86400000) return { qualified: false, expired: true };
-  const ref = await Referral.findOne({ ownerId: String(invitee.referredByUserId), referredUserId: String(inviteeId) });
+  // referredByUserId is stored as the inviter's _id; the Referral row is keyed
+  // by public ids. Resolve both sides before querying or stage-2 never fires.
+  const ownerPublicId = await publicUserId(invitee.referredByUserId);
+  const inviteePublicId = String(invitee.id || invitee._id);
+  const ref = await Referral.findOne({ ownerId: ownerPublicId, referredUserId: inviteePublicId });
   if (!ref || ref.readRewarded) return { qualified: false };
   const agg = await ReadingProgress.aggregate([
     { $match: { userId: String(inviteeId) } },
@@ -257,7 +266,7 @@ async function checkReadReward(inviteeId) {
   const total = (agg[0] && agg[0].secs) || 0;
   if (total < env.referralReadSeconds) return { qualified: false, totalSecs: total };
   const r = await creditInviter({
-    inviterId: String(invitee.referredByUserId), inviteeId: String(inviteeId),
+    inviterId: ownerPublicId, inviteeId: inviteePublicId,
     stage: 'stage2', coins: env.referralStage2Coins,
   });
   if (r.credited) {
@@ -280,9 +289,10 @@ async function getStats(ownerId) {
 async function listReferred(ownerId, { limit } = {}) {
   const rows = await Referral.find({ ownerId: String(ownerId) }).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, limit || 50))).lean();
   const ids = rows.map(r => r.referredUserId).filter(Boolean);
-  const users = ids.length ? await User.find({ _id: { $in: ids } }).select('username fullName avatar createdAt').lean() : [];
+  // ids are now public uuids (legacy rows may hold an old _id) — resolve both.
+  const users = ids.length ? await User.find(userRefFilter(ids)).select('id _id username fullName avatar createdAt').lean() : [];
   const m = {};
-  users.forEach(u => { m[String(u._id)] = u; });
+  users.forEach(u => { m[String(u.id)] = u; m[String(u._id)] = u; });
   return rows.map(r => {
     const u = m[String(r.referredUserId)] || {};
     return {
