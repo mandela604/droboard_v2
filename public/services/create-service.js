@@ -88,12 +88,15 @@ function loadBooks(){
   return fetch(API_BASE + '/author/books?limit=50', { credentials: 'include' })
     .then(r => r.ok ? r.json() : { items: [] })
     .then(data => {
-      MY_BOOKS = (data.items || data.data || []).map(b => ({
+      // GET /author/books answers with a plain array (not {items}). Accept
+      // both shapes so published books appear in "Continue an existing story".
+      const rows = Array.isArray(data) ? data : (data.items || data.data || []);
+      MY_BOOKS = rows.map(b => ({
         id: b.id,
         title: b.title,
         cover: b.cover,
         category: b.category,
-        lastChapter: b.chapters?.length || 0
+        lastChapter: b.chapters?.length || b.lastChapter || 0
       }));
     })
     .catch(() => { MY_BOOKS = []; });
