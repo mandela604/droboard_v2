@@ -71,6 +71,43 @@ a.ref-name:active{opacity:.7}
 .step-n{width:26px;height:26px;border-radius:50%;background:rgba(255,0,80,.12);color:var(--acc2);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .step p{font-size:12.5px;line-height:1.55;color:var(--tx-body)}
 .step p b{color:var(--tx-high)}
+
+/* ── "How it works" tappable card + explainer popup ── */
+.how-card{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;font-family:inherit}
+.how-card:active{transform:scale(.99)}
+.how-ico{width:40px;height:40px;border-radius:12px;background:rgba(255,0,80,.1);border:1px solid var(--bd-acc);color:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.how-body{flex:1;min-width:0}
+.how-title{font-size:13px;font-weight:800;color:var(--tx-high)}
+.how-sub{font-size:11px;color:var(--tx-muted);margin-top:2px;line-height:1.4}
+.how-chev{color:var(--tx-muted);font-size:12px;flex-shrink:0}
+
+.how-ov{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.how-ov.show{opacity:1;pointer-events:auto}
+.how-sheet{width:100%;max-width:420px;background:var(--l1);border:1px solid var(--bd);border-bottom:none;border-radius:22px 22px 0 0;padding:8px 18px calc(22px + var(--safe-b));transform:translateY(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);max-height:92vh;overflow-y:auto}
+.how-ov.show .how-sheet{transform:translateY(0)}
+.how-grab{width:40px;height:4px;border-radius:4px;background:var(--bd);margin:4px auto 14px}
+.how-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.how-head-ico{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 22px -8px var(--acc);flex-shrink:0}
+.how-head-t{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--tx-high);line-height:1.2}
+.how-head-s{font-size:11.5px;color:var(--tx-muted);margin-top:3px}
+.how-x{margin-left:auto;width:32px;height:32px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);color:var(--tx-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;flex-shrink:0}
+.how-earn{background:var(--l2);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:14px 0}
+.how-earn-lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--tx-muted);margin-bottom:10px}
+.how-earn-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}
+.how-earn-row:first-of-type{border-top:none}
+.how-coin{width:30px;height:30px;border-radius:50%;background:rgba(251,191,36,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.how-earn-txt{flex:1;font-size:12px;color:var(--tx-body);line-height:1.4}
+.how-earn-txt b{color:var(--tx-high)}
+.how-amt{font-size:13px;font-weight:800;color:var(--gold);flex-shrink:0}
+.how-total{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:12px;border-top:1px dashed var(--bd)}
+.how-total span{font-size:12px;font-weight:800;color:var(--tx-high)}
+.how-total b{font-size:16px;font-weight:900;color:var(--gold)}
+.how-note{display:flex;gap:10px;background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.28);border-radius:12px;padding:12px;margin-top:4px}
+.how-note i{color:var(--gold);font-size:14px;flex-shrink:0;margin-top:1px}
+.how-note p{font-size:11.5px;line-height:1.55;color:var(--tx-body)}
+.how-note p b{color:var(--gold)}
+.how-cta{width:100%;margin-top:16px;padding:13px;border:none;border-radius:12px;background:var(--acc);color:#fff;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
+.how-cta:active{transform:scale(.98)}
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:#1c1c22;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .empty{font-size:12px;color:var(--tx-faint);padding:8px 0}
@@ -87,6 +124,10 @@ a.ref-name:active{opacity:.7}
 [data-theme="light"] .ref-av{border:1px solid var(--bd)}
 [data-theme="light"] .ref-badge.invited{background:rgba(20,12,40,.06)}
 [data-theme="light"] .toast{background:#171423}
+[data-theme="light"] .how-ico{background:#fdf2f6}
+[data-theme="light"] .how-sheet{box-shadow:0 -12px 40px rgba(25,15,50,.18)}
+[data-theme="light"] .how-earn{background:#f7f6fa}
+[data-theme="light"] .how-note{background:rgba(251,191,36,.12)}
 </style>
 <script src="../component/img-guard.js"></script>
 <script src="../component/auth-wall.js?v=1"></script>
@@ -142,18 +183,63 @@ a.ref-name:active{opacity:.7}
     </div>
 
     <div class="card">
-      <div class="card-lbl">How it works</div>
-      <div class="step"><div class="step-n">1</div><p><b>Share your link</b> with friends — anywhere, any app.</p></div>
-      <div class="step"><div class="step-n">2</div><p>They sign up with your code <b>auto-filled</b> (or type it in themselves).</p></div>
-      <div class="step"><div class="step-n">3</div><p>You get <b><i class="fas fa-coins"></i> 5 coins</b> when they join.</p></div>
+      <button class="how-card" id="howOpen" type="button">
+        <div class="how-ico"><i class="fas fa-circle-question"></i></div>
+        <div class="how-body">
+          <div class="how-title">How referrals &amp; coins work</div>
+          <div class="how-sub">See how you earn the full 5 coins — and the fine print.</div>
+        </div>
+        <i class="fas fa-chevron-right how-chev"></i>
+      </button>
     </div>
+  </div>
+</div>
+
+<!-- How it works — explainer popup -->
+<div class="how-ov" id="howOv">
+  <div class="how-sheet" role="dialog" aria-modal="true" aria-label="How referrals work">
+    <div class="how-grab"></div>
+    <div class="how-head">
+      <div class="how-head-ico"><i class="fas fa-gift"></i></div>
+      <div>
+        <div class="how-head-t">How it works</div>
+        <div class="how-head-s">Earn up to 5 coins per friend who joins</div>
+      </div>
+      <button class="how-x" id="howClose" type="button" aria-label="Close"><i class="fas fa-xmark"></i></button>
+    </div>
+
+    <div class="how-earn">
+      <div class="how-earn-lbl">How your 5 coins add up</div>
+      <div class="how-earn-row">
+        <div class="how-coin"><i class="fas fa-user-plus"></i></div>
+        <div class="how-earn-txt">A friend <b>signs up</b> with your link or code</div>
+        <div class="how-amt">+3</div>
+      </div>
+      <div class="how-earn-row">
+        <div class="how-coin"><i class="fas fa-book-reader"></i></div>
+        <div class="how-earn-txt">They <b>read for 30 minutes</b> within 7 days</div>
+        <div class="how-amt">+2</div>
+      </div>
+      <div class="how-total"><span>Total per friend</span><b><i class="fas fa-coins"></i> 5 coins</b></div>
+    </div>
+
+    <div class="step"><div class="step-n">1</div><p><b>Share your link</b> anywhere — copy it, or send it on WhatsApp or X.</p></div>
+    <div class="step"><div class="step-n">2</div><p>Your code is <b>auto-filled</b> when they sign up, or they can type it in.</p></div>
+    <div class="step"><div class="step-n">3</div><p>Your coins are credited <b>automatically</b> — no claiming needed.</p></div>
+
+    <div class="how-note">
+      <i class="fas fa-triangle-exclamation"></i>
+      <p><b>Referral coins are not withdrawable.</b> They're a bonus you can spend inside Droboard — like unlocking chapters — but they can't be cashed out or transferred. Earn them by inviting real friends.</p>
+    </div>
+
+    <button class="how-cta" id="howGotIt" type="button">Got it</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="../services/auth-session.js?v=4"></script>
-<script src="../services/refer-service.js?v=2"></script>
+<script src="../services/refer-service.js?v=3"></script>
 <script>ReferService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

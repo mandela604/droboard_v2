@@ -184,8 +184,25 @@
     }
   }
 
+  /* "How it works" explainer popup — pure view state, no data dependency. */
+  function bindHowPopup() {
+    var ov = document.getElementById('howOv');
+    if (!ov) return;
+    var open = document.getElementById('howOpen');
+    var close = document.getElementById('howClose');
+    var gotIt = document.getElementById('howGotIt');
+    function show() { ov.classList.add('show'); document.body.style.overflow = 'hidden'; }
+    function hide() { ov.classList.remove('show'); document.body.style.overflow = ''; }
+    if (open) open.addEventListener('click', show);
+    if (close) close.addEventListener('click', hide);
+    if (gotIt) gotIt.addEventListener('click', hide);
+    ov.addEventListener('click', function (e) { if (e.target === ov) hide(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(); });
+  }
+
   async function init() {
     var RS = window.ReferService;
+    bindHowPopup();
     if (window.AuthSession && AuthSession.isGuest && AuthSession.isGuest()) {
       fatal('Sign in to see your referral code, stats and invited friends.');
       return;
