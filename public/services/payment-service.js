@@ -33,14 +33,21 @@
   // Only channels the server actually has keys for. Before /payments/config has
   // been read the sheet shows the launch provider (Flutterwave) alone — never
   // a list a tap could fail on.
-  function methods() {
+  // Which web channel can take this currency. Paystack inline is naira (and a
+  // few African markets) only; Flutterwave covers NGN/USD/GBP.
+  function supports(methodId, currency) {
+    const cur = String(currency || 'NGN').toUpperCase();
+    if (cur === 'NGN') return true;
+    if (methodId === 'paystack') return cur === 'USD' || cur === 'GHS' || cur === 'ZAR' || cur === 'KES';
+    return methodId === 'flutterwave';
+  }
+  function methods(currency) {
     var pf = platform();
     if (pf === 'android-app') return [{ id: 'play', name: 'Google Play', icon: 'fab fa-google-play', hint: 'Billed by Google' }];
     if (pf === 'ios-app') return [{ id: 'appstore', name: 'App Store', icon: 'fab fa-apple', hint: 'Billed by Apple' }];
-    if (!_config) return ALL_WEB.slice(0, 1);
-    var enabled = Array.isArray(_config.enabled) ? _config.enabled : null;
-    if (!enabled) return ALL_WEB;
-    return ALL_WEB.filter(function (m) { return enabled.indexOf(m.id) !== -1; });
+    var list = !_config ? ALL_WEB.slice(0, 1)
+      : (Array.isArray(_config.enabled) ? ALL_WEB.filter(function (m) { return _config.enabled.indexOf(m.id) !== -1; }) : ALL_WEB);
+    return list.filter(function (m) { return supports(m.id, currency); });
   }
   // Fire-and-forget at page init so the sheet knows the real provider list
   // before a user taps Buy.
@@ -126,6 +133,12 @@
   }
 
   function payWithPaystack(opts) {
+    var cur = String(opts.currency || 'NGN').toUpperCase();
+    if (cur === 'GBP') {
+      var uc = new Error('paystack_currency_unsupported');
+      uc.status = 400;
+      return Promise.reject(uc);
+    }
     return getConfig().then(function (cfg) {
       if (!cfg.paystackPublicKey) {
         var e = new Error('paystack_not_configured');
@@ -142,8 +155,8 @@
         var handler = window.PaystackPop.setup({
           key: _config.paystackPublicKey,
           email: email,
-          amount: Math.round(Number(opts.amountNGN) * 100), // naira -> kobo
-          currency: 'NGN',
+          amount: Math.round(Number(opts.amount != null ? opts.amount : opts.amountNGN) * 100),
+          currency: cur,
           ref: genRef('PSK'),
           metadata: { userId: (me && me.id) || '', packCode: opts.packCode },
           callback: function (resp) {
@@ -177,8 +190,8 @@
         window.FlutterwaveCheckout({
           public_key: _config.flutterwavePublicKey,
           tx_ref: genRef('FLW'),
-          amount: Number(opts.amountNGN),
-          currency: 'NGN',
+          amount: Number(opts.amount != null ? opts.amount : opts.amountNGN),
+          currency: String(opts.currency || 'NGN').toUpperCase(),
           customer: { email: email },
           meta: { userId: (me && me.id) || '', packCode: opts.packCode },
           callback: function (d) {
@@ -201,7 +214,7 @@
     opts = opts || {};
     if (!opts.packCode) return Promise.reject(new Error('pack_required'));
     if (!(Number(opts.amountNGN) > 0)) return Promise.reject(new Error('amount_required'));
-    var list = methods();
+    var list = methods(opts.currency);
     if (!list.length) {
       // Config answered with zero enabled channels — no keys exist yet, so no
       // provider can take this money. Fail before the SDK rather than inside it.

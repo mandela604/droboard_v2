@@ -103,6 +103,37 @@
       ${chips.length ? '<div class="balance-split">' + chips.join('') + '</div>' : ''}`;
   }
 
+  /* ── Store price in the reader's own currency ─────────────── */
+  /* The catalog carries a ladder per item ({NGN, USD, GBP}). The reader's
+     currency comes from DroboardCurrency (geo, cached 7 days), and resolve()
+     refuses to substitute another currency — when a leg is missing we fall
+     back to the server's naira string rather than inventing a price. */
+  function readerPrice(item) {
+    const C = window.DroboardCurrency;
+    if (C && typeof C.resolve === 'function') {
+      try {
+        const r = C.resolve(item);
+        if (r && r.ok && r.currency && r.price) return String(r.price);
+      } catch (e) {}
+    }
+    return item.price || '';
+  }
+
+  /* What the provider will actually charge, in the currency shown. */
+  function chargeFor(item) {
+    const C = window.DroboardCurrency;
+    if (C && typeof C.resolve === 'function') {
+      try {
+        const r = C.resolve(item);
+        const n = r && r.ok && r.currency ? parseFloat(String(r.price).replace(/[^0-9.]/g, '')) : NaN;
+        if (isFinite(n) && n > 0) {
+          return { amount: n, currency: String(r.currency).toUpperCase(), price: String(r.price) };
+        }
+      } catch (e) {}
+    }
+    return { amount: ngnOf(item), currency: 'NGN', price: item.price || '' };
+  }
+
   function renderPacks(packs) {
     document.getElementById('packsGrid').innerHTML = (packs || []).map((p) => {
       const bonus = Number(p.bonusCoins) || 0;
@@ -111,7 +142,7 @@
         ${p.badge ? `<div class="pack-badge${p.badge === 'Best Value' ? ' green' : ''}">${esc(p.badge)}</div>` : ''}
         <div class="pack-coins"><i class="fas fa-coins" style="color:${esc(p.color || '#b45309')}"></i>${(Number(p.coins) || 0).toLocaleString()}</div>
         <div class="pack-label">coins${bonus > 0 ? ' +' + bonus.toLocaleString() + ' bonus' : ''}</div>
-        <div class="pack-price">${esc(p.price)}</div>
+        <div class="pack-price">${esc(readerPrice(p))}</div>
       </div>`;
     }).join('');
   }
@@ -125,7 +156,7 @@
           <div class="bundle-coins">${(Number(b.coins) || 0).toLocaleString()} coins</div>
           <div class="bundle-bonus">+${(Number(b.bonus) || 0).toLocaleString()} bonus coins</div>
         </div>
-        <div class="bundle-price">${esc(b.price)}</div>
+        <div class="bundle-price">${esc(readerPrice(b))}</div>
       </div>`).join('');
   }
 
@@ -153,7 +184,7 @@
           <div class="sub-icon" style="background:${esc(s.color || '#FF2D6A')}"><i class="fas ${esc(s.icon || 'fa-crown')}"></i></div>
           <div>
             <div class="sub-name">${esc(s.name)}</div>
-            <div class="sub-price">${esc(s.price)}</div>
+            <div class="sub-price">${esc(readerPrice(s))}</div>
             <div class="sub-period">per ${esc(s.period)}</div>
           </div>
         </div>
@@ -172,7 +203,7 @@
         ${merge.badge ? `<div class="merge-badge">${esc(merge.badge)}</div>` : ''}
         <div class="merge-icon"><i class="fas ${esc(merge.icon || 'fa-bolt')}"></i></div>
         <div class="merge-name">${esc(merge.name)}</div>
-        <div class="merge-price">${esc(merge.price)}</div>
+        <div class="merge-price">${esc(readerPrice(merge))}</div>
         <div class="merge-period">per ${esc(merge.period)}</div>
         <div class="merge-features">
           ${(merge.features || []).map((f) => `<div class="merge-feature"><i class="fas fa-check"></i>${esc(f)}</div>`).join('')}
@@ -197,13 +228,18 @@
     if (!window.DroboardPaySheet) { toast('Checkout unavailable — payment sheet failed to load'); return; }
     const amountNGN = ngnOf(item);
     if (!(amountNGN > 0)) { toast('This item has no price yet — check back soon'); return; }
+    // Charge the leg the reader was quoted, so the amount on the sheet, the
+    // amount at the provider and the amount the server asserts all agree.
+    const charge = chargeFor(item);
     DroboardPaySheet.open({
       title: item.title,
       sub: item.sub,
-      price: item.price,
+      price: charge.price,
       coins: item.coins || 0,
       packCode: item.id,
       amountNGN: amountNGN,
+      amount: charge.amount,
+      currency: charge.currency,
       isSub: item.kind === 'sub',
       onSuccess: function () {
         afterPurchase(item);
@@ -242,7 +278,8 @@
       kind: 'pack', id: p.code || p.id,
       title: p.title || 'Coin Pack',
       sub: (Number(p.coins) || 0).toLocaleString() + ' coins' + (bonus > 0 ? ' + ' + bonus.toLocaleString() + ' bonus' : ''),
-      price: p.price, coins: p.coins, bonus: bonus,
+      price: p.price, prices: p.prices, priceUSD: p.priceUSD,
+      coins: p.coins, bonus: bonus,
     });
   }
 
@@ -253,7 +290,8 @@
       kind: 'bundle', id: b.code || b.id,
       title: b.name,
       sub: (Number(b.coins) || 0).toLocaleString() + ' coins + ' + (Number(b.bonus) || 0).toLocaleString() + ' bonus',
-      price: b.price, coins: b.coins, bonus: b.bonus,
+      price: b.price, prices: b.prices, priceUSD: b.priceUSD,
+      coins: b.coins, bonus: b.bonus,
     });
   }
 
@@ -267,7 +305,8 @@
       kind: 'sub', id: s.code || s.id,
       title: s.name,
       sub: 'Subscription · per ' + s.period,
-      price: s.price, coins: 0, bonus: 0,
+      price: s.price, prices: s.prices, priceUSD: s.priceUSD,
+      coins: 0, bonus: 0,
     });
   }
 
@@ -363,6 +402,14 @@
   }
 
   /* ── Init ─────────────────────────────────────────────────── */
+  function repaintCatalog() {
+    if (!storeData) return;
+    renderPacks(storeData.packs);
+    renderBundles(storeData.bundles);
+    renderSubscriptions(storeData.subscriptions);
+    renderMergeSub(storeData.mergeSub);
+  }
+
   async function init() {
     hideState();
     showLoader();
@@ -381,6 +428,12 @@
       renderRewards(storeData.adRewards);
       renderSubscriptions(storeData.subscriptions);
       renderMergeSub(storeData.mergeSub);
+      // Geo lands a moment later (ipapi, cached 7 days). Repaint once it does,
+      // so a US/UK reader sees $/£ instead of the naira fallback.
+      if (window.DroboardCurrency && typeof DroboardCurrency.init === 'function') {
+        DroboardCurrency.init();
+        DroboardCurrency.onChange(function () { repaintCatalog(); });
+      }
       applyTab();
       // The catalog endpoint attaches the balance when it can; the wallet
       // read is the authoritative split ({coins, bonus, paid}).

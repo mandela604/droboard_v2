@@ -41,7 +41,7 @@
     opts = opts || {};
     ensureStyle();
     close();
-    const methods = (window.PaymentService && typeof PaymentService.methods === 'function' ? PaymentService.methods() : []);
+    const methods = (window.PaymentService && typeof PaymentService.methods === 'function' ? PaymentService.methods(opts.currency) : []);
     // No provider configured on the server = no channel can take money.
     const ready = methods.length > 0;
     let method = ready ? methods[0].id : null;
@@ -106,7 +106,8 @@
 
       // Live path
       const p = { title: opts.title, price: opts.price, coins: opts.coins, method: method,
-        packCode: opts.packCode, amountNGN: opts.amountNGN, email: opts.email };
+        packCode: opts.packCode, amountNGN: opts.amountNGN, amount: opts.amount,
+        currency: opts.currency, email: opts.email };
       window.PaymentService.checkout(p).then(function (receipt) {
         done();
         if (opts.onSuccess) opts.onSuccess(receipt);
