@@ -141,13 +141,10 @@
         welcomeEl.textContent = currentUser ? ('Welcome back, ' + currentUser + ' 👋') : 'Welcome back 👋';
       }
 
-      // Topbar avatar = the signed-in user's own image, never a demo face.
-      var avatarImg = document.getElementById('userAvatarImg');
-      if (avatarImg) {
-        avatarImg.onerror = function () { this.onerror = null; this.src = '../assets/droboard-icon.png'; };
-        avatarImg.src = userSession.avatar || '../assets/droboard-icon.png';
-        avatarImg.alt = currentUser + ' avatar';
-      }
+      // Topbar avatar is owned by component/author-avatar.js — the real
+      // session user's image. Repaint here in case the account was only just
+      // restored from /api/users/me (cookie-only login).
+      if (window.AuthorAvatar && window.AuthorAvatar.refresh) window.AuthorAvatar.refresh();
 
       // Fetch stats from API. The author dashboard returns
       // { stats: {books, contracts, reads, followers, earnings, completionRate,
