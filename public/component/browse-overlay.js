@@ -241,6 +241,8 @@
   let _tune = false;        // true only when opened from the Recommended "View All"
   let _pool = [];
   let _page = 1, _hasMore = true, _loading = false;
+  let _adsReady = false;   // first page waits for the ad pools (see _loadNext)
+  let _openSeq = 0;        // newest open() owns the list; older loads bail out
 
   /* Backend-driven browsing. When a trigger carries a section or a genre the
      overlay asks the API for that exact slice; nothing is filtered, padded or
@@ -707,7 +709,11 @@
   }
 
   async function _loadNext() {
-    if (_loading || !_hasMore) return;
+    // The ad pools must be in hand before the first page renders: the sentinel
+    // sits at the top of an empty list, so it fires while the ad requests are
+    // still in flight. Without this gate the page loads once ad-free, then the
+    // open() reset wipes it and loads again with ads — the double flash.
+    if (!_adsReady || _loading || !_hasMore) return;
     _loading = true;
     _loaderEl.classList.remove('hidden');
     _loaderEl.innerHTML = '<div class="bro-spinner"></div> Loading…';
@@ -780,6 +786,11 @@
     _genreBarEl.style.display = 'none';
     _genreBarEl.querySelectorAll('[data-bro-genre]').forEach(p => p.classList.toggle('on', p.dataset.broGenre === _filter));
 
+    // Any open() still in flight from an earlier click must not touch this
+    // overlay: a second open() would otherwise reset the list the first one
+    // just filled, which reads as "it loaded, then loaded again".
+    const seq = ++_openSeq;
+
     _root.classList.add('open');
     document.body.style.overflow = 'hidden';
     _isOpen = true;
@@ -789,6 +800,7 @@
        screen inside the new section's frame — a View All that "opens the last
        list first". The list starts empty with the loader, then fills. */
     _page = 1; _loading = false; _hasMore = true;
+    _adsReady = false;
     _storyCount = 0; _writersPlaced = false; _adIndex = 0;
     _listEl.innerHTML = '';
     _emptyEl.classList.remove('show');
@@ -799,6 +811,8 @@
     // slider and rebuild the story pool (ads interleave into the pool). No
     // hardcoded demo ads ever — if the API returns empty, those slots stay blank.
     _loadLiveAds().then(function () {
+      if (seq !== _openSeq) return;   // a newer open() owns the list now
+      _adsReady = true;   // opens the gate: the first page renders WITH its ads
       _renderPromo();
       _goPromo(0);
       _startPromo();
