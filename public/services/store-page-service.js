@@ -156,7 +156,7 @@
       return `
       <div class="pack-card" data-pack-id="${esc(p.id)}" onclick="selectPack('${esc(p.id)}')">
         ${p.badge ? `<div class="pack-badge${p.badge === 'Best Value' ? ' green' : ''}">${esc(p.badge)}</div>` : ''}
-        <div class="pack-coins"><i class="fas fa-coins" style="color:${esc(p.color || '#b45309')}"></i>${(Number(p.coins) || 0).toLocaleString()}</div>
+        <div class="pack-coins"><i class="fas fa-coins" style="color:var(--gold)"></i>${(Number(p.coins) || 0).toLocaleString()}</div>
         <div class="pack-label">coins${bonus > 0 ? ' +' + bonus.toLocaleString() + ' bonus' : ''}</div>
         <div class="pack-price">${esc(readerPrice(p))}</div>
       </div>`;
@@ -166,7 +166,7 @@
   function renderBundles(bundles) {
     document.getElementById('bundlesList').innerHTML = (bundles || []).map((b) => `
       <div class="bundle-card" onclick="selectBundle('${esc(b.id)}')">
-        <div class="bundle-icon" style="background:${esc(b.color || '#7c3aed')}"><i class="fas ${esc(b.icon || 'fa-gift')}"></i></div>
+        <div class="bundle-icon" style="background:linear-gradient(135deg,#F7D774,#D4AF37);color:#4A3500"><i class="fas ${esc(b.icon || 'fa-gift')}"></i></div>
         <div class="bundle-info">
           <div class="bundle-name">${esc(b.name)}</div>
           <div class="bundle-coins">${(Number(b.coins) || 0).toLocaleString()} coins</div>

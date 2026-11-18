@@ -10,6 +10,7 @@
 <style>
 :root{
   --pink:#FF2D6A; --pink-deep:#D6165A; --pink-soft:#FDE3EC;
+  --gold:#D4AF37; --gold-soft:#FFF5D6;
   --green:#16A34A; --green-soft:#E4F8EA;
   --ink:#17151B; --ink-2:#2E2B34; --gray-600:#635F6E; --gray-400:#9A96A3;
   --line:#EFEDF2; --divider:#F3F1F5; --white:#FFFFFF; --card:#ffffff;
@@ -70,11 +71,11 @@ a{color:inherit;text-decoration:none}
 }
 .pack-badge.green{background:var(--green)}
 .pack-coins{font-size:24px;font-weight:800;color:var(--ink);margin-bottom:2px}
-.pack-coins i{font-size:19px;color:var(--gold,#b45309);margin-right:6px}
+.pack-coins i{font-size:19px;color:var(--gold);margin-right:6px}
 .pack-label{font-size:11px;color:var(--gray-400);font-weight:600;margin-bottom:8px}
 .pack-price{
-  font-size:14px;font-weight:800;color:var(--pink);
-  background:var(--pink-soft);padding:6px 14px;border-radius:12px;display:inline-block
+  font-size:14px;font-weight:800;color:var(--green);
+  background:var(--green-soft);padding:6px 14px;border-radius:12px;display:inline-block
 }
 
 /* Bundles */
@@ -93,8 +94,8 @@ a{color:inherit;text-decoration:none}
 .bundle-coins{font-size:12px;color:var(--gray-600);font-weight:600}
 .bundle-bonus{font-size:11px;color:var(--green);font-weight:700}
 .bundle-price{
-  font-size:14px;font-weight:800;color:var(--pink);
-  background:var(--pink-soft);padding:6px 14px;border-radius:12px;flex-shrink:0
+  font-size:14px;font-weight:800;color:var(--green);
+  background:var(--green-soft);padding:6px 14px;border-radius:12px;flex-shrink:0
 }
 
 /* Ad Rewards */
@@ -142,7 +143,7 @@ a{color:inherit;text-decoration:none}
 .sub-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .sub-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
 .sub-name{font-size:16px;font-weight:800;color:var(--ink)}
-.sub-price{font-size:14px;font-weight:700;color:var(--pink)}
+.sub-price{font-size:14px;font-weight:700;color:var(--green)}
 .sub-period{font-size:11px;color:var(--gray-400);font-weight:600}
 .sub-features{display:flex;flex-direction:column;gap:6px}
 .sub-feature{font-size:12px;color:var(--gray-600);font-weight:600;display:flex;align-items:center;gap:6px}
@@ -158,7 +159,7 @@ a{color:inherit;text-decoration:none}
 .merge-badge{position:absolute;top:12px;right:12px;font-size:9px;font-weight:800;padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.2);color:#fff}
 .merge-icon{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
 .merge-name{font-size:18px;font-weight:800;margin-bottom:4px}
-.merge-price{font-size:16px;font-weight:700;margin-bottom:2px}
+.merge-price{font-size:16px;font-weight:700;margin-bottom:2px;color:var(--green)}
 .merge-period{font-size:11px;opacity:.7;margin-bottom:14px}
 .merge-features{display:flex;flex-direction:column;gap:8px}
 .merge-feature{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;opacity:.9}
@@ -259,7 +260,7 @@ a{color:inherit;text-decoration:none}
 <script src="../component/bottom-nav.js"></script>
 <script src="../component/payment-sheet.js?v=3"></script>
 <script src="../services/earn-service.js?v=2"></script>
-<script src="../services/store-page-service.js?v=15"></script>
+<script src="../services/store-page-service.js?v=16"></script>
 <script src="../component/ad-card.js?v=12"></script>
 <script src="../services/ad-service.js?v=8"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
