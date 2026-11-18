@@ -12,8 +12,8 @@
  *   - GET  /api/…  → "Loading…"
  *   - POST/PUT/PATCH/DELETE /api/… → "Saving…"
  *   - /api/auth/… (token refresh / login) is ignored — never veil a login.
- *   - Auto tracking covers the initial page-load window (15s). Later writes
- *     can opt in explicitly with DroboardScreenLoader.wrap(promise, label).
+ *   - All API calls are tracked, including later user actions. Any page can
+ *     also call the explicit API below for non-fetch async work.
  *
  * Explicit API (works anywhere, nestable via a ref-count):
  *   DroboardScreenLoader.show('Loading your stories…');
@@ -111,19 +111,16 @@
   function isVisible() { return !!(overlay && overlay.classList.contains('on')); }
 
   /* ── opt-in automatic mode ───────────────────────────────────────── */
-  var autoOn = false, autoUntil = 0;
+  var autoOn = false;
   function auto() {
     if (autoOn || !global.fetch) return;
     autoOn = true;
-    autoUntil = Date.now() + 15000; // initial page-load window only
     var native = global.fetch.bind(global);
 
     global.fetch = function (input, init) {
       var url = (typeof input === 'string') ? input : ((input && input.url) || '');
       var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
-      var tracked = url.indexOf('/api/') !== -1 &&
-                    url.indexOf('/api/auth/') === -1 &&
-                    Date.now() < autoUntil;
+      var tracked = url.indexOf('/api/') !== -1 && url.indexOf('/api/auth/') === -1;
 
       if (!tracked) return native(input, init);
       show(method === 'GET' ? 'Loading…' : 'Saving…');
