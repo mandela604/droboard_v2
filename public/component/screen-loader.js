@@ -28,7 +28,7 @@
 
   var STYLE_ID = 'dro-screen-loader-style';
   var overlay = null, labelEl = null;
-  var count = 0, hideTimer = null, safetyTimer = null, label = 'Loading…';
+  var count = 0, hideTimer = null, safetyTimer = null, label = 'Loading…', shownAt = 0;
 
   function ensure() {
     if (overlay) return;
@@ -67,6 +67,7 @@
   function paint() {
     ensure();
     if (!overlay) return;
+    if (!overlay.classList.contains('on')) shownAt = Date.now();
     overlay.classList.add('on');
     if (labelEl) labelEl.textContent = label;
   }
@@ -96,8 +97,10 @@
     count = Math.max(0, count - 1);
     if (count !== 0) return;
     clearTimeout(safetyTimer);
-    // Small grace so back-to-back requests don't flash the veil off/on.
-    hideTimer = setTimeout(function () { hideNow(); label = 'Loading…'; }, 140);
+    // Grace + minimum visible time: back-to-back requests and quick retries
+    // must never make the veil flash on/off at intervals.
+    var wait = Math.max(400, 500 - (Date.now() - shownAt));
+    hideTimer = setTimeout(function () { hideNow(); label = 'Loading…'; }, wait);
   }
 
   function wrap(promise, nextLabel) {
@@ -111,19 +114,26 @@
   function isVisible() { return !!(overlay && overlay.classList.contains('on')); }
 
   /* ── opt-in automatic mode ───────────────────────────────────────── */
-  var autoOn = false;
+  var autoOn = false, autoUntil = 0;
   function auto() {
     if (autoOn || !global.fetch) return;
     autoOn = true;
+    // Only the FIRST page load is veiled. Background refreshes, retries and
+    // later user actions must not flash a full-screen spinner at intervals.
+    autoUntil = Date.now() + 10000;
     var native = global.fetch.bind(global);
 
     global.fetch = function (input, init) {
       var url = (typeof input === 'string') ? input : ((input && input.url) || '');
       var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
-      var tracked = url.indexOf('/api/') !== -1 && url.indexOf('/api/auth/') === -1;
+      var tracked = method === 'GET' &&
+        url.indexOf('/api/') !== -1 &&
+        url.indexOf('/api/auth/') === -1 &&
+        url.indexOf('/api/users/me') === -1 &&
+        Date.now() < autoUntil;
 
       if (!tracked) return native(input, init);
-      show(method === 'GET' ? 'Loading…' : 'Saving…');
+      show('Loading…');
       var out;
       try { out = native(input, init); }
       catch (e) { hide(); throw e; }

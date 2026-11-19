@@ -28,6 +28,7 @@ module.exports = {
   // changed later without touching the tracking write path.
   readerViewCreditWindowMs: Math.max(1000, parseInt(process.env.READER_VIEW_CREDIT_WINDOW_MS, 10) || 60000),
   backendUrl: (process.env.BACKEND_URL || '').replace(/\/$/, ''),
+  appUrl: (process.env.APP_URL || '').replace(/\/$/, ''),
   mailProvider: process.env.MAIL_PROVIDER || 'log',
   mailFrom: process.env.MAIL_FROM || 'Droboard <noreply@droboard.com>',
   // Google OAuth (web authorization-code flow + app/ GIS idToken verify).

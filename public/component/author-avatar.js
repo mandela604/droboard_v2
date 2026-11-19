@@ -3,21 +3,25 @@
  * Author Center header, on every author page.
  * ─────────────────────────────────────────────────────────────────────
  * No hardcoded faces, no Droboard "D" placeholder: the avatar slot is filled
- * from the real session user (AuthSession, or the stored user row). If the
+ * from the LIVE user row (/api/users/me), not just the cached login payload —
+ * a picture uploaded after sign-in shows up on the next page load. If the
  * author has no picture yet, their initials are shown instead — still theirs.
+ *
+ * Clicking the avatar opens the author's own profile page.
  *
  * Handles both header layouts used by author pages:
  *   .topbar   (dashboard, finance, workspace pages — some already have a slot)
  *   .top-bar  (application pages — hamburger + back + title)
  *
  * Include once, early in <body>:
- *   <script src="../component/author-avatar.js?v=1"></script>
+ *   <script src="../component/author-avatar.js?v=2"></script>
  */
 (function (global) {
   'use strict';
   if (global.AuthorAvatar) return;
 
   var STYLE_ID = 'dro-author-avatar-style';
+  var PROFILE_URL = '../Pages/profile.html';
 
   function readUser() {
     var u = null;
@@ -52,7 +56,8 @@
     s.id = STYLE_ID;
     s.textContent =
       '.avatar-btn.dro-author-avatar{display:flex;align-items:center;justify-content:center;' +
-        'overflow:hidden;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#ff2d55,#7c3aed)}' +
+        'overflow:hidden;border-radius:50%;flex-shrink:0;cursor:pointer;' +
+        'background:linear-gradient(135deg,#ff2d55,#7c3aed)}' +
       '.avatar-btn.dro-author-avatar img{width:100%;height:100%;object-fit:cover;display:block}' +
       '.avatar-btn.dro-author-avatar .dro-initials{color:#fff;font-size:11px;font-weight:800;' +
         'line-height:1;letter-spacing:.02em;user-select:none}';
@@ -73,12 +78,7 @@
     var u = readUser();
     if (!u) {
       // Cookie-only login: restore the user row, then paint with real data.
-      if (global.AuthSession && global.AuthSession.ensureAccount) {
-        global.AuthSession.ensureAccount().then(function () {
-          var fresh = readUser();
-          if (fresh) paint();
-        }).catch(function () {});
-      }
+      refreshFromApi();
       return;
     }
 
@@ -103,7 +103,13 @@
       }
       box.classList.add('dro-author-avatar');
       box.setAttribute('data-author-avatar', '');
-      box.title = name;
+      box.title = name + ' — open profile';
+      box.onclick = function () { location.href = PROFILE_URL; };
+      box.setAttribute('role', 'link');
+      box.setAttribute('tabindex', '0');
+      box.onkeydown = function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); location.href = PROFILE_URL; }
+      };
 
       if (!img) {
         img = document.createElement('img');
@@ -118,7 +124,7 @@
         img.style.display = '';
         var old = box.querySelector('.dro-initials');
         if (old) old.remove();
-        img.src = src;
+        if (img.getAttribute('src') !== src) img.src = src;
       } else {
         img.style.display = 'none';
         setInitials(box, u);
@@ -126,14 +132,31 @@
     });
   }
 
+  /* The stored login payload can be stale (a photo added after sign-in), and
+     AuthSession.ensureAccount() deliberately skips a row that already exists.
+     Always re-read the live user row so the real image is used. */
+  function refreshFromApi() {
+    try {
+      fetch('/api/users/me', { credentials: 'include' })
+        .then(function (r) { return r && r.ok ? r.json() : null; })
+        .then(function (fresh) {
+          if (!fresh || !fresh.id) return;
+          try { localStorage.setItem('droboard_user', JSON.stringify(fresh)); } catch (e) {}
+          paint();
+        })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
   function init() {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', paint, { once: true });
+      document.addEventListener('DOMContentLoaded', function () { paint(); refreshFromApi(); }, { once: true });
     } else {
       paint();
+      refreshFromApi();
     }
   }
   init();
 
-  global.AuthorAvatar = { refresh: paint };
+  global.AuthorAvatar = { refresh: paint, refreshFromApi: refreshFromApi };
 })(window);

@@ -8,6 +8,6 @@
   window.AuthorApiConfig = {
     USE_API: true,     // CHANGE TO: true for production
     API_BASE: '/api/author',
-    TIMEOUT_MS: 5000
+    TIMEOUT_MS: 20000
   };
 })();
