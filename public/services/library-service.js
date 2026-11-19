@@ -526,10 +526,22 @@
     try {
       const d = window.LibraryData;
       if (!d) throw new Error('LibraryData is not defined — check services/library-service.js');
-      const [stats, promo, cont, lib, saved, hist] = await Promise.all([
+      const results = await Promise.allSettled([
         d.getStats(), d.getPromoSlides(), d.getContinueReading(),
         d.getLibrary(), d.getSaved(), d.getHistory(),
       ]);
+      // One failed request must not blank the whole shelf — Render can drop a
+      // single connection while the other five lists are perfectly fine.
+      const val = (r, fb) => (r && r.status === 'fulfilled' ? r.value : fb);
+      results.forEach((r, i) => {
+        if (r && r.status === 'rejected') console.warn('[library] list', i, 'failed:', r.reason);
+      });
+      const stats = val(results[0], { inProgress: 0, finished: 0, hoursRead: 0 });
+      const promo = val(results[1], []);
+      const cont = val(results[2], []);
+      const lib = val(results[3], []);
+      const saved = val(results[4], []);
+      const hist = val(results[5], []);
       renderStats(stats);
       PROMO = promo; CONTINUE = cont; LIBRARY = lib; SAVED = saved; HISTORY = hist;
       if (window.AdService) {
