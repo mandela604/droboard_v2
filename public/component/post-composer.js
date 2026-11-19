@@ -115,6 +115,9 @@
   let _pickedChapter = null;
   let _pickedStatusStory = null;
   let _draftKey = '';
+  // Set only after a successful publish: close() must not re-save the form it
+  // just posted. A failed publish leaves this false so the draft survives.
+  let _discardDraftOnClose = false;
 
   function val(id){ const el=document.getElementById(id); return el ? el.value : ''; }
   /* deadline chips — component/expiry-chips.js; silent no-op if a page omits it */
@@ -945,15 +948,19 @@
         } else {
           throw new Error('Status service missing');
         }
+        // Posted: throw the draft away and let close() skip saveDraft().
+        _discardDraftOnClose = true;
         clearDraft();
         close();
       } catch(e){
         toast(e && e.message ? e.message : 'Could not post your status.');
+        // Network lost / server error: keep the text so it is still here after
+        // a reload, not just while this sheet happens to stay open.
+        saveDraft();
         if(btn){ btn.textContent='Post'; validate(); }
       }
       return;
     }
-    clearDraft();
     try {
       await _resolveImage(post);
       if(typeof _hooks.onSubmit === 'function'){
@@ -964,9 +971,14 @@
       } else {
         throw new Error('Could not publish your post.');
       }
+      // Only now is the post real: clear the draft, then close without the
+      // close() handler writing the same content straight back.
+      _discardDraftOnClose = true;
+      clearDraft();
       close();
     } catch(e){
       toast(e && e.message ? e.message : 'Could not publish your post.');
+      saveDraft();
     }
   }
 
@@ -1004,6 +1016,7 @@
   function open(typeOrOpts){
     /* Writing needs an account — guests get the shared login wall. */
     if (window.RequireAuth && !RequireAuth.ensure('publish a post')) return;
+    _discardDraftOnClose = false;
     inject();
     try{ const t=localStorage.getItem('droboardTheme')||'light'; document.documentElement.setAttribute('data-theme', t); }catch(e){}
     let type = typeOrOpts;
@@ -1056,7 +1069,11 @@
     document.getElementById('dpcPost').textContent = isEdit ? 'Save' : 'Post';
   }
   function close(){
-    if(!_editingPost && _draftKey) saveDraft();
+    if(!_editingPost && _draftKey){
+      if(_discardDraftOnClose) clearDraft();
+      else saveDraft();
+    }
+    _discardDraftOnClose = false;
     const ov=document.getElementById('dpcOv');
     if(ov) ov.classList.remove('open');
     document.body.style.overflow='';
