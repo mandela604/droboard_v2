@@ -359,18 +359,9 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
     <!-- STATS STRIP -->
     <div class="stats-strip fu d1" id="statsStrip"></div>
 
-    <!-- CONTINUE READING -->
+    <!-- CONTINUE READING — self-contained component (component/continue-reading.js) -->
     <div class="sec fu d2">
-      <div class="rp-card" id="continueCard" onclick="BridgePage.goToReader()">
-        <div class="rp-icon">📖</div>
-        <div class="rp-body">
-          <div class="rp-lbl">Continue Reading</div>
-          <div class="rp-title" id="rpTitle">—</div>
-          <div class="rp-bar"><div class="rp-bar-fill" id="rpBarFill" style="width:0%"></div></div>
-          <div class="rp-meta"><span id="rpPct">0% complete</span><span id="rpLeft">—</span></div>
-        </div>
-        <div class="rp-btn">Resume →</div>
-      </div>
+      <div id="continueReadingMount"></div>
     </div>
 
     <!-- SYNOPSIS -->
@@ -587,8 +578,8 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
 <script src="../component/ad-slot.js?v=3"></script>
 
 <!-- ═══ Page service ═══ -->
-<script src="../component/continue-reading.js?v=1"></script>
-<script src="../services/bridge-service.js?v=18"></script>
+<script src="../component/continue-reading.js?v=2"></script>
+<script src="../services/bridge-service.js?v=19"></script>
 
 <script>
 BridgePage.init();

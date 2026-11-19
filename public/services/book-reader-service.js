@@ -470,11 +470,9 @@ async function refreshStats() {
 
 function paintContinueBanner() {
   if (!window.ContinueReadingCard || !STORY.currentProgress) return;
-  ContinueReadingCard.render({
-    title: document.getElementById('cbChName'),
-    meta: document.getElementById('cbChMeta'),
-    bar: document.getElementById('cbProgress'),
-  }, STORY.currentProgress);
+  ContinueReadingCard.render(document.getElementById('continueReadingMount'), STORY.currentProgress, {
+    onOpen: function () { continueReading(); },
+  });
 }
 function paintFollowButton() {
   const btn = document.getElementById('hwFollow');

@@ -384,17 +384,8 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <!-- QUICK STATS -->
 <div class="quick-stats" id="quickStats"></div>
 
-<!-- CONTINUE BANNER -->
-<div class="continue-banner" id="continueBanner" onclick="StoryReaderPage.continueReading()">
-  <div class="cb-icon">📖</div>
-  <div class="cb-body">
-    <div class="cb-label">Continue Reading</div>
-    <div class="cb-ch" id="cbChName"></div>
-    <div class="cb-meta" id="cbChMeta"></div>
-    <div class="cb-progress"><div class="cb-progress-fill" id="cbProgress"></div></div>
-  </div>
-  <div class="cb-arrow"><i class="fas fa-chevron-right"></i></div>
-</div>
+<!-- CONTINUE READING — self-contained component (component/continue-reading.js) -->
+<div id="continueReadingMount" style="margin:14px 14px 0"></div>
 
 <!-- SECTION TABS -->
 <div class="section-tabs" id="sectionTabs">
@@ -477,8 +468,8 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <script src="../services/reader-engagement-service.js?v=5"></script>
 <script src="../services/rate-api.js?v=3"></script>
 <script src="../component/rate-modal.js?v=5"></script>
-<script src="../component/continue-reading.js?v=1"></script>
-<script src="../services/book-reader-service.js?v=16"></script>
+<script src="../component/continue-reading.js?v=2"></script>
+<script src="../services/book-reader-service.js?v=17"></script>
 <script>StoryReaderPage.init();</script>
 
 <script src="../shared/theme-chrome.js"></script>

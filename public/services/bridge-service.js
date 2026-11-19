@@ -429,14 +429,10 @@
   }
 
   function renderContinue() {
-    const c = DATA.continue;
     if (!window.ContinueReadingCard) return;
-    ContinueReadingCard.render({
-      title: document.getElementById('rpTitle'),
-      meta: document.getElementById('rpPct'),
-      sub: document.getElementById('rpLeft'),
-      bar: document.getElementById('rpBarFill'),
-    }, c);
+    ContinueReadingCard.render(document.getElementById('continueReadingMount'), DATA.continue, {
+      onOpen: function () { goToReader(); },
+    });
   }
 
   function renderSynopsis() {
