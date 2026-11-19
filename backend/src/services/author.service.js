@@ -340,7 +340,9 @@ async function signContract({ userId, contractId }) {
   const contract = await Contract.findOne({ id: contractId, authorId: { $in: ids } });
   if (!contract) { const e = new Error('not_found'); e.status = 404; throw e; }
 
-  const verification = await AuthorVerification.findOne({ userId: { $in: ids } }).select('status').lean();
+  // The contract may carry the authoritative verificationId link (created
+  // from an application); fall back to the author's userId for direct offers.
+  const verification = await findVerificationFor({ authorId: userId, verificationId: contract.verificationId });
   if (!verification || verification.status !== 'approved') {
     const e = new Error('identity_not_verified'); e.status = 409; throw e;
   }
@@ -570,6 +572,40 @@ async function applyVip({ userId, bookId, data }) {
   return c.toJSON();
 }
 
+/* Single source of truth for "is this writer verified?".
+   Prefer the authoritative verificationId link stored on a contract
+   application/contract; fall back to userId for rows created directly without
+   one, and tolerate legacy rows whose userId is null/mismatched. */
+async function findVerificationFor({ authorId, verificationId } = {}) {
+  const { User } = require('../models/user.model');
+  const or = [];
+  if (verificationId) or.push({ id: String(verificationId) });
+  const ids = authorId ? await authorIds(authorId) : [];
+  if (ids.length) or.push({ userId: { $in: ids.map(String) } });
+  if (!or.length) return null;
+  let v = await AuthorVerification.findOne({ $or: or }).select('id userId status kyc').lean().catch(() => null);
+  // Self-heal: a row found by its authoritative verificationId link but with a
+  // null userId gets repaired from the caller's authorId. One-time, no script
+  // left in production; every later read/write sees the corrected owner.
+  if (v && !v.userId && authorId) {
+    await AuthorVerification.updateOne({ id: v.id }, { $set: { userId: String(authorId) } }).catch(() => {});
+    v.userId = String(authorId);
+  }
+  // Legacy null-userId rows: try to match the author by email/name from the
+  // User document so an approved identity is not mistaken for "none".
+  if (!v && authorId) {
+    const u = await User.findOne(require('./user-ref').userRefFilter([authorId])).select('email fullName').lean().catch(() => null);
+    if (u) {
+      const m = [
+        ...(u.email ? [{ email: String(u.email).toLowerCase() }] : []),
+        ...(u.fullName ? [{ name: u.fullName }] : []),
+      ];
+      if (m.length) v = await AuthorVerification.findOne({ $or: m }).select('id userId status kyc').lean().catch(() => null);
+    }
+  }
+  return v;
+}
+
 async function submitChapterReview({ userId, bookId, data }) {
   const c = await ChapterReviewRequest.create(Object.assign({}, data, { bookId, authorId: userId, status: 'pending' }));
   return c.toJSON();
@@ -610,7 +646,7 @@ module.exports = {
   listCharacters, saveCharacter, deleteCharacter,
   getPlot, savePlot,
   listContracts, applyContract, signContract, declineContract, applyCompletion, applyVip,
-  getVerification, submitVerification,
+  getVerification, submitVerification, findVerificationFor,
   submitChapterReview,
   listChapterEdits, listBookEdits,
   launchKit, saveLaunchKit,

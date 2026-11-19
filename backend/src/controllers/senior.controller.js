@@ -1,7 +1,16 @@
 'use strict';
 const senior = require('../services/senior.service');
 const sidebar = require('../services/senior-sidebar.service');
+const authorSvc = require('../services/author.service');
 const base = require('./base.controller');
+
+// "Is this writer verified?" — trust the verificationId link on the
+// application/contract, fall back to userId. One place, so the list and the
+// approve/send action can never disagree.
+function verifiedFor({ authorId, verificationId } = {}) {
+  return authorSvc.findVerificationFor({ authorId, verificationId })
+    .then(v => !!v && v.status === 'approved');
+}
 
 // Outcome emails are best-effort: a mail outage never blocks a decision.
 function decisionMail(opts) {
@@ -409,8 +418,9 @@ async function contractSend(req, res) {
       const e = new Error('contract_not_open'); e.status = 409; throw e;
     }
     // Same gate as every other offer path: identity verified or no offer.
-    const v = await AuthorVerification.findOne({ userId: c.authorId }).select('status').lean();
-    if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
+    if (!await verifiedFor({ authorId: c.authorId, verificationId: c.verificationId })) {
+      const e = new Error('identity_not_verified'); e.status = 409; throw e;
+    }
     const offer = await sidebar.resolveTemplate(req.valid.body.templateId);
     c.type = offer.type;
     c.templateId = offer.templateId;
@@ -464,8 +474,9 @@ async function contractCreate(req, res) {
     if (!author) { const e = new Error('author_not_found'); e.status = 404; throw e; }
     await senior.assertOwned(req.user, author.id);
 
-    const v = await AuthorVerification.findOne({ userId: author.id }).select('status').lean();
-    if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
+    if (!await verifiedFor({ authorId: author.id })) {
+      const e = new Error('identity_not_verified'); e.status = 409; throw e;
+    }
 
     if (body.bookId) {
       const book = await Book.findOne({ id: body.bookId }).select('authorId').lean();
@@ -822,8 +833,11 @@ async function contractApprove(req, res) {
     await senior.assertOwned(req.user, app.authorId);
 
     // Signing is a verified-identity action — no offer goes out otherwise.
-    const v = await AuthorVerification.findOne({ userId: app.authorId }).select('status').lean();
-    if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
+    // Use the application's authoritative verificationId link (falls back to
+    // userId) so legacy rows with a null/mismatched userId still pass.
+    if (!await verifiedFor({ authorId: app.authorId, verificationId: app.verificationId })) {
+      const e = new Error('identity_not_verified'); e.status = 409; throw e;
+    }
 
     const body = req.valid.body;
     const offer = await sidebar.resolveTemplate(body.templateId);
