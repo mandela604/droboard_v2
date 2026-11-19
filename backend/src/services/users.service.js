@@ -76,10 +76,13 @@ function toFollowRow(u, following) {
   };
 }
 
-// Reader stats: hours, finished books, day-streak from ReadingProgress.
+// Reader stats: hours from the seconds stored on the user document, with a
+// one-time backfill from older ReadingProgress rows; finished books + streak
+// still come from those rows.
 async function readingStatsFor(userId) {
   try {
-    const [agg, finished, days] = await Promise.all([
+    const [user, agg, finished, days] = await Promise.all([
+      User.findById(String(userId)).select('readingSeconds').lean(),
       ReadingProgress.aggregate([
         { $match: { userId: String(userId) } },
         { $group: { _id: null, seconds: { $sum: '$secondsSpent' }, words: { $sum: '$wordsRead' } } },
@@ -91,6 +94,14 @@ async function readingStatsFor(userId) {
         { $sort: { _id: -1 } }, { $limit: 60 },
       ]),
     ]);
+    const oldSeconds = (agg[0] && agg[0].seconds) || 0;
+    let seconds = (user && Number(user.readingSeconds)) || 0;
+    if (!seconds && oldSeconds) {
+      seconds = oldSeconds;
+      await User.updateOne({ _id: String(userId) }, { $set: { readingSeconds: oldSeconds } });
+    }
+    // One decimal: 720 seconds -> 0.2h, not a rounded 0.
+    const hoursRead = Math.round(seconds / 360) / 10;
     let streak = 0;
     const dayKeys = days.map(d => d._id);
     if (dayKeys.length) {
@@ -100,13 +111,13 @@ async function readingStatsFor(userId) {
       // streak may start today or yesterday (today's read not yet logged)
       if (dayKeys[0] !== fmt(cursor)) {
         cursor = new Date(today.getTime() - 86400000);
-        if (dayKeys[0] !== fmt(cursor)) return { hoursRead: Math.round(((agg[0] && agg[0].seconds) || 0) / 3600), booksFinished: finished, dayStreak: 0 };
+        if (dayKeys[0] !== fmt(cursor)) return { hoursRead, wordsRead: (agg[0] && agg[0].words) || 0, booksFinished: finished, dayStreak: 0 };
       }
       const set = new Set(dayKeys);
       while (set.has(fmt(cursor))) { streak += 1; cursor = new Date(cursor.getTime() - 86400000); }
     }
     return {
-      hoursRead: Math.round(((agg[0] && agg[0].seconds) || 0) / 3600),
+      hoursRead,
       wordsRead: (agg[0] && agg[0].words) || 0,
       booksFinished: finished,
       dayStreak: streak,

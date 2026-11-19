@@ -182,9 +182,10 @@
     return [
       { label: 'Following', value: s.following, cls: '' },
       { label: 'Followers', value: s.followers, cls: 'r' },
-      (_rank && _rank.rank)
-        ? { label: 'Rank', value: '#' + _rank.rank, cls: 'gold', href: 'leaderboard.html', sub: _rank.endsIn }
-        : { label: 'Saved', value: s.saved, cls: 'b' },
+      // A reader's rank always occupies this slot — on someone else's profile
+      // it is THAT person's position. Unranked readers get an honest dash,
+      // never the viewer's rank and never a misleading "Saved" count.
+      { label: 'Rank', value: (_rank && _rank.rank) ? '#' + _rank.rank : '—', cls: 'gold', href: 'leaderboard.html', sub: (_rank && _rank.endsIn) || 'No weekly rank yet' },
       { label: 'Time Spent', value: (Number(s.readingHours) || 0) + 'h', cls: 'g' },
       { label: 'Streak', value: (Number(s.streak) || 0) + 'd', cls: '' },
     ];

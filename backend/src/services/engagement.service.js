@@ -191,6 +191,14 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
     update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).lean();
+  // Keep the reader's total time on the user document so profile and library
+  // read one stored number instead of re-aggregating every chapter row.
+  if (secs > 0) {
+    try {
+      const { User } = require('../models/user.model');
+      await User.updateOne({ _id: String(userId) }, { $inc: { readingSeconds: secs } });
+    } catch (e) { /* reading time must never break progress tracking */ }
+  }
   // One view per reader per chapter per window (rule in viewCreditDue).
   if (creditRead) {
     try {

@@ -67,6 +67,9 @@ const userSchema = new mongoose.Schema({
   followingCount: { type: Number, default: 0, min: 0 },
   postCount: { type: Number, default: 0, min: 0 },
   commentCount: { type: Number, default: 0, min: 0 },
+  // Total seconds actually spent in the reader pages (heartbeats from
+  // ReaderTrack). Single source for "hours read" on profile + library.
+  readingSeconds: { type: Number, default: 0, min: 0 },
   // super-admin console extras (admin-curated, additive)
   adminNotes: { type: String, default: '' },
   authorGenre: { type: String, default: '' }, // admin-curated primary genre for writers
