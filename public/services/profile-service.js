@@ -539,7 +539,11 @@
   function renderUpgradeStrip(p) {
     const el = document.getElementById('upgradeStrip');
     if (!el) return;
-    if (!canSeeOwnerUI() || p.isWriter) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    // A submitted-but-not-yet-approved book is already on its way — don't
+    // tell that author to "create your first book" while it is under review.
+    if (!canSeeOwnerUI() || p.isWriter || (p.underReviewBooks || []).length) {
+      el.style.display = 'none'; el.innerHTML = ''; return;
+    }
 
     /* Writer promotion is decided server-side (SE approval → grantWriterRole);
        per-submission review state lives in the Author Center, not on this

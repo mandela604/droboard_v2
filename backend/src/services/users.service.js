@@ -270,7 +270,9 @@ async function profile(handle, viewerId) {
   // Submitted manuscripts are NOT part of the reader-facing Books section.
   // The owner gets them as a separate strip so "your book is under review" is
   // visible on the profile without ever putting an unreviewed book in the feed.
-  const reviewDocs = (isOwner && isWriter)
+  // A reader who has submitted a first book is not yet a "writer" (that role
+  // is granted on approval) — they still need to see their submission here.
+  const reviewDocs = isOwner
     ? await Book.find({ authorId: u.id, status: 'under_review' })
       .sort({ submittedAt: -1 }).limit(10)
       .select('id title cover genre submittedAt chapterCount').lean()
@@ -362,8 +364,17 @@ async function updateMe(userId, patch) {
     u.country = v;
   }
   if (patch.locale !== undefined) u.locale = String(patch.locale).slice(0, 10) || 'en';
-  if (patch.avatar !== undefined) u.avatar = validateMediaUrl(patch.avatar, 'avatar');
-  if (patch.cover !== undefined) u.cover = validateMediaUrl(patch.cover, 'cover');
+  // An OAuth account starts with its Google picture URL. Saving the profile
+  // sends that unchanged value back — it is already stored, so it must not be
+  // rejected by the uploaded-image rule. Only NEW values are validated.
+  if (patch.avatar !== undefined) {
+    const next = String(patch.avatar || '').trim();
+    if (next !== String(u.avatar || '')) u.avatar = validateMediaUrl(next, 'avatar');
+  }
+  if (patch.cover !== undefined) {
+    const next = String(patch.cover || '').trim();
+    if (next !== String(u.cover || '')) u.cover = validateMediaUrl(next, 'cover');
+  }
   if (patch.about !== undefined) {
     const a = patch.about;
     if (a === null || a === '') u.about = null;
