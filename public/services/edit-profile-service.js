@@ -7,8 +7,13 @@
 'use strict';
 
 const API_BASE = '/api';
+const USERNAME_RE = /^[a-z][a-z0-9_]{2,19}$/;
 
 let GENRES_ALL = [];
+let usernameOk = true;
+let usernameChecked = '';
+let ownUsername = '';
+let usernameTimer = null;
 let ME = null;
 let PROFILE = null;
 let selectedGenres = new Set();
@@ -77,7 +82,7 @@ function renderGenres(){
       const id = el.dataset.gid;
       if (selectedGenres.has(id)) selectedGenres.delete(id);
       else {
-        if (selectedGenres.size >= 6){ toast('Max 6 genres'); return; }
+        if (selectedGenres.size >= 4){ toast('Max 4 genres'); return; }
         selectedGenres.add(id);
       }
       el.classList.toggle('on', selectedGenres.has(id));
@@ -103,7 +108,51 @@ function escAttr(s){
   return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 
+function setUsernameHint(text, ok){
+  const hint = document.getElementById('usernameHint');
+  const input = document.getElementById('fUsername');
+  if (!hint || !input) return;
+  hint.textContent = text;
+  hint.style.color = ok === true ? '#16a34a' : (ok === false ? '#dc2626' : '');
+  input.style.borderColor = ok === true ? '#16a34a' : (ok === false ? '#dc2626' : '');
+  usernameOk = ok !== false;
+}
+function checkUsernameAvailability(){
+  const input = document.getElementById('fUsername');
+  if (!input) return;
+  const v = input.value.trim().toLowerCase();
+  clearTimeout(usernameTimer);
+  if (!v || v === ownUsername) {
+    setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle keeps working as a link.', true);
+    usernameChecked = v;
+    return;
+  }
+  if (!USERNAME_RE.test(v)) {
+    setUsernameHint('Use 3–20 letters, numbers or underscores, starting with a letter.', false);
+    usernameChecked = '';
+    return;
+  }
+  setUsernameHint('Checking…', null);
+  usernameTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(API_BASE + '/users/check-username?username=' + encodeURIComponent(v));
+      const b = await r.json().catch(() => ({}));
+      const ok = r.ok && !!b.available;
+      setUsernameHint(ok ? 'Available' : 'That username is already taken.', ok);
+      usernameChecked = ok ? v : '';
+    } catch (e) {
+      setUsernameHint('Could not check right now — try again before saving.', false);
+      usernameChecked = '';
+    }
+  }, 300);
+}
+
 function fillForm(p){
+  ownUsername = String(p.handle || p.username || '').toLowerCase();
+  document.getElementById('fUsername').value = ownUsername;
+  usernameChecked = ownUsername;
+  usernameOk = true;
+  setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle keeps working as a link.', true);
   document.getElementById('fName').value = p.name || '';
   document.getElementById('fEmail').value = p.email || p.userEmail || '';
   document.getElementById('fBio').value = p.bio || '';
@@ -157,6 +206,11 @@ async function saveAll(){
   const email = document.getElementById('fEmail').value.trim();
   if (!name){ toast('Display name is required'); return; }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('Enter a valid email'); return; }
+  const username = document.getElementById('fUsername').value.trim().toLowerCase();
+  if (username !== ownUsername) {
+    if (!USERNAME_RE.test(username)) { toast('Username: 3–20 letters, numbers and underscores, starting with a letter.'); return; }
+    if (!usernameOk || usernameChecked !== username) { toast('Please wait for the username check, or choose another one.'); return; }
+  }
 
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
@@ -171,6 +225,7 @@ async function saveAll(){
       cover: document.getElementById('fCover').value.trim(),
       genres: [...selectedGenres],
     };
+    if (username !== ownUsername) patch.username = username;
 
     const extraList = collectExtras();
     if (extraList.length) {
@@ -250,6 +305,11 @@ async function boot(){
   }
 }
 boot();
+
+(function bindUsernameField(){
+  const input = document.getElementById('fUsername');
+  if (input) input.addEventListener('input', checkUsernameAvailability);
+})();
 
 // Expose identical window globals (inline onclick + prior global fns)
 window.toast = toast;

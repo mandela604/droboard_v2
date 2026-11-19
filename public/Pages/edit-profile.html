@@ -202,6 +202,11 @@ button,input,textarea,select{font-family:inherit}
           <div class="char-count"><span id="nameCount">0</span>/40</div>
         </div>
         <div class="field">
+          <label>Username</label>
+          <input id="fUsername" type="text" maxlength="20" placeholder="your_handle" autocomplete="off" spellcheck="false"/>
+          <div class="hint" id="usernameHint">3–20 characters: letters, numbers and underscores. Your old handle keeps working as a link.</div>
+        </div>
+        <div class="field">
           <label>Email</label>
           <input id="fEmail" type="email" placeholder="you@email.com"/>
           <div class="hint">Used for login and notifications. Changing it sends a confirmation email first.</div>
@@ -222,7 +227,7 @@ button,input,textarea,select{font-family:inherit}
       <div class="section-label">Favorite genres</div>
       <div class="card">
         <div class="genre-grid" id="genreGrid"></div>
-        <div class="hint" style="margin-top:10px">Pick up to 6. Shown on your profile and About tab.</div>
+        <div class="hint" style="margin-top:10px">Pick up to 4. Shown on your profile and About tab.</div>
       </div>
 
       <div class="section-label">About extras</div>
@@ -239,7 +244,7 @@ button,input,textarea,select{font-family:inherit}
 </div>
 
 <script src="../services/auth-session.js?v=4"></script>
-<script src="../services/edit-profile-service.js?v=8"></script>
+<script src="../services/edit-profile-service.js?v=9"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

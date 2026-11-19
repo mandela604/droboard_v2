@@ -223,9 +223,11 @@ async function me(userId) {
 // Enriched to the frontend profile-page contract: nested stats, card-ready
 // posts, library rows, following rows, story-ring statuses, achievements.
 async function profile(handle, viewerId) {
-  const u = await User.findOne({
-    $or: [{ username: String(handle).toLowerCase() }, { id: handle }],
-  }).lean();
+  const key = String(handle || '').toLowerCase();
+  // Exact current handle / public id first; only then an old handle. A newly
+  // registered account that claims a freed handle always wins.
+  let u = await User.findOne({ $or: [{ username: key }, { id: handle }] }).lean();
+  if (!u) u = await User.findOne({ previousUsernames: key }).sort({ updatedAt: -1 }).lean();
   if (!u || u.deletedAt) { const e = new Error('not_found'); e.status = 404; throw e; }
   const privacy = (u.settings && u.settings.privacy) || 'public';
   const isOwner = viewerId && String(viewerId) === String(u.id);
@@ -346,6 +348,11 @@ async function updateMe(userId, patch) {
     if (v !== u.username) {
       const taken = await User.exists({ username: v });
       if (taken) { const e = new Error('username_taken'); e.status = 409; throw e; }
+      // Keep the old handle as an alias: links and @mentions shared before the
+      // change must still reach this account, like Instagram's username change.
+      if (u.username && (u.previousUsernames || []).indexOf(u.username) === -1) {
+        u.previousUsernames = [...(u.previousUsernames || []), u.username];
+      }
       u.username = v;
     }
   }
