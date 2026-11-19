@@ -55,9 +55,9 @@
     var s = document.createElement('style');
     s.id = STYLE_ID;
     s.textContent =
-      '.avatar-btn.dro-author-avatar{display:flex;align-items:center;justify-content:center;' +
-        'overflow:hidden;border-radius:50%;flex-shrink:0;cursor:pointer;' +
-        'background:linear-gradient(135deg,#ff2d55,#7c3aed)}' +
+      '.avatar-btn.dro-author-avatar{width:38px;height:38px;display:flex;align-items:center;justify-content:center;' +
+        'overflow:hidden;border-radius:50%;flex-shrink:0;cursor:pointer;margin-left:auto;' +
+        'border:1px solid rgba(0,0,0,.08);background:linear-gradient(135deg,#ff2d55,#7c3aed)}' +
       '.avatar-btn.dro-author-avatar img{width:100%;height:100%;object-fit:cover;display:block}' +
       '.avatar-btn.dro-author-avatar .dro-initials{color:#fff;font-size:11px;font-weight:800;' +
         'line-height:1;letter-spacing:.02em;user-select:none}';
