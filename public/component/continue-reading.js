@@ -66,10 +66,12 @@
 
   function labels(d) {
     const of = d.totalChapters ? ' · Ch ' + d.chapterN + ' of ' + d.totalChapters : '';
+    // Derive from the raw numbers, never trust a possibly-stale `started` flag.
+    const started = !!(d.started || (Number(d.chaptersRead) || 0) > 0 || (Number(d.progress) || 0) > 0);
     return {
       title: 'Ch' + d.chapterN + ' — ' + d.chapterTitle,
-      meta: (d.started ? d.progress + '% complete' : 'Not started yet') + of,
-      sub: d.started ? 'Keep reading' : 'Start reading',
+      meta: (started ? d.progress + '% complete' : 'Not started yet') + of,
+      sub: started ? 'Keep reading' : 'Start reading',
       width: (d.progress || 0) + '%',
     };
   }

@@ -61,7 +61,7 @@ function switchTab(tab) {
 
 /* ══ STORY FETCH — GET /api/books/:id ══ */
 async function fetchStoryDetail(id) {
-  const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include' });
+  const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include', cache: 'no-store' });
   if (!res.ok) {
     let detail = '';
     try { detail = (await res.json()).error || ''; } catch (e) {}

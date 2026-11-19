@@ -59,7 +59,7 @@
   }
 
   async function fetchStory(id) {
-    const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/books/${encodeURIComponent(id)}`, { credentials: 'include', cache: 'no-store' });
     let j = null;
     try { j = await res.json(); } catch (e) { /* empty body */ }
     if (!res.ok) {
