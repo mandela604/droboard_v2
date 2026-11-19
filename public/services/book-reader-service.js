@@ -750,8 +750,13 @@ function applyReadState(rs) {
   if (!STORY || !Array.isArray(STORY.chapters) || !STORY.chapters.length) return;
   const unlocked = new Set((rs.unlocked || []).map(String));
   const prog = rs.progress || {};
+  // The continue card is driven by /books/:id `continueReading` (one source of
+  // truth shared with the bridge page). Read-state only decorates the chapter
+  // list — it must never re-point the resume chapter, because `lastChapterId`
+  // advances on a zero-progress tap (Ch4) while the backend correctly keeps the
+  // last meaningful chapter (Ch5).
   const crId = STORY.currentProgress && STORY.currentProgress.cid != null ? String(STORY.currentProgress.cid) : null;
-  const lastId = rs.lastChapterId != null ? String(rs.lastChapterId) : crId;
+  const lastId = crId || (rs.lastChapterId != null ? String(rs.lastChapterId) : null);
   let currentSet = false;
   const rows = STORY.chapters;
   rows.forEach(c => {
@@ -767,21 +772,10 @@ function applyReadState(rs) {
     if (first) { first.state = 'current'; currentSet = true; }
   }
   rows.forEach(c => { if (c.state === '') c.state = 'done'; });
-  if (lastId) {
-    const ch = rows.find(c => String(c.cid) === lastId);
-    if (ch) {
-      const keep = STORY.currentProgress || {};
-      STORY.currentProgress = {
-        chapter: ch.n, chapterTitle: ch.title,
-        // Resume at the last chapter read; keep the BOOK-level percentage and
-        // chapter count from /books/:id so it agrees with the bridge.
-        percent: keep.percent != null ? keep.percent : 0,
-        cid: ch.cid,
-        chaptersRead: keep.chaptersRead || 0,
-        totalChapters: keep.totalChapters || 0,
-      };
-    }
-  }
+  // Deliberately no STORY.currentProgress rewrite here: the backend continue
+  // object already has the right chapter, percentage and counts, and both pages
+  // render that same object. Overwriting it is what made the bridge (Ch5) and
+  // the book reader (Ch4) disagree.
 }
 
 function renderChapterList(chapters) {
