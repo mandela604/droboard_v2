@@ -38,9 +38,12 @@
     showLoading();
     try {
       const data = await callApi(`?page=${currentPage}&limit=${PER_PAGE}&status=${activeStatus}`);
-      contracts = data.items || [];
+      // The API returns a bare array (legacy contractApplications shape) or a
+      // paged {items,total}. Accept both so the queue never reads as empty
+      // just because the response lacks an `items` key.
+      contracts = Array.isArray(data) ? data : (data.items || []);
       renderTable(contracts);
-      renderPagination(data.total || 0);
+      renderPagination(Array.isArray(data) ? contracts.length : (data.total || 0));
       renderStats();
       return contracts;
     } catch(e) {
