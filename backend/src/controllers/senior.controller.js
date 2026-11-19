@@ -743,7 +743,13 @@ async function contractApplications(req, res) {
     const [books, users, verifications, contracts, pricings] = await Promise.all([
       Book.find({ id: { $in: bookIds } }).select('id title genre chapterCount cover').lean(),
       User.find({ id: { $in: authorIds } }).select('id fullName username avatar email').lean(),
-      AuthorVerification.find({ userId: { $in: authorIds } }).select('userId status kyc').lean(),
+      // Include rows linked by the application's verificationId, not only by
+      // userId — legacy/imported rows can have a null or mismatched userId and
+      // would otherwise read "identity: none" even when approved.
+      AuthorVerification.find({ $or: [
+        { userId: { $in: authorIds } },
+        { id: { $in: [...new Set(apps.map(a => String(a.verificationId || '')).filter(Boolean))] } },
+      ] }).select('id userId status kyc').lean(),
       contractIds.length
         ? Contract.find({ id: { $in: contractIds } }).select('id bookId type templateId status duration revenueSplit authorNote').lean()
         : [],
@@ -753,14 +759,19 @@ async function contractApplications(req, res) {
     ]);
     const bookOf = new Map(books.map((b) => [b.id, b]));
     const userOf = new Map(users.map((u) => [u.id, u]));
-    const verifOf = new Map(verifications.map((v) => [v.userId, v]));
+    const verifOf = new Map();
+    verifications.forEach(v => {
+      if (v.userId) verifOf.set(String(v.userId), v);
+      if (v.id) verifOf.set(String(v.id), v); // key by verification id too
+    });
     const contractOf = new Map(contracts.map((c) => [c.id, c]));
     const pricingOf = new Map(pricings.map((p) => [p.contractId, p]));
 
     return apps.map((a) => {
       const b = bookOf.get(a.bookId) || {};
       const u = userOf.get(a.authorId) || {};
-      const v = verifOf.get(a.authorId);
+      // Prefer the explicit link the application was created with.
+      const v = verifOf.get(String(a.verificationId || '')) || verifOf.get(String(a.authorId));
       const c = a.contractId ? contractOf.get(a.contractId) : null;
       const p = a.contractId ? pricingOf.get(a.contractId) : null;
       return {
