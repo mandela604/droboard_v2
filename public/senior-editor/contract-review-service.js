@@ -114,6 +114,11 @@
   function renderRows() {
     const body = el('tableBody'); if (!body) return;
     let list = contracts.slice();
+    // The API ignores the status param, so filter client-side. Use the raw
+    // application status here (not displayStatus) to match the KPI/tab counts.
+    if (activeStatus !== 'all') {
+      list = list.filter(function (a) { return statusOf(a) === activeStatus; });
+    }
     if (query) {
       const q = query.toLowerCase();
       list = list.filter(function (a) {
