@@ -1,317 +1,250 @@
 /**
- * contract-review-service.js — Contract Review page logic
- * Live API only, no demo fallbacks.
+ * contract-review-service.js — SE Contract Review page.
+ * Live API only. The backend returns a bare array of contract applications:
+ *   GET /api/senior-editor/contract-applications?page&limit&status
+ *   POST /api/senior-editor/contract-applications/:id/approve  {templateId, advance?, note?, pricing?}
+ *   POST /api/senior-editor/contract-applications/:id/reject   {reason}
+ * Approve sends a Contract built from a chief-editor template for the author
+ * to sign; reject closes the application.
  */
 (function () {
   'use strict';
+  if (window.__contractReviewService) return;
+  window.__contractReviewService = true;
 
   const API_BASE = '/api/senior-editor/contract-applications';
-  let contracts = [];
-  let contractTemplates = [];
-  let currentPage = 1;
   const PER_PAGE = 8;
+  let contracts = [];
+  let templates = [];
+  let currentPage = 1;
   let activeStatus = 'all';
-  let openContractId = null;
+  let query = '';
+  let openId = null;
+  let templatesLoaded = false;
 
-  function showError(msg) {
-    const el = document.getElementById('contractTableBody');
-    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:40px"><i class="fas fa-circle-exclamation"></i> ${msg}</td></tr>`;
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function el(id) { return document.getElementById(id); }
+  function toast(m) {
+    const t = el('toast'); if (!t) return;
+    t.textContent = m; t.classList.add('show');
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+  function fmtNum(n) { return String(n || 0); }
+
+  async function callApi(path, opts) {
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+    let j = null; try { j = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((j && j.error) || ('API error ' + res.status));
+    return j;
   }
 
   function showLoading() {
-    const el = document.getElementById('contractTableBody');
-    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading contracts...</td></tr>`;
+    const body = el('tableBody');
+    if (body) body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-faint)"><i class="fas fa-spinner fa-spin"></i> Loading contracts…</div>';
   }
-
-  async function callApi(path, opts) {
-    try {
-      const res = await fetch(API_BASE + path, { credentials:'include', ...opts });
-      if(!res.ok) throw new Error(`API error ${res.status}`);
-      return await res.json();
-    } catch(e) {
-      console.error('Contract review API error:', e);
-      throw e;
-    }
+  function showError(msg) {
+    const body = el('tableBody');
+    if (body) body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)"><i class="fas fa-circle-exclamation"></i> ' + esc(msg) + '</div>';
   }
 
   async function loadContracts() {
     showLoading();
     try {
-      const data = await callApi(`?page=${currentPage}&limit=${PER_PAGE}&status=${activeStatus}`);
-      // The API returns a bare array (legacy contractApplications shape) or a
-      // paged {items,total}. Accept both so the queue never reads as empty
-      // just because the response lacks an `items` key.
+      const data = await callApi('?page=' + currentPage + '&limit=' + PER_PAGE + '&status=' + encodeURIComponent(activeStatus));
       contracts = Array.isArray(data) ? data : (data.items || []);
-      renderTable(contracts);
-      renderPagination(Array.isArray(data) ? contracts.length : (data.total || 0));
-      renderStats();
+      const total = Array.isArray(data) ? contracts.length : (data.total || 0);
+      renderRows();
+      renderKpis();
+      renderTabs();
+      renderPager(total);
       return contracts;
-    } catch(e) {
-      showError('Failed to load contracts: ' + e.message);
-      return [];
-    }
+    } catch (e) { showError('Failed to load contracts: ' + e.message); return []; }
   }
 
-  async function loadContractTemplates() {
+  async function loadTemplates() {
     try {
-      // Templates live on their own route, not under /contract-applications.
       const res = await fetch('/api/senior-editor/contract-templates', { credentials: 'include' });
-      if (!res.ok) throw new Error('API error ' + res.status);
-      const templates = await res.json();
-      contractTemplates = templates || [];
-      populateContractTypeFilter();
-      return contractTemplates;
-    } catch(e) {
-      console.error('Failed to load contract templates:', e);
-      return [];
-    }
+      const j = res.ok ? await res.json() : {};
+      templates = Array.isArray(j) ? j : (j.items || []);
+      templatesLoaded = true;
+    } catch (e) { templates = []; templatesLoaded = true; }
   }
 
-  function renderStats() {
-    const el = document.getElementById('statCards');
-    if(!el) return;
-    
-    const pending = contracts.filter(c => c.status === 'pending').length;
-    const approved = contracts.filter(c => c.status === 'approved').length;
-    const signed = contracts.filter(c => c.status === 'signed').length;
-    const rejected = contracts.filter(c => c.status === 'rejected').length;
-    const total = contracts.length;
-    
-    const stats = [
-      { value: total, label:'Total Contracts', icon:'fa-file-contract', color:'blue' },
-      { value: pending, label:'Pending', icon:'fa-clock', color:'amber' },
-      { value: approved, label:'Approved', icon:'fa-check-circle', color:'green' },
-      { value: signed, label:'Signed', icon:'fa-signature', color:'purple' },
-      { value: rejected, label:'Rejected', icon:'fa-ban', color:'red' },
-      { value: contractTemplates.length, label:'Templates', icon:'fa-layer-group', color:'pink' },
+  function statusOf(a) { return a.status || 'pending'; }
+
+  function renderKpis() {
+    const counts = { pending: 0, approved: 0, signed: 0, rejected: 0 };
+    contracts.forEach(function (a) { const s = statusOf(a); if (counts[s] != null) counts[s]++; });
+    const total = contracts.length || 1;
+    const map = { pending: ['sP', 'sPPct', 'sPBar'], approved: ['sA', 'sAPct', 'sABar'], signed: ['sS', 'sSPct', 'sSBar'], rejected: ['sR', 'sRPct', 'sRBar'] };
+    Object.keys(map).forEach(function (k) {
+      const ids = map[k], n = counts[k];
+      if (el(ids[0])) el(ids[0]).textContent = n;
+      if (el(ids[1])) el(ids[1]).textContent = Math.round((n / total) * 100) + '%';
+      if (el(ids[2])) el(ids[2]).style.width = Math.round((n / total) * 100) + '%';
+    });
+  }
+
+  function renderTabs() {
+    const host = el('statusTabs'); if (!host) return;
+    const counts = { all: contracts.length, pending: 0, approved: 0, signed: 0, rejected: 0 };
+    contracts.forEach(function (a) { const s = statusOf(a); if (counts[s] != null) counts[s]++; });
+    const tabs = [
+      { k: 'all', l: 'All' }, { k: 'pending', l: 'Pending' }, { k: 'approved', l: 'Approved' },
+      { k: 'signed', l: 'Signed' }, { k: 'rejected', l: 'Rejected' },
     ];
-    
-    el.innerHTML = stats.map(s => `
-      <div class="stat-card">
-        <div class="stat-ico ${s.color}"><i class="fas ${s.icon}"></i></div>
-        <div class="stat-num">${fmtNum(s.value)}</div>
-        <div class="stat-lbl">${s.label}</div>
-      </div>
-    `).join('');
+    host.innerHTML = tabs.map(function (t) {
+      return '<button type="button" class="stab ' + t.k + (activeStatus === t.k ? ' on' : '') + '" data-status="' + t.k + '">'
+        + '<span class="dot"></span>' + t.l + '<span class="cnt">' + (counts[t.k] || 0) + '</span></button>';
+    }).join('');
+    host.querySelectorAll('.stab').forEach(function (b) {
+      b.addEventListener('click', function () { activeStatus = b.getAttribute('data-status'); currentPage = 1; loadContracts(); });
+    });
   }
 
-  function populateContractTypeFilter() {
-    const el = document.getElementById('contractTypeFilter');
-    if(!el) return;
-    
-    el.innerHTML = '<option value="">All Types</option>' + 
-      contractTemplates.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
-  }
-
-  function renderTable(contractsToShow) {
-    const el = document.getElementById('contractTableBody');
-    if(!el) return;
-    
-    if(!contractsToShow || !contractsToShow.length) {
-      el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:40px">No contracts found</td></tr>`;
+  function renderRows() {
+    const body = el('tableBody'); if (!body) return;
+    let list = contracts.slice();
+    if (query) {
+      const q = query.toLowerCase();
+      list = list.filter(function (a) {
+        return [a.author, a.email, a.bookTitle, a.bookGenre, a.id].some(function (v) { return String(v || '').toLowerCase().indexOf(q) !== -1; });
+      });
+    }
+    if (!list.length) {
+      body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-faint)"><i class="fas fa-inbox" style="font-size:22px;display:block;margin-bottom:8px"></i>No contracts found</div>';
       return;
     }
-    
-    el.innerHTML = contractsToShow.map(c => `
-      <tr>
-        <td><div class="contract-cell"><img class="author-avatar" src="${c.avatar || '../assets/droboard-icon.png'}" alt=""/><div><div class="author-name">${c.author || ''}</div><div class="book-title">${c.bookTitle || ''}</div></div></div></td>
-        <td><span class="genre-chip">${c.bookGenre || ''}</span></td>
-        <td>${c.chapters || 0}</td>
-        <td>${c.ct || '—'}</td>
-        <td>${c.term || '—'}</td>
-        <td>${c.rev || '—'}</td>
-        <td>${statusPillHtml(c.status || 'pending')}</td>
-        <td><div class="action-buttons">
-          <button class="action-btn view" title="View" data-id="${c.id}"><i class="fas fa-eye"></i></button>
-          <button class="action-btn edit" title="Review" data-id="${c.id}"><i class="fas fa-pen"></i></button>
-          <button class="action-btn delete" title="Delete" data-id="${c.id}"><i class="fas fa-trash"></i></button>
-        </div></td>
-      </tr>
-    `).join('');
-    
-    // Add event listeners for action buttons
-    el.querySelectorAll('.action-btn.view').forEach(btn => {
-      btn.addEventListener('click', () => viewContract(btn.dataset.id));
+    body.innerHTML = list.map(function (a) {
+      const s = statusOf(a);
+      const open = openId === String(a.id);
+      return '<div class="item-row' + (open ? ' is-open' : '') + '" data-id="' + esc(a.id) + '">'
+        + '<div class="expand-ico"><i class="fas fa-chevron-right"></i></div>'
+        + '<div class="author-cell"><img src="' + esc(a.avatar || '../assets/droboard-icon.png') + '" alt=""/>'
+          + '<div class="author-info"><span class="author-name">' + esc(a.author || 'Unknown') + '</span><span class="author-id">' + esc(a.email || '') + '</span></div></div>'
+        + '<div><div class="book-title">' + esc(a.bookTitle || '') + '</div><div class="book-genre">' + esc(a.bookGenre || '') + '</div></div>'
+        + '<div class="contract-type">' + esc(a.ct || a.type || '—') + '</div>'
+        + '<span class="status-pill ' + esc(s) + '">' + esc(s) + '</span>'
+        + '<span class="submitted">' + esc(a.submitted || '') + '</span>'
+        + '</div>'
+        + '<div class="item-detail' + (open ? ' show' : '') + '" id="detail-' + esc(a.id) + '">' + detailHtml(a) + '</div>';
+    }).join('');
+
+    body.querySelectorAll('.item-row').forEach(function (row) {
+      row.addEventListener('click', function () {
+        const id = row.getAttribute('data-id');
+        openId = openId === id ? null : id;
+        renderRows();
+      });
     });
-    el.querySelectorAll('.action-btn.edit').forEach(btn => {
-      btn.addEventListener('click', () => reviewContract(btn.dataset.id));
+    bindDetailEvents(body);
+  }
+
+  function detailHtml(a) {
+    const s = statusOf(a);
+    const pending = s === 'pending';
+    let tplOpts = '<option value="">— Choose a template —</option>';
+    templates.forEach(function (t) {
+      tplOpts += '<option value="' + esc(t.id || t.templateId || t.name) + '">' + esc(t.name || t.label || t.id) + '</option>';
     });
-    el.querySelectorAll('.action-btn.delete').forEach(btn => {
-      btn.addEventListener('click', () => deleteContract(btn.dataset.id));
+    let body = '<div class="detail-inner"><div class="detail-header">'
+      + '<img class="detail-avatar" src="' + esc(a.avatar || '../assets/droboard-icon.png') + '" alt=""/>'
+      + '<div class="detail-title"><h3>' + esc(a.author || 'Unknown') + '</h3><p>' + esc(a.email || '') + ' · ' + esc(a.bookTitle || '') + '</p></div></div>'
+      + '<div class="detail-grid">'
+      + '<div class="detail-card"><label>Status</label><b>' + esc(s) + '</b></div>'
+      + '<div class="detail-card"><label>Book</label><b>' + esc(a.bookTitle || '') + '</b></div>'
+      + '<div class="detail-card"><label>Submitted</label><b>' + esc(a.submitted || '') + '</b></div>'
+      + '<div class="detail-card"><label>Identity</label><b>' + esc(a.verificationStatus || 'none') + '</b></div>'
+      + '</div>';
+    if (a.verificationStatus !== 'approved') {
+      body += '<div class="detail-notes-box"><div class="lbl"><i class="fas fa-triangle-exclamation"></i> Identity not verified</div><p>This writer must be approved in Author Verification before an offer can be sent.</p></div>';
+    }
+    if (pending && a.verificationStatus === 'approved') {
+      body += '<div class="detail-contract-select"><div class="lbl"><i class="fas fa-file-signature"></i> Contract template</div>'
+        + '<select id="tpl-' + esc(a.id) + '">' + tplOpts + '</select></div>';
+    }
+    body += '<div class="detail-actions">';
+    if (pending && a.verificationStatus === 'approved') {
+      body += '<button class="btn btn-green" data-send="' + esc(a.id) + '"><i class="fas fa-paper-plane"></i> Send offer</button>'
+        + '<button class="btn btn-danger" data-reject="' + esc(a.id) + '"><i class="fas fa-xmark"></i> Reject</button>';
+    } else if (!pending) {
+      body += '<span class="status-pill ' + esc(s) + '">' + esc(s) + '</span>';
+    }
+    body += '<button class="btn btn-ghost" data-close-detail><i class="fas fa-xmark"></i> Close</button></div></div>';
+    return body;
+  }
+
+  function bindDetailEvents(body) {
+    body.querySelectorAll('[data-close-detail]').forEach(function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); openId = null; renderRows(); });
+    });
+    body.querySelectorAll('[data-send]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = b.getAttribute('data-send');
+        const sel = el('tpl-' + id);
+        if (!sel || !sel.value) { toast('Choose a contract template first'); return; }
+        b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        callApi('/' + encodeURIComponent(id) + '/approve', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ templateId: sel.value }),
+        }).then(function () { toast('✅ Offer sent to author'); openId = null; return loadContracts(); })
+          .catch(function (err) { toast('Could not send offer — ' + err.message); b.disabled = false; b.innerHTML = '<i class="fas fa-paper-plane"></i> Send offer'; });
+      });
+    });
+    body.querySelectorAll('[data-reject]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = b.getAttribute('data-reject');
+        const reason = window.prompt('Reason for rejecting this application (min 5 characters):');
+        if (!reason || reason.trim().length < 5) { toast('A reason of at least 5 characters is required'); return; }
+        b.disabled = true;
+        callApi('/' + encodeURIComponent(id) + '/reject', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reason.trim() }),
+        }).then(function () { toast('Application rejected'); openId = null; return loadContracts(); })
+          .catch(function (err) { toast('Could not reject — ' + err.message); b.disabled = false; });
+      });
     });
   }
 
-  function renderPagination(total) {
-    const el = document.getElementById('pagination');
-    if(!el) return;
-    
-    const totalPages = Math.ceil(total / PER_PAGE);
-    if(totalPages <= 1) {
-      el.innerHTML = '';
-      return;
-    }
-    
-    let html = `<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} data-page="prev"><i class="fas fa-chevron-left"></i></button>`;
-    
-    for(let i = 1; i <= Math.min(totalPages, 5); i++) {
-      html += `<button class="page-btn ${currentPage === i ? 'active' : ''}" data-page="${i}">${i}</button>`;
-    }
-    
-    html += `<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} data-page="next"><i class="fas fa-chevron-right"></i></button>`;
-    
-    el.innerHTML = html;
-    
-    el.querySelectorAll('.page-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const page = btn.dataset.page;
-        if(page === 'prev' && currentPage > 1) currentPage--;
-        else if(page === 'next' && currentPage < totalPages) currentPage++;
-        else if(page) currentPage = parseInt(page);
-        
+  function renderPager(total) {
+    const info = el('pageInfo'), btns = el('pageBtns');
+    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+    if (info) info.innerHTML = 'Showing <b>' + ((currentPage - 1) * PER_PAGE + 1) + '</b>–<b>' + Math.min(currentPage * PER_PAGE, total) + '</b> of <b>' + total + '</b>';
+    if (!btns) return;
+    if (pages <= 1) { btns.innerHTML = ''; return; }
+    let h = '<button class="pg-btn" data-page="prev"' + (currentPage <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+    for (let i = 1; i <= pages; i++) h += '<button class="pg-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+    h += '<button class="pg-btn" data-page="next"' + (currentPage >= pages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+    btns.innerHTML = h;
+    btns.querySelectorAll('.pg-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const p = b.getAttribute('data-page');
+        if (p === 'prev' && currentPage > 1) currentPage--;
+        else if (p === 'next' && currentPage < pages) currentPage++;
+        else currentPage = parseInt(p, 10) || 1;
         loadContracts();
       });
     });
   }
 
-  async function viewContract(id) {
-    try {
-      const contract = await callApi(`/${id}`);
-      openContractModal(contract);
-    } catch(e) {
-      alert('Failed to load contract details: ' + e.message);
-    }
-  }
-
-  async function reviewContract(id) {
-    try {
-      const contract = await callApi(`/${id}`);
-      openReviewModal(contract);
-    } catch(e) {
-      alert('Failed to load contract for review: ' + e.message);
-    }
-  }
-
-  async function deleteContract(id) {
-    if(!confirm('Are you sure you want to delete this contract?')) return;
-    
-    try {
-      await callApi(`/${id}`, { method: 'DELETE' });
-      loadContracts(); // Reload
-    } catch(e) {
-      alert('Failed to delete contract: ' + e.message);
-    }
-  }
-
-  async function approveContract(id, notes) {
-    try {
-      await callApi(`/${id}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes })
-      });
-      loadContracts(); // Reload
-      return true;
-    } catch(e) {
-      throw new Error('Failed to approve contract: ' + e.message);
-    }
-  }
-
-  async function rejectContract(id, reason) {
-    try {
-      await callApi(`/${id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      });
-      loadContracts(); // Reload
-      return true;
-    } catch(e) {
-      throw new Error('Failed to reject contract: ' + e.message);
-    }
-  }
-
-  async function requestChanges(id, message) {
-    try {
-      await callApi(`/${id}/request-changes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
-      });
-      loadContracts(); // Reload
-      return true;
-    } catch(e) {
-      throw new Error('Failed to request changes: ' + e.message);
-    }
-  }
-
-  function statusPillHtml(s) {
-    const cls = s.toLowerCase();
-    return `<span class="status-pill ${cls}"><span class="dot"></span>${s}</span>`;
-  }
-
-  function fmtNum(n) {
-    return String(n || 0);
-  }
-
-  function openContractModal(contract) {
-    // Modal implementation would go here
-    console.log('View contract:', contract);
-    alert(`Viewing contract ${contract.id} - ${contract.author}`);
-  }
-
-  function openReviewModal(contract) {
-    // Modal implementation would go here
-    console.log('Review contract:', contract);
-    alert(`Reviewing contract ${contract.id} - ${contract.author}`);
-  }
-
   async function init() {
-    try {
-      await Promise.all([loadContracts(), loadContractTemplates()]);
-      
-      // Add event listeners for filters
-      const statusFilter = document.getElementById('statusFilter');
-      const typeFilter = document.getElementById('contractTypeFilter');
-      const searchInput = document.getElementById('tableSearch');
-      
-      if(statusFilter) {
-        statusFilter.addEventListener('change', (e) => {
-          activeStatus = e.target.value;
-          loadContracts();
-        });
-      }
-      
-      if(typeFilter) {
-        typeFilter.addEventListener('change', loadContracts);
-      }
-      
-      if(searchInput) {
-        searchInput.addEventListener('input', (e) => {
-          // Debounce search would go here
-          console.log('Search:', e.target.value);
-        });
-      }
-    } catch(e) {
-      console.error('Failed to initialize contract review:', e);
-    }
+    await Promise.all([loadTemplates(), loadContracts()]);
+    // KPI cards act as status filters.
+    document.querySelectorAll('#kpiRow .kpi').forEach(function (k) {
+      k.addEventListener('click', function () { activeStatus = k.getAttribute('data-status') || 'all'; currentPage = 1; loadContracts(); });
+    });
+    const s = el('searchInput');
+    if (s) s.addEventListener('input', function () { query = s.value.trim(); renderRows(); });
   }
 
-  // Initialize when DOM is ready
-  if(document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  // Expose public API
-  window.ContractReviewService = {
-    loadContracts,
-    approveContract,
-    rejectContract,
-    requestChanges,
-    deleteContract,
-    viewContract,
-    reviewContract
-  };
-
+  window.ContractReviewService = { init: init, reload: loadContracts };
+  // Auto-init (the page includes this script without a separate init call).
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
