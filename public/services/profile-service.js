@@ -63,14 +63,6 @@
     return REAL_IS_WRITER;
   }
 
-  /* Real backend book states — kept in sync with component/book-card.js so a
-     submitted book reads "Under Review" instead of falling back to Ongoing. */
-  const STATUS_LABEL = {
-    published: 'Published', ongoing: 'Ongoing', draft: 'Draft',
-    under_review: 'Under Review', scheduled: 'Scheduled', paused: 'Paused',
-    rejected: 'Rejected', completed: 'Completed',
-  };
-
   /* ── Live transport (same contract as feed-service) ─────────────── */
   const API_BASE = '/api';
   async function api(method, path, body) {
@@ -128,11 +120,12 @@
     clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), dur);
   }
 
-  function bookStatus(b, i) {
-    /* The backend owns book status; anything it doesn't vouch for reads as
-       ongoing (the server's own default) — never a rotated guess. */
-    if (b && b.status && STATUS_LABEL[b.status]) return b.status;
-    return 'ongoing';
+  function bookStatus(b) {
+    /* Pass through whatever the backend actually says — including statuses
+       this build doesn't know yet. Collapsing an unknown status to "Ongoing"
+       lied to readers about a book's real state. */
+    var s = b && typeof b.status === 'string' ? b.status.trim() : '';
+    return s || 'unknown';
   }
 
   /* ── Theme ── */
@@ -500,6 +493,28 @@
       el.addEventListener('click', () => location.href = el.dataset.href);
     });
   }
+  function renderReviewStrip(p) {
+    /* Owner-only row directly under the stats row. Submitted manuscripts are
+       NOT in the reader-facing Books section — this is the author's own view. */
+    const strip = document.getElementById('reviewStrip');
+    const list = document.getElementById('reviewStripList');
+    if (!strip || !list) return;
+    const rows = p.underReviewBooks || [];
+    if (!canSeeOwnerUI() || !rows.length) {
+      strip.classList.remove('on');
+      list.innerHTML = '';
+      return;
+    }
+    strip.classList.add('on');
+    list.innerHTML = rows.map(function (b) {
+      const title = esc(b.title || 'Untitled');
+      const cover = b.cover ? '<img src="' + escAttr(b.cover) + '" alt=""/>' : '';
+      return '<a class="review-chip" href="../author/book-workspace.html?book='
+        + encodeURIComponent(b.id || '') + '">' + cover + '<span>' + title
+        + '</span><span class="review-chip-tag">Under Review</span></a>';
+    }).join('');
+  }
+
   function renderAchievements(p) {
     /* Chips come from the awards console via the profile payload
        (achievements[]) plus the reader's live league badges. */
@@ -1204,6 +1219,7 @@
     renderHeader(p);
     renderActionRow();
     renderStats(p);
+    renderReviewStrip(p);
     renderAchievements(p);
     renderUpgradeStrip(p);
     renderPreviewControl(p);

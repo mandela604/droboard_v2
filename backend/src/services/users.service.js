@@ -230,7 +230,7 @@ async function profile(handle, viewerId) {
       isWriter, verified: !!u.emailVerified,
       status: u.status, createdAt: u.createdAt, joinedLabel: joinedLabel(u.createdAt),
       following, followers, books: 0, isPrivate: true, isOwner: false,
-      collections: [], library: [], posts: [], statuses: [],
+      collections: [], library: [], posts: [], statuses: [], underReviewBooks: [],
     };
   }
   let isFollowing = false;
@@ -243,18 +243,31 @@ async function profile(handle, viewerId) {
     isFollowing = !!f;
     isBlocked = !!b;
   }
-  // books (writers) — card shape the Books tab consumes.
-  // A submitted book is a real, reader-visible state ("Under Review"), not a
-  // draft: the author must be able to see their submission on their profile.
-  // Drafts / scheduled / rejected stay private to the author's own consoles.
+  // books (writers) — reader-facing Books tab: only live shelves. Submitted,
+  // draft, scheduled and rejected books belong to the author's own consoles,
+  // never in this public section. (The owner's submitted books are surfaced
+  // separately in `underReviewBooks` just below the profile stats row.)
   const bookDocs = isWriter
-    ? await Book.find({ authorId: u.id, status: { $in: ['ongoing', 'completed', 'published', 'under_review'] } }).sort({ createdAt: -1 }).limit(50)
+    ? await Book.find({ authorId: u.id, status: { $in: ['ongoing', 'completed', 'published'] } }).sort({ createdAt: -1 }).limit(50)
       .select('id title cover genre reads likes rating chapterCount status').lean()
     : [];
   const books = bookDocs.map(b => ({
     id: b.id, title: b.title, cat: b.genre || '', cover: b.cover || '',
     reads: b.reads || 0, likes: b.likes || 0, rating: b.rating || 0,
     chapters: b.chapterCount || 0, status: b.status || 'ongoing',
+  }));
+  // Submitted manuscripts are NOT part of the reader-facing Books section.
+  // The owner gets them as a separate strip so "your book is under review" is
+  // visible on the profile without ever putting an unreviewed book in the feed.
+  const reviewDocs = (isOwner && isWriter)
+    ? await Book.find({ authorId: u.id, status: 'under_review' })
+      .sort({ submittedAt: -1 }).limit(10)
+      .select('id title cover genre submittedAt chapterCount').lean()
+    : [];
+  const underReviewBooks = reviewDocs.map(b => ({
+    id: b.id, title: b.title || 'Untitled', cover: b.cover || '',
+    cat: b.genre || '', chapters: b.chapterCount || 0,
+    submittedAt: b.submittedAt || null,
   }));
   let [readingStats, lib, coll, ach, postDocs, followEdges, statusDocs] = await Promise.all([
     readingStatsFor(u.id),
@@ -297,6 +310,7 @@ async function profile(handle, viewerId) {
     achievements: ach,
     collections: coll,
     books,
+    underReviewBooks,
     library: lib,
     following: followingRows,
     posts: postCards,

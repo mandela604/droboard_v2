@@ -3,6 +3,13 @@ const senior = require('../services/senior.service');
 const sidebar = require('../services/senior-sidebar.service');
 const base = require('./base.controller');
 
+// Outcome emails are best-effort: a mail outage never blocks a decision.
+function decisionMail(opts) {
+  try { require('../services/decision-mail.service').send(opts); } catch (e) {
+    console.warn('[decision-mail] skipped:', e && e.message);
+  }
+}
+
 function res(name) {
   // Every access is scoped to the caller: senior editors only see their own
   // assigned authors' work (see senior.service.scopedResources).
@@ -353,6 +360,18 @@ async function notifyReviewDecision({ authorId, bookId, action, feedback, actorI
       key: 'review:' + String(bookId || '') + ':' + action,
     });
   } catch (e) { /* notifications never block a decision */ }
+
+  decisionMail({
+    userId: authorId,
+    kind: action === 'approved' ? 'book-approved' : 'book-rejected',
+    decision: action,
+    title: action === 'approved' ? 'Your book is live on Droboard' : 'Your book needs changes',
+    message: action === 'approved'
+      ? 'Good news — your manuscript passed review and is now published. Congratulations!'
+      : 'Your editor reviewed your manuscript and asked for changes before it can go live.',
+    reason: action === 'approved' ? '' : feedback,
+    link: '/author/book-workspace.html', linkLabel: 'Open your book',
+  });
 }
 
 async function grantWriterRole(authorId) {
@@ -674,6 +693,18 @@ async function verificationDecide(req, res, decision) {
         key: 'verification:' + String(updated.id) + ':' + decision,
       });
     } catch (e) { /* notifications never block a decision */ }
+
+    decisionMail({
+      userId: target.userId,
+      kind: decision === 'approved' ? 'verification-approved' : 'verification-rejected',
+      decision,
+      title: decision === 'approved' ? 'Your identity is verified' : 'Your verification needs attention',
+      message: decision === 'approved'
+        ? 'You can now sign contracts and carry the verified badge on Droboard.'
+        : 'Your editor could not verify your identity yet. Please review the note and resubmit.',
+      reason: decision === 'rejected' ? reason : '',
+      link: '/author/verification.html', linkLabel: 'View verification',
+    });
     return { ok: true, id: updated.id, status: decision, reviewerId: req.user.id };
   });
 }
@@ -826,6 +857,14 @@ async function contractApprove(req, res) {
       });
     } catch (e) {}
 
+    decisionMail({
+      userId: app.authorId,
+      kind: 'contract-approved', decision: 'approved',
+      title: 'Your contract offer is ready',
+      message: 'Your editor approved your application and sent a contract. Review the terms and sign it in Author Center.',
+      link: '/author/apply-contract.html', linkLabel: 'Review contract offer',
+    });
+
     return { ok: true, appId: app.id, contractId: contract.id, status: 'sent' };
   });
 }
@@ -869,6 +908,15 @@ async function contractAppReject(req, res) {
         desc: reason,
       });
     } catch (e) {}
+
+    decisionMail({
+      userId: app.authorId,
+      kind: 'contract-rejected', decision: 'rejected',
+      title: 'Your contract application was not accepted',
+      message: 'Your editor reviewed your contract application and could not approve it this time.',
+      reason,
+      link: '/author/apply-contract.html', linkLabel: 'View applications',
+    });
 
     return { ok: true, id: app.id, status: 'rejected' };
   });

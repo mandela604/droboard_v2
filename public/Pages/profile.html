@@ -85,6 +85,17 @@ button{font-family:inherit;cursor:pointer}
 .stat-num{font-size:16px;font-weight:800;color:var(--tx-high);line-height:1}
 .stat-num.r{color:var(--acc)}.stat-num.b{color:var(--blue)}.stat-num.g{color:var(--green)}.stat-num.gold{color:var(--gold,#f59e0b)}
 .stat-label{font-size:8px;color:var(--tx-muted);margin-top:2px;font-weight:600}
+/* Owner-only: submitted manuscripts sit below the stats row, never in the
+   reader-facing Books section. */
+.review-strip{display:none;align-items:center;gap:10px;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.07);border-radius:14px;padding:10px 12px;margin-bottom:14px}
+.review-strip.on{display:flex}
+.review-strip-ico{width:34px;height:34px;border-radius:10px;background:rgba(245,158,11,.14);color:#b7690a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.review-strip-body{flex:1;min-width:0}
+.review-strip-title{font-size:11.5px;font-weight:800;color:var(--tx-high);margin-bottom:5px}
+.review-strip-list{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.review-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:20px;background:var(--card,#fff);border:1px solid rgba(245,158,11,.3);font-size:10px;font-weight:700;color:var(--tx-body);white-space:nowrap;flex-shrink:0;text-decoration:none}
+.review-chip img{width:16px;height:20px;border-radius:4px;object-fit:cover}
+.review-chip-tag{color:#b7690a;font-size:9px}
 .ach-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none}
 .ach-chip{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:9px;font-weight:700;white-space:nowrap;border:1px solid;flex-shrink:0}
 .ach-chip.gold{background:var(--gold-soft);border-color:rgba(240,168,0,.3);color:#8a6200}
@@ -291,6 +302,13 @@ body.is-owner .owner-only-ui{display:inline-flex!important}
       <div class="profile-bio" id="profileBio"></div>
       <div class="profile-genres" id="genrePillsDisplay"></div>
       <div class="stats-row" id="statsRow"></div>
+      <div class="review-strip" id="reviewStrip">
+        <div class="review-strip-ico"><i class="fas fa-hourglass-half"></i></div>
+        <div class="review-strip-body">
+          <div class="review-strip-title">Your book is under review</div>
+          <div class="review-strip-list" id="reviewStripList"></div>
+        </div>
+      </div>
       <div class="ach-row" id="achRow"></div>
       <div class="role-preview" id="rolePreview" style="display:none"></div>
       <div class="upgrade-strip" id="upgradeStrip"></div>
@@ -463,7 +481,7 @@ body.is-owner .owner-only-ui{display:inline-flex!important}
 <script src="../component/book-card.js?v=4"></script>
 <script src="../services/league-service.js"></script>
 <script src="../shared/insights-tracker.js?v=3"></script>
-<script src="../services/profile-service.js?v=11"></script>
+<script src="../services/profile-service.js?v=12"></script>
 <script>
 function hideLoading(){var l=document.getElementById('loadingState');if(l)l.style.display='none';}
 function showError(){hideLoading();var e=document.getElementById('emptyState');if(e)e.style.display='flex';}
