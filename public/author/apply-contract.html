@@ -117,7 +117,31 @@ button{font-family:inherit;cursor:pointer}
 .status-detail.applied{background:rgba(245,158,11,.08);color:var(--amber)}
 .status-detail.contracted{background:var(--green-bg);color:var(--green)}
 .status-detail.rejected{background:rgba(239,68,68,.08);color:var(--red)}
+.status-detail.review{background:rgba(59,130,246,.09);color:var(--blue,#2563eb)}
 .status-detail i{font-size:14px}
+
+/* ── Offer received (awaiting the author's signature) ── */
+.offer-card{
+  background:var(--card);border:1.5px solid var(--acc,var(--pink));border-radius:16px;
+  padding:16px;margin-bottom:16px;box-shadow:0 6px 22px rgba(255,0,80,.07)
+}
+.offer-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.offer-ico{width:42px;height:42px;border-radius:12px;background:rgba(255,0,80,.1);color:var(--acc,var(--pink));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.offer-head{flex:1;min-width:0}
+.offer-head b{display:block;font-size:13.5px;font-weight:800}
+.offer-head span{font-size:11.5px;color:var(--tx-muted)}
+.offer-pill{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:8px;background:rgba(245,158,11,.12);color:var(--amber);white-space:nowrap}
+.offer-book{padding:10px 12px;background:var(--input-bg,var(--l2));border-radius:10px;margin-bottom:12px;font-size:13px;font-weight:700}
+.offer-terms{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.offer-term{background:var(--input-bg,var(--l2));border-radius:10px;padding:10px 12px}
+.offer-term label{display:block;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx-faint);margin-bottom:3px}
+.offer-term b{font-size:13px;font-weight:800}
+.offer-acts{display:flex;gap:8px}
+.offer-btn{flex:1;padding:11px;border:none;border-radius:10px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.offer-btn.sign{background:var(--green,#16a34a);color:#fff}
+.offer-btn.decline{background:var(--input-bg,var(--l2));color:var(--tx-muted);border:1px solid var(--bd)}
+.offer-btn:active{transform:scale(.98)}
+.offer-btn:disabled{opacity:.6;cursor:default}
 
 /* ──────── Modal ──────── */
 .modal-overlay{
@@ -233,6 +257,9 @@ button{font-family:inherit;cursor:pointer}
       <p>Apply for publishing contracts. Tap a book to see options.</p>
     </div>
 
+    <!-- Offers from the editorial team, waiting for the author to review/sign -->
+    <div id="offersMount"></div>
+
     <div class="book-list" id="bookList"></div>
   </div>
 
@@ -295,7 +322,7 @@ button{font-family:inherit;cursor:pointer}
 <script src="services/drawer-service.js?v=3"></script>
 <script src="../services/notification-store.js?v=8"></script>
 <script src="../component/kyc-form.js?v=1"></script>
-<script src="services/apply-contract-service.js?v=8"></script>
+<script src="services/apply-contract-service.js?v=9"></script>
 <script>ApplyContractService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
   <script src="../component/auth-wall.js?v=1"></script>

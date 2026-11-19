@@ -32,7 +32,7 @@
   function getTag(status) {
     if (status === 'contracted') return '<span class="status-tag tag-contracted"><i class="fas fa-check-circle"></i> Contracted</span>';
     if (status === 'applied') return '<span class="status-tag tag-pending"><i class="fas fa-clock"></i> Pending</span>';
-    if (status === 'review') return '<span class="status-tag tag-review"><i class="fas fa-hourglass-half"></i> Review</span>';
+    if (status === 'review') return '<span class="status-tag tag-review"><i class="fas fa-file-signature"></i> Offer received</span>';
     if (status === 'rejected') return '<span class="status-tag tag-rejected"><i class="fas fa-xmark"></i> Not approved</span>';
     return '<span class="status-tag"><i class="fas fa-file-lines"></i> Available</span>';
   }
@@ -94,7 +94,7 @@
         + '<div class="book-accordion"><div class="accordion-inner"><div>' + getTag(b.status || 'none') + '</div>'
         + (canApply(b) ? '<button class="apply-btn" data-bid="' + esc(b.id) + '"><i class="fas fa-file-contract"></i> Apply for Contract</button>' : '')
         + (b.status === 'applied' ? '<div class="status-detail applied"><i class="fas fa-clock"></i> Application Pending</div>' : '')
-        + (b.status === 'review' ? '<div class="status-detail applied"><i class="fas fa-hourglass-half"></i> With the review team</div>' : '')
+        + (b.status === 'review' ? '<div class="status-detail review"><i class="fas fa-file-signature"></i> Offer received — review &amp; sign it at the top of this page</div>' : '')
         + (b.status === 'contracted' ? '<div class="status-detail contracted"><i class="fas fa-check-circle"></i> Contract Active</div>' : '')
         + '</div></div></div>';
     }).join('');
@@ -211,8 +211,76 @@
     document.getElementById('bookList').innerHTML = '<div class="empty" style="padding:30px 20px;text-align:center;color:var(--tx-muted)">Loading your books…</div>';
     api.list().then(function (data) {
       books = data || [];
+      renderOffers();
       renderList();
     }).catch(showLoadError);
+  }
+
+  // Offers the editor sent that are waiting for the author to review/sign.
+  function pendingOffers() {
+    return books.filter(function (b) { return b.status === 'review' && b.contractId; });
+  }
+
+  function renderOffers() {
+    var mount = document.getElementById('offersMount');
+    if (!mount) return;
+    var offers = pendingOffers();
+    if (!offers.length) { mount.innerHTML = ''; return; }
+    mount.innerHTML = '<div class="page-header" style="margin-top:4px"><h1 style="font-size:16px">Offers to review</h1><p>The editorial team sent these contracts. Review and sign to make them active.</p></div>'
+      + offers.map(function (b) {
+        return '<div class="offer-card" data-offer="' + esc(b.contractId) + '">'
+          + '<div class="offer-top"><div class="offer-ico"><i class="fas fa-file-signature"></i></div>'
+            + '<div class="offer-head"><b>' + esc(b.title || 'Untitled') + '</b><span>' + esc(b.offerType || 'Publishing contract') + '</span></div>'
+            + '<span class="offer-pill">Action needed</span></div>'
+          + '<div class="offer-book"><i class="fas fa-book" style="margin-right:6px;color:var(--acc,var(--pink))"></i>' + esc(b.title || 'Untitled') + '</div>'
+          + '<div class="offer-terms">'
+            + '<div class="offer-term"><label>Contract type</label><b>' + esc(b.offerType || '—') + '</b></div>'
+            + '<div class="offer-term"><label>Term</label><b>' + (b.termMonths ? b.termMonths + ' months' : '—') + '</b></div>'
+            + '<div class="offer-term"><label>Revenue split</label><b>' + (b.revenueSplit != null ? b.revenueSplit + ' / ' + (100 - b.revenueSplit) : '—') + '</b></div>'
+            + '<div class="offer-term"><label>Sent</label><b>' + esc((b.offerSentAt || '').split('T')[0] || '—') + '</b></div>'
+          + '</div>'
+          + '<div class="offer-acts">'
+            + '<button class="offer-btn decline" data-decline="' + esc(b.contractId) + '"><i class="fas fa-xmark"></i> Decline</button>'
+            + '<button class="offer-btn sign" data-sign="' + esc(b.contractId) + '"><i class="fas fa-pen"></i> Review &amp; Sign</button>'
+          + '</div></div>';
+      }).join('');
+    bindOfferEvents(mount);
+  }
+
+  function bindOfferEvents(mount) {
+    mount.querySelectorAll('[data-sign]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var cid = btn.getAttribute('data-sign');
+        var book = pendingOffers().filter(function (b) { return b.contractId === cid; })[0];
+        if (book) showOfferConfirm(cid, book);
+      });
+    });
+    mount.querySelectorAll('[data-decline]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var cid = btn.getAttribute('data-decline');
+        if (!window.confirm('Decline this contract offer? Your book will return to available.')) return;
+        btn.disabled = true;
+        api.decline(cid).then(function () { toast('Offer declined'); load(); })
+          .catch(function (e) { toast(e.message || 'Could not decline'); btn.disabled = false; });
+      });
+    });
+  }
+
+  function showOfferConfirm(cid, book) {
+    var msg = 'Sign the ' + (book.offerType || 'publishing') + ' contract for "' + (book.title || 'this book') + '"?\n\n'
+      + 'Term: ' + (book.termMonths ? book.termMonths + ' months' : 'per contract') + '\n'
+      + 'Revenue split: ' + (book.revenueSplit != null ? book.revenueSplit + ' / ' + (100 - book.revenueSplit) : 'per contract')
+      + '\n\nThis is binding once you sign.';
+    if (!window.confirm(msg)) return;
+    var btn = document.querySelector('[data-sign="' + (window.CSS && CSS.escape ? CSS.escape(cid) : cid) + '"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing…'; }
+    api.sign(cid).then(function () {
+      toast('✅ Contract signed — it is now active');
+      load();
+    }).catch(function (e) {
+      toast(e.message || 'Could not sign contract');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-pen"></i> Review & Sign'; }
+    });
   }
 
   function init() {
@@ -245,8 +313,21 @@
     load();
   }
 
-  api.decline = function () {
-    return Promise.reject(new Error('Declining an offer happens from the contract offer page, not this application form.'));
+  api.sign = async function (contractId) {
+    var res = await fetch(CFG.API_BASE + '/contracts/' + encodeURIComponent(contractId) + '/sign', {
+      method: 'POST', credentials: 'include'
+    });
+    if (!res.ok) throw await readError(res);
+    return await res.json();
+  };
+  api.decline = async function (contractId, reason) {
+    var res = await fetch(CFG.API_BASE + '/contracts/' + encodeURIComponent(contractId) + '/decline', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason || 'Declined by author' })
+    });
+    if (!res.ok) throw await readError(res);
+    return await res.json();
   };
   api.init = init;
   window.ApplyContractService = api;
