@@ -13,9 +13,9 @@ function cfg() {
   return {
     provider: (process.env.MAIL_PROVIDER || 'log').toLowerCase(),
     from: process.env.MAIL_FROM || 'Droboard <noreply@droboard.com>',
-    // Replies land in ONE shared editorial inbox, never an individual
-    // editor's private mailbox. Set MAIL_REPLY_TO to a real monitored inbox.
-    replyTo: process.env.MAIL_REPLY_TO || 'editors@droboard.com',
+    // No default Reply-To. Editorial mail is sent from a no-reply address and
+    // replies are handled inside the app, where each editor only sees the
+    // authors assigned to them. A caller may opt in with an explicit replyTo.
     appUrl: (process.env.APP_URL || '').replace(/\/$/, ''),
     resendKey: process.env.RESEND_API_KEY || '',
     smtp: {
@@ -51,13 +51,13 @@ async function loadTemplate(key) {
 
 async function deliver({ to, subject, html, text, from, replyTo }) {
   const c = cfg();
-  const reply = replyTo || c.replyTo;
+  const reply = replyTo || '';
   const payload = {
     from: from || c.from, to: Array.isArray(to) ? to : [to],
     subject, html, text: text || String(html || '').replace(/<[^>]+>/g, ' '),
   };
   if (c.provider === 'log') {
-    console.log('[mail:log]', JSON.stringify({ to: payload.to, subject, replyTo: reply }));
+    console.log('[mail:log]', JSON.stringify({ to: payload.to, subject, replyTo: reply || null }));
     return { queued: true, provider: 'log' };
   }
   if (c.provider === 'resend') {
@@ -65,7 +65,7 @@ async function deliver({ to, subject, html, text, from, replyTo }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + c.resendKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({}, payload, { reply_to: reply })),
+      body: JSON.stringify(Object.assign({}, payload, reply ? { reply_to: reply } : {})),
     });
     if (!res.ok) throw Object.assign(new Error('resend_failed'), { status: 502 });
     const body = await res.json().catch(() => ({}));
@@ -80,7 +80,7 @@ async function deliver({ to, subject, html, text, from, replyTo }) {
       host: c.smtp.host, port: c.smtp.port, secure: c.smtp.secure,
       auth: c.smtp.user ? { user: c.smtp.user, pass: c.smtp.pass } : undefined,
     });
-    const info = await tx.sendMail(Object.assign({}, payload, { replyTo: reply }));
+    const info = await tx.sendMail(Object.assign({}, payload, reply ? { replyTo: reply } : {}));
     return { queued: true, provider: 'smtp', id: info.messageId || null };
   }
   throw Object.assign(new Error('unknown_mail_provider'), { status: 500 });

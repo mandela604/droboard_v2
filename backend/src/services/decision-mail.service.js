@@ -1,10 +1,12 @@
 'use strict';
 /* services/decision-mail.service.js — outcome emails for editorial decisions.
  *
- * Sent from the configured MAIL_FROM (noreply) with Reply-To pointing at the
- * single shared editorial inbox (MAIL_REPLY_TO, default editors@droboard.com).
- * An author CAN reply — it lands with the team, never in one editor's private
- * mailbox. The in-app message/chat link is included as the primary channel.
+ * Sent from the configured MAIL_FROM (noreply) with NO Reply-To. Replies are
+ * handled in the app's chat, which is already scoped per editor: an SE only
+ * sees conversations with authors assigned to them. A shared reply inbox
+ * would expose one editor's author dealings to every other editor; an
+ * individual editor's personal email would expose their private address and
+ * break when they leave. The email points authors to in-app chat instead.
  *
  * Fire-and-forget: a mail outage must never fail an approve/reject decision.
  */
@@ -56,13 +58,13 @@ async function sendDecisionEmail(opts) {
     + (message ? '<p style="font-size:14px;line-height:1.7;color:#3a3a3f">' + message + '</p>' : '')
     + reason + cta
     + '<p style="font-size:12px;color:#8e8e93;line-height:1.6;margin-top:26px">'
-    + 'You can reply to this email — it goes to the Droboard editorial team. '
-    + 'You can also <a href="' + esc(base + '/Pages/chat.html')
-    + '" style="color:#ff2d55">message us inside the app</a>. '
+    + 'This is an automatic email — please don’t reply to it. '
+    + 'To talk to your editor, <a href="' + esc(base + '/Pages/chat.html')
+    + '" style="color:#ff2d55">message them inside Droboard</a>. '
     + 'Never share passwords or personal documents by email.</p>'
     + '</div>';
 
-  // Default Reply-To (the shared editorial inbox) is applied by mail.service.
+  // No replyTo: replies happen in the ownership-scoped in-app chat.
   return mail.sendMail({ to: user.email, subject, html });
 }
 
