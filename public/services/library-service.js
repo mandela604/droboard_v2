@@ -149,6 +149,10 @@
   function renderItems(items, view, containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    if (!items.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-sub">Nothing here yet.</div></div>';
+      return;
+    }
     if (!window.LibraryCard) { el.innerHTML = ''; return; }
     if (view === 'grid') LibraryCard.renderGrid(containerId, items);
     else LibraryCard.renderList(containerId, items);
