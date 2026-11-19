@@ -19,7 +19,9 @@ function inviteLink(code, req) {
   // A relative link is useless once it is copied into WhatsApp/DMs — the
   // recipient's browser resolves it against whatever page they are on, so the
   // ?ref code is silently lost at signup. Always return an absolute URL.
-  const fromEnv = (env.appUrl || env.backendUrl || '').replace(/\/$/, '');
+  const envRaw = (env.appUrl || env.backendUrl || '').replace(/\/$/, '');
+  // A proxy/dev APP_URL must never be handed out as a shareable invite link.
+  const fromEnv = /^https?:\/\/(127\.|localhost|0\.0\.0\.0)/i.test(envRaw) ? '' : envRaw;
   const host = req && req.get ? String(req.get('x-forwarded-host') || req.get('host') || '') : '';
   const proto = req && req.get ? String(req.get('x-forwarded-proto') || '') : '';
   const localHost = /^(127\.|localhost|0\.0\.0\.0)/i.test(host);
