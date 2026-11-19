@@ -171,11 +171,12 @@
       { label: 'Likes', value: s.likes, cls: 'g' },
     ];
     var _rank = null;
-    // ReaderLeague.myRank() is async — must be awaited, otherwise _rank is a
-    // Promise (truthy) and _rank.rank renders as "undefined".
+    // The rank belongs to the PROFILE OWNER, not the signed-in visitor.
+    // myRank() always resolves the viewer, which showed "#1" on every other
+    // reader's card. rankOf() looks the owner up on the same weekly board.
     try {
-      if (window.ReaderLeague && !p.isWriter && typeof ReaderLeague.myRank === 'function') {
-        _rank = await ReaderLeague.myRank();
+      if (window.ReaderLeague && !p.isWriter && typeof ReaderLeague.rankOf === 'function') {
+        _rank = await ReaderLeague.rankOf(p.handle || p.username || '', p.id || '');
       }
     } catch (e) { _rank = null; }
     return [

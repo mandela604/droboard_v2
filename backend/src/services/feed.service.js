@@ -491,32 +491,10 @@ async function libraryStats(userId) {
     else if (s === 'progress') inProgress++;
   });
 
-  /* The reader only sends wordsRead when its client counts words, so most
-     accounts report 0 hours despite finishing books. Use each book's own
-     wordCount for finished reads and keep reported words for partial ones —
-     per book, never add both. */
-  const ids = Array.from(new Set([
-    ...distinct, ...prog.map(p => String(p.storyId)),
-  ]));
-  const books = ids.length ? await Book.find({ id: { $in: ids } }).select('id wordCount').lean() : [];
-  const bookWords = {};
-  books.forEach(b => { bookWords[String(b.id)] = Number(b.wordCount) || 0; });
-  const reported = {};
-  prog.forEach(p => {
-    const sid = String(p.storyId);
-    reported[sid] = (reported[sid] || 0) + (Number(p.wordsRead) || 0);
-  });
-  let words = 0;
-  Object.keys(reported).forEach((sid) => {
-    let w = reported[sid];
-    if (statusMap[sid] === 'finished' && bookWords[sid] > w) w = bookWords[sid];
-    words += w;
-  });
-  distinct.forEach((sid) => {
-    if (statusMap[sid] === 'finished' && !reported[sid]) words += bookWords[sid] || 0;
-  });
-  const hours = Math.round((words / 200 / 60) * 10) / 10;
-  return { inProgress, finished, hoursRead: hours };
+  // Exactly the number the profile shows: secondsSpent already recorded by
+  // the two reader pages. No word-count guesswork and no second formula.
+  const rs = await require('./users.service').readingStatsFor(userId);
+  return { inProgress, finished, hoursRead: rs.hoursRead };
 }
 
 /* The Library shelf stores its rows with list='library' and status='unread'.

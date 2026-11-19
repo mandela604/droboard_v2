@@ -776,6 +776,7 @@ async function exportData(userId) {
 
 module.exports = {
   me, profile, searchUsers, relTime,
+  readingStatsFor,
   updateMe, changePassword, requestEmailChange, confirmEmailChange, deleteMe,
   getSettings, updateSettings,
   followersOf, followingOf, follow, unfollow,

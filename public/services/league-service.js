@@ -171,6 +171,30 @@
     } catch (e) {}
   }
 
+  /* Rank of a PROFILE OWNER, not the signed-in viewer. profile.html uses this
+     so visiting someone else's card never shows your own league position. */
+  async function rankOf(handle, userId) {
+    try {
+      const b = await board('weekly');
+      const h = String(handle || '').replace(/^@/, '').toLowerCase();
+      const id = userId ? String(userId) : '';
+      let mine = null;
+      b.entries.forEach(function (e) {
+        const eh = String(e.handle || '').replace(/^@/, '').toLowerCase();
+        if ((id && String(e.userId) === id) || (h && eh === h)) mine = e;
+      });
+      if (!mine) return null;
+      const idx = b.entries.indexOf(mine);
+      const below = b.entries[idx + 1] || null;
+      return {
+        rank: mine.rank, points: mine.points, season: b.season, endsIn: b.endsInLabel,
+        gapToNext: mine.rank > 1 ? mine.gap : 0,
+        leadOverNext: below ? mine.points - below.points : 0,
+        total: b.entries.length,
+      };
+    } catch (e) { return null; }
+  }
+
   /* Profile-slot read. Never rejects (callers treat "no rank yet" and
      "league unreachable" the same way); the leaderboard page uses board()
      directly, where failures become a visible error state. */
@@ -243,7 +267,7 @@
   }
 
   window.ReaderLeague = {
-    board: board, myRank: myRank, track: track, myBadges: myBadges,
+    board: board, myRank: myRank, rankOf: rankOf, track: track, myBadges: myBadges,
     pendingToast: pendingToast,
     adFreeActive: adFreeActive, reigning: reigning,
     previewAsChampion: previewAsChampion, clearPreview: clearPreview,
