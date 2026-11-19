@@ -490,8 +490,33 @@ async function libraryStats(userId) {
     if (s === 'finished') finished++;
     else if (s === 'progress') inProgress++;
   });
-  const words = prog.reduce((s, p) => s + (p.wordsRead || 0), 0);
-  return { inProgress, finished, hoursRead: Math.round(words / 200 / 60) };
+
+  /* The reader only sends wordsRead when its client counts words, so most
+     accounts report 0 hours despite finishing books. Use each book's own
+     wordCount for finished reads and keep reported words for partial ones —
+     per book, never add both. */
+  const ids = Array.from(new Set([
+    ...distinct, ...prog.map(p => String(p.storyId)),
+  ]));
+  const books = ids.length ? await Book.find({ id: { $in: ids } }).select('id wordCount').lean() : [];
+  const bookWords = {};
+  books.forEach(b => { bookWords[String(b.id)] = Number(b.wordCount) || 0; });
+  const reported = {};
+  prog.forEach(p => {
+    const sid = String(p.storyId);
+    reported[sid] = (reported[sid] || 0) + (Number(p.wordsRead) || 0);
+  });
+  let words = 0;
+  Object.keys(reported).forEach((sid) => {
+    let w = reported[sid];
+    if (statusMap[sid] === 'finished' && bookWords[sid] > w) w = bookWords[sid];
+    words += w;
+  });
+  distinct.forEach((sid) => {
+    if (statusMap[sid] === 'finished' && !reported[sid]) words += bookWords[sid] || 0;
+  });
+  const hours = Math.round((words / 200 / 60) * 10) / 10;
+  return { inProgress, finished, hoursRead: hours };
 }
 
 /* The Library shelf stores its rows with list='library' and status='unread'.
@@ -502,13 +527,13 @@ async function libraryStatusMap(userId) {
   const [hist, cont, prog] = await Promise.all([
     LibraryItem.find({ userId, list: 'history' }).select('storyId status').lean(),
     LibraryItem.find({ userId, list: 'continue' }).select('storyId status').lean(),
-    ReadingProgress.find({ userId }).select('storyId pct finished').lean(),
+    ReadingProgress.find({ userId }).select('storyId pct finished secondsSpent readCredited').lean(),
   ]);
   const map = {};
   prog.forEach((p) => {
     const sid = String(p.storyId);
     if (p.finished || (p.pct || 0) >= 100) map[sid] = 'finished';
-    else if ((p.pct || 0) > 0) map[sid] = 'progress';
+    else if ((p.pct || 0) > 0 || (p.secondsSpent || 0) > 0 || p.readCredited) map[sid] = 'progress';
   });
   cont.forEach((i) => { if (i.status === 'progress') map[String(i.storyId)] = 'progress'; });
   hist.forEach((i) => { if (i.status === 'finished') map[String(i.storyId)] = 'finished'; });
