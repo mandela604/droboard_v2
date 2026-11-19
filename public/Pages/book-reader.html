@@ -81,17 +81,9 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .qs-num.gold{color:var(--gold)}
 .qs-label{font-size:7.5px;color:var(--tx-muted);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
 
-/* ─── CONTINUE BANNER ─── */
-.continue-banner{margin:14px 14px 0;background:linear-gradient(135deg,rgba(255,0,80,.08),rgba(255,0,80,.03));border:1px solid var(--bd-acc);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
-.continue-banner:active{transform:scale(.99)}
-.cb-icon{width:40px;height:40px;border-radius:10px;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.cb-body{flex:1;min-width:0}
-.cb-label{font-size:9px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
-.cb-ch{font-size:12px;font-weight:700;color:var(--tx-high);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-meta{font-size:9px;color:var(--tx-muted);margin-top:1px}
-.cb-arrow{font-size:14px;color:var(--acc);flex-shrink:0}
-.cb-progress{margin:8px 0 0;height:3px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
-.cb-progress-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px}
+/* ─── CONTINUE READING ───
+   Styles live inside component/continue-reading.js so this page and the
+   bridge cannot drift apart. */
 
 /* ─── SECTION TABS ─── */
 .section-tabs{display:flex;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--bd);background:rgba(0,0,0,.97);backdrop-filter:blur(12px);position:sticky;top:58px;z-index:100;margin-top:14px}
