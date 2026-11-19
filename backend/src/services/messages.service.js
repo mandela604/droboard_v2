@@ -44,7 +44,7 @@ function peerShape(u) {
   return {
     id: String(u.id || u._id || ''), handle: u.username || '',
     name: u.fullName || u.username || 'User', avatar: u.avatar || '',
-    verified: !!u.emailVerified,
+    verified: false,
     role: roleLabelFor(u),
     online: isOnline(String(u.id || u._id || '')),
   };

@@ -273,7 +273,7 @@ async function writerCard(author, viewer) {
     id: author.id, username: author.username, name: author.fullName, avatar: author.avatar || '',
     handle: author.username ? '@' + author.username : '@unknown',
     bio: author.bio || '', followers: author.followerCount || 0,
-    verified: !!author.emailVerified, following: !!following,
+    verified: false, following: !!following,
     stories: a.stories, reads: a.reads,
     rating: a.ratedBy ? Math.round((a.score / a.ratedBy) * 10) / 10 : 0,
   };

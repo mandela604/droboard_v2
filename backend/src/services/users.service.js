@@ -60,7 +60,7 @@ function publicShape(u) {
     country: u.country || '',
     roles: u.roles, primaryRole: u.primaryRole,
     isWriter: (u.roles || []).some(r => WRITER_ROLES.includes(r)),
-    verified: !!u.emailVerified,
+    verified: false,
     status: u.status, createdAt: u.createdAt, joinedLabel: joinedLabel(u.createdAt),
   };
 }
@@ -72,7 +72,7 @@ function toFollowRow(u, following) {
   return {
     name: u.username, handle: u.username, av: u.avatar || '', avatar: u.avatar || '',
     fullName: u.fullName, meta, following: !!following,
-    verified: !!u.emailVerified, isWriter: (u.roles || []).some(r => WRITER_ROLES.includes(r)),
+    verified: false, isWriter: (u.roles || []).some(r => WRITER_ROLES.includes(r)),
   };
 }
 
@@ -240,7 +240,7 @@ async function profile(handle, viewerId) {
       fullName: u.fullName, name: u.fullName,
       avatar: u.avatar || '', cover: '', bio: '', location: '', about: null, genres: [],
       country: '', roles: u.roles, primaryRole: u.primaryRole,
-      isWriter, verified: !!u.emailVerified,
+      isWriter, verified: false,
       status: u.status, createdAt: u.createdAt, joinedLabel: joinedLabel(u.createdAt),
       following, followers, books: 0, isPrivate: true, isOwner: false,
       collections: [], library: [], posts: [], statuses: [], underReviewBooks: [],

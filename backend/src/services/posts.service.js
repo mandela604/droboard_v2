@@ -187,7 +187,7 @@ async function authorCards(ids) {
   rows.forEach(u => {
     m[String(u.id)] = {
       name: u.username || '', handle: '@' + (u.username || ''), fullName: u.fullName || '',
-      avatar: u.avatar || '', verified: !!u.emailVerified,
+      avatar: u.avatar || '', verified: false,
     };
   });
   return m;

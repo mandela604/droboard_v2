@@ -30,7 +30,7 @@ async function withAuthors(rows) {
   const byId = {};
   (users || []).forEach(u => {
     const key = String(u.id || u._id || '');
-    if (key) byId[key] = { name: u.username || 'User', handle: u.username || '', avatar: u.avatar || '', verified: !!u.emailVerified };
+    if (key) byId[key] = { name: u.username || 'User', handle: u.username || '', avatar: u.avatar || '', verified: false };
   });
   list.forEach(c => { c.author = byId[String(c.authorId || '')] || { name: 'User', avatar: '' }; });
   return list;

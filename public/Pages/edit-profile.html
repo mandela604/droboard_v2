@@ -210,6 +210,7 @@ button,input,textarea,select{font-family:inherit}
           <label>Email</label>
           <input id="fEmail" type="email" placeholder="you@email.com"/>
           <div class="hint">Used for login and notifications. Changing it sends a confirmation email first.</div>
+          <div class="hint" id="emailVerifiedHint" style="display:none;color:#16a34a;font-weight:700"><i class="fas fa-circle-check"></i> Email verified</div>
         </div>
         <div class="field">
           <label>Bio</label>
@@ -244,7 +245,7 @@ button,input,textarea,select{font-family:inherit}
 </div>
 
 <script src="../services/auth-session.js?v=4"></script>
-<script src="../services/edit-profile-service.js?v=9"></script>
+<script src="../services/edit-profile-service.js?v=10"></script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
 </html>

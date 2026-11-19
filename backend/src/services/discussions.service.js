@@ -62,7 +62,7 @@ async function withAuthors(rows) {
     const key = String(u.id || u._id || '');
     if (key) byId[key] = {
       id: key, handle: u.username || '', name: u.fullName || u.username || 'User',
-      avatar: u.avatar || '', verified: !!u.emailVerified,
+      avatar: u.avatar || '', verified: false,
     };
   });
   list.forEach(r => { r.author = byId[String(r.authorId || '')] || { id: String(r.authorId || ''), handle: '', name: 'User', avatar: '', verified: false }; });
@@ -108,7 +108,7 @@ function toFlatCard(d, viewerId, opts) {
     pinned: c.pinned,
     likes: c.likes, liked: c.liked, comments: c.commentsCount,
     name: a.name || '', avatar: a.avatar || '', handle: a.handle || '',
-    verified: !!a.verified,
+    verified: false,
     time: relTime(c.createdAt),
     createdAt: c.createdAt,
     _genreId: String(c.genreId || ''),

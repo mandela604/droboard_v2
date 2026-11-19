@@ -29,7 +29,7 @@ async function authorsByIds(ids) {
   rows.forEach(u => {
     map[String(u.id || u._id)] = {
       name: u.username || 'User', handle: u.username || '', avatar: u.avatar || '',
-      verified: !!u.emailVerified,
+      verified: false,
     };
   });
   return map;

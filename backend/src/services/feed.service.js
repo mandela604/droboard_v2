@@ -104,7 +104,7 @@ async function topWriters(limit) {
     handle: String(r.handle || ''),
     name: r.name || r.handle || '',
     avatar: r.avatar || '',
-    verified: !!r.verified,
+    verified: false,
     followers: r.followers || 0,
     books: r.books || 0,
     reads: r.reads || 0,

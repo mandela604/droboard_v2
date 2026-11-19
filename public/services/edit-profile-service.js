@@ -155,6 +155,10 @@ function fillForm(p){
   setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle keeps working as a link.', true);
   document.getElementById('fName').value = p.name || '';
   document.getElementById('fEmail').value = p.email || p.userEmail || '';
+  // Email verification is an account setting, never a public badge. Only the
+  // owner sees this, right beside the field they would change.
+  const emailVerifiedHint = document.getElementById('emailVerifiedHint');
+  if (emailVerifiedHint) emailVerifiedHint.style.display = p.emailVerified ? 'block' : 'none';
   document.getElementById('fBio').value = p.bio || '';
   document.getElementById('fLocation').value = p.location || '';
   document.getElementById('fAvatar').value = p.avatar || '';
