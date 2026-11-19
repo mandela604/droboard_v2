@@ -8,9 +8,11 @@
    already-normalized card object. One card, one look, on every page.
 
    Rules:
-   - Never read a book  -> Chapter 1, progress 0, "Not started yet".
+   - Never read a book  -> Chapter 1, "Not started · Ch 1 of Y".
    - Read + stopped at Ch5 -> Ch5, onOpen(resume) lands on Ch5 (no auto-advance).
-   - Label: "P% complete · Ch X of Y" (or "Not started yet · Ch X of Y").
+   - Label: "Ch X of Y" (or "Not started · Ch X of Y"). No percentage: the
+     book number moves only when a new chapter is opened, so it reads as
+     "stuck" and caused more confusion than it was worth.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -65,12 +67,14 @@
   }
 
   function labels(d) {
-    const of = d.totalChapters ? ' · Ch ' + d.chapterN + ' of ' + d.totalChapters : '';
+    const of = d.totalChapters ? 'Ch ' + d.chapterN + ' of ' + d.totalChapters : '';
     // Derive from the raw numbers, never trust a possibly-stale `started` flag.
     const started = !!(d.started || (Number(d.chaptersRead) || 0) > 0 || (Number(d.progress) || 0) > 0);
     return {
       title: 'Ch' + d.chapterN + ' — ' + d.chapterTitle,
-      meta: (started ? d.progress + '% complete' : 'Not started yet') + of,
+      // No percentage on purpose. It was "chapters opened / total", so it sat
+      // still while reading inside an already-opened chapter and looked stuck.
+      meta: started ? of : ('Not started' + (of ? ' · ' + of : '')),
       sub: started ? 'Keep reading' : 'Start reading',
       width: (d.progress || 0) + '%',
     };
