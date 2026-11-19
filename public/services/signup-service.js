@@ -79,7 +79,13 @@ function prefillFromUrl(){
   applyReferralBanner(code);
 }
 prefillFromUrl();
-el('refInput').addEventListener('input', function(){ applyReferralBanner(this.value.trim().toUpperCase()); });
+el('refInput').addEventListener('input', function(){
+  const code = this.value.trim().toUpperCase();
+  // Persist typed codes too: the Google button only reads pendingRef(), so a
+  // manually typed code used to be lost on the OAuth round-trip.
+  setPendingRef(code);
+  applyReferralBanner(code);
+});
 
 /* ── Username availability (real check) ──────────────────────────── */
 (function(){

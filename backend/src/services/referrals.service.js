@@ -14,8 +14,8 @@
 const crypto = require('crypto');
 const env = require('../config/env');
 const { User } = require('../models/user.model');
-const { Referral, ReadingProgress } = require('../models/social.model');
-const { Wallet } = require('../models/money.model');
+const { Referral, ReadingProgress, Notification } = require('../models/social.model');
+const { Wallet, LedgerEntry } = require('../models/money.model');
 const { EditorAssignment } = require('../models/chief.model');
 const { userRefFilter } = require('./user-ref');
 const ledger = require('./ledger.service');
@@ -174,32 +174,39 @@ async function applyEditorInvite(newUser, rawCode) {
 // Credit inviter wallet. Idempotent via ledger duplicate detection.
 async function creditInviter({ inviterId, inviteeId, stage, coins }) {
   if (!coins || coins <= 0) return { credited: false };
+  // Always resolve to the PUBLIC id before touching money. Wallet rows written
+  // under a legacy _id are invisible to every read path (wallet.service reads
+  // User.id), so coins credited there can never be spent.
+  const ownerPublicId = (await publicUserId(inviterId)) || String(inviterId);
   const key = 'referral:' + stage + ':' + String(inviteeId);
+  // One credit per invitee per stage, regardless of which account it targets.
+  // The ledger key below always carries the wallet suffix, so two different
+  // inviters could otherwise both be paid for the same friend.
+  const already = await LedgerEntry.exists({ saleId: key });
+  if (already) return { credited: false, duplicate: true };
   const post = await ledger.post({
-    legs: [{ debit: 'pool:referral', credit: 'wallet:' + String(inviterId), amount: 0, coins }],
+    legs: [{ debit: 'pool:referral', credit: 'wallet:' + ownerPublicId, amount: 0, coins }],
     saleId: key, kind: 'referral', memo: stage + ' reward for ' + String(inviteeId),
     idempotencyKey: key,
   });
   if (post.duplicate) return { credited: false, duplicate: true };
   await Wallet.updateOne(
-    { userId: String(inviterId), kind: 'reader' },
+    { userId: ownerPublicId, kind: 'reader' },
     // Tagged as bonus: the ledger row above books amount 0, so these coins
     // spend for the reader but pay no author share (wallet.unlockChapter).
     { $inc: { coinBalance: coins, bonusBalance: coins } },
     { upsert: true }
   );
   try {
-    const recipientId = await publicUserId(inviterId);
-    const { Notification } = require('../models/social.model');
     await Notification.create({
-      recipientId, actorId: String(inviteeId),
+      recipientId: ownerPublicId, actorId: String(inviteeId),
       type: 'coins', title: '+' + coins + ' referral coins',
       desc: stage === 'stage1' ? 'A friend joined with your link (+3 now, +2 when they read 30 min).' : 'Your referral hit 30 min of reading — bonus unlocked.',
       link: '/Pages/refer.html',
       key: 'referral-coins:' + stage + ':' + String(inviteeId),
     });
   } catch (e) { /* notifications never block rewards */ }
-  return { credited: true, coins };
+  return { credited: true, coins, inviterId: ownerPublicId };
 }
 
 // Called from register()/google signup AFTER the new user is created.
@@ -215,9 +222,45 @@ async function applyReferral(newUser, rawCode) {
   // invisible on the refer page even though signup credited the coins.
   const ownerPublicId = await publicUserId(inviter._id);
   const inviteePublicId = await publicUserId(newUser._id);
-  // Link invitee -> inviter (best-effort; never fails signup)
+
+  // One invitee, one inviter — forever. A second signup (Google after email,
+  // a retry, a repair run) must never re-home an existing referral or pay a
+  // second account for the same friend. This is exactly how one invitee ended
+  // up credited to two accounts and one referrer lost their row.
+  const existing = await Referral.findOne({ referredUserId: inviteePublicId })
+    .select('ownerId signupRewarded').lean();
+  if (existing) {
+    // Self-heal a crash between row creation and the credit, but only ever pay
+    // the owner already recorded on the row.
+    if (!existing.signupRewarded) {
+      const r = await creditInviter({
+        inviterId: existing.ownerId, inviteeId: inviteePublicId,
+        stage: 'stage1', coins: env.referralStage1Coins,
+      });
+      if (r.credited || r.duplicate) {
+        await Referral.updateOne(
+          { _id: existing._id, signupRewarded: false },
+          { $set: { signupRewarded: true }, $inc: { earnedCoins: r.credited ? env.referralStage1Coins : 0 } }
+        );
+      }
+    }
+    return { inviterId: String(existing.ownerId), alreadyAttributed: true, stage1: { credited: false, duplicate: true } };
+  }
+  // referredByUserId written by an earlier attempt is authoritative even when
+  // its Referral row is missing (crash between the two writes).
+  if (newUser.referredByUserId) {
+    const previousOwner = await publicUserId(newUser.referredByUserId);
+    if (previousOwner && previousOwner !== ownerPublicId) {
+      return { inviterId: previousOwner, alreadyAttributed: true };
+    }
+  }
+
+  // Link invitee -> inviter once; never overwrite an existing attribution.
   try {
-    await User.updateOne({ _id: newUser._id }, { $set: { referredByUserId: String(inviter._id) } });
+    await User.updateOne(
+      { _id: newUser._id, $or: [{ referredByUserId: null }, { referredByUserId: '' }] },
+      { $set: { referredByUserId: String(inviter._id) } }
+    );
   } catch (e) { /* non-fatal */ }
   let doc = null;
   try {
@@ -228,8 +271,11 @@ async function applyReferral(newUser, rawCode) {
     });
   } catch (e) {
     if (e.code !== 11000) return { inviterId: ownerPublicId };
-    doc = await Referral.findOne({ ownerId: ownerPublicId, referredUserId: inviteePublicId });
+    doc = await Referral.findOne({ referredUserId: inviteePublicId });
     if (!doc) return { inviterId: ownerPublicId };
+    if (String(doc.ownerId) !== String(ownerPublicId)) {
+      return { inviterId: String(doc.ownerId), alreadyAttributed: true };
+    }
   }
   if (doc && doc.signupRewarded) return { inviterId: ownerPublicId, stage1: { credited: false, duplicate: true } };
   const r = await creditInviter({
@@ -243,7 +289,7 @@ async function applyReferral(newUser, rawCode) {
     );
   }
   await notifyInviteJoined(inviter._id, newUser, false);
-  return { inviterId: String(inviter._id), stage1: r };
+  return { inviterId: ownerPublicId, stage1: r };
 }
 
 // Called whenever reading progress is recorded. Credits stage-2 (+2) once the
@@ -257,8 +303,11 @@ async function checkReadReward(inviteeId) {
   // by public ids. Resolve both sides before querying or stage-2 never fires.
   const ownerPublicId = await publicUserId(invitee.referredByUserId);
   const inviteePublicId = String(invitee.id || invitee._id);
-  const ref = await Referral.findOne({ ownerId: ownerPublicId, referredUserId: inviteePublicId });
+  // One row per invitee. If the row belongs to someone else, this attribution
+  // is inconsistent — never pay stage-2 from the wrong account.
+  const ref = await Referral.findOne({ referredUserId: inviteePublicId });
   if (!ref || ref.readRewarded) return { qualified: false };
+  if (String(ref.ownerId) !== String(ownerPublicId)) return { qualified: false, mismatch: true };
   const agg = await ReadingProgress.aggregate([
     { $match: { userId: String(inviteeId) } },
     { $group: { _id: null, secs: { $sum: '$secondsSpent' } } },
@@ -278,16 +327,25 @@ async function checkReadReward(inviteeId) {
   return { qualified: true, totalSecs: total, stage2: r };
 }
 
+// A Referral row may still carry the inviter's legacy _id (older signups).
+// Query both forms so those invites do not vanish from stats/list.
+async function ownerRefs(ownerId) {
+  const key = String(ownerId || '');
+  if (!key) return [];
+  const u = await User.findOne(userRefFilter([key])).select('id _id').lean();
+  return Array.from(new Set([key, u && String(u.id), u && String(u._id)].filter(Boolean)));
+}
+
 // Frontend refer.html contracts (also used by super-admin stats elsewhere).
 async function getStats(ownerId) {
-  const rows = await Referral.find({ ownerId: String(ownerId) }).select('status signupRewarded readRewarded earnedCoins referredUserId createdAt').lean();
+  const rows = await Referral.find({ ownerId: { $in: await ownerRefs(ownerId) } }).select('status signupRewarded readRewarded earnedCoins referredUserId createdAt').lean();
   const joined = rows.filter(r => r.status === 'joined').length;
   const earned = rows.reduce((s, r) => s + (r.earnedCoins || 0), 0);
   return { invited: rows.length, joined, earned };
 }
 
 async function listReferred(ownerId, { limit } = {}) {
-  const rows = await Referral.find({ ownerId: String(ownerId) }).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, limit || 50))).lean();
+  const rows = await Referral.find({ ownerId: { $in: await ownerRefs(ownerId) } }).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, limit || 50))).lean();
   const ids = rows.map(r => r.referredUserId).filter(Boolean);
   // ids are now public uuids (legacy rows may hold an old _id) — resolve both.
   const users = ids.length ? await User.find(userRefFilter(ids)).select('id _id username fullName avatar createdAt').lean() : [];

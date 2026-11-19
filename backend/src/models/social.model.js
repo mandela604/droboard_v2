@@ -277,7 +277,7 @@ messageSchema.index({ conversationId: 1, createdAt: 1 });
 const referralSchema = new mongoose.Schema({
   code: { type: String, required: true, index: true },
   ownerId: { type: String, ref: 'User', required: true, index: true }, // referrer
-  referredUserId: { type: String, ref: 'User', default: null, index: true },
+  referredUserId: { type: String, ref: 'User', default: null },
   referredHandle: { type: String, default: '' },
   status: { type: String, enum: ['invited', 'joined'], default: 'invited', index: true },
   signupRewarded: { type: Boolean, default: false }, // +3 done
@@ -285,6 +285,10 @@ const referralSchema = new mongoose.Schema({
   earnedCoins: { type: Number, default: 0 },
 }, { timestamps: true });
 referralSchema.index({ ownerId: 1, referredUserId: 1 }, { unique: true, sparse: true });
+// One friend can only ever belong to one inviter. The app-level guard in
+// referrals.service is the primary check; this index makes it impossible to
+// double-credit the same invitee to two accounts.
+referralSchema.index({ referredUserId: 1 }, { unique: true, partialFilterExpression: { referredUserId: { $type: 'string' } } });
 
 // Per-chapter reading progress + sessions (powers subscriptions + streaks).
 // secondsSpent backs the subscription rule: a chapter counts as "read" for
