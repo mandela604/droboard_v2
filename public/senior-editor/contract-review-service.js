@@ -75,6 +75,11 @@
   }
 
   function statusOf(a) { return a.status || 'pending'; }
+  // An application with a contract attached has already been decided — an
+  // offer went out. The backend's derived status still says "pending", so use
+  // the explicit sent/contractId flags to show the real state.
+  function hasOffer(a) { return !!(a && (a.sent || a.contractId)); }
+  function displayStatus(a) { return hasOffer(a) ? 'awaiting-signature' : statusOf(a); }
 
   function renderKpis() {
     const counts = { pending: 0, approved: 0, signed: 0, rejected: 0 };
@@ -128,7 +133,7 @@
           + '<div class="author-info"><span class="author-name">' + esc(a.author || 'Unknown') + '</span><span class="author-id">' + esc(a.email || '') + '</span></div></div>'
         + '<div><div class="book-title">' + esc(a.bookTitle || '') + '</div><div class="book-genre">' + esc(a.bookGenre || '') + '</div></div>'
         + '<div class="contract-type">' + esc(a.ct || a.type || '—') + '</div>'
-        + '<span class="status-pill ' + esc(s) + '">' + esc(s) + '</span>'
+        + '<span class="status-pill ' + esc(hasOffer(a) ? 'approved' : s) + '">' + esc(displayStatus(a)) + '</span>'
         + '<span class="submitted">' + esc(a.submitted || '') + '</span>'
         + '</div>'
         + '<div class="item-detail' + (open ? ' show' : '') + '" id="detail-' + esc(a.id) + '">' + detailHtml(a) + '</div>';
@@ -160,17 +165,25 @@
       + '<div class="detail-card"><label>Submitted</label><b>' + esc(a.submitted || '') + '</b></div>'
       + '<div class="detail-card"><label>Identity</label><b>' + esc(a.verificationStatus || 'none') + '</b></div>'
       + '</div>';
-    if (a.verificationStatus !== 'approved') {
+    const offered = hasOffer(a);
+    if (offered) {
+      // Decision already made — offer is out. Never offer a second Send button.
+      body += '<div class="detail-notes-box" style="border-color:rgba(22,163,74,.3);background:var(--green-bg)"><div class="lbl" style="color:#1c9d5b"><i class="fas fa-paper-plane"></i> Offer sent — waiting for the author to sign</div>'
+        + '<p>The contract has been sent to the author. Once they sign, it returns here for your final approval. No further action is needed from you right now.</p></div>';
+    }
+    if (a.verificationStatus !== 'approved' && !offered) {
       body += '<div class="detail-notes-box"><div class="lbl"><i class="fas fa-triangle-exclamation"></i> Identity not verified</div><p>This writer must be approved in Author Verification before an offer can be sent.</p></div>';
     }
-    if (pending && a.verificationStatus === 'approved') {
+    if (pending && a.verificationStatus === 'approved' && !offered) {
       body += '<div class="detail-contract-select"><div class="lbl"><i class="fas fa-file-signature"></i> Contract template</div>'
         + '<select id="tpl-' + esc(a.id) + '">' + tplOpts + '</select></div>';
     }
     body += '<div class="detail-actions">';
-    if (pending && a.verificationStatus === 'approved') {
+    if (pending && a.verificationStatus === 'approved' && !offered) {
       body += '<button class="btn btn-green" data-send="' + esc(a.id) + '"><i class="fas fa-paper-plane"></i> Send offer</button>'
         + '<button class="btn btn-danger" data-reject="' + esc(a.id) + '"><i class="fas fa-xmark"></i> Reject</button>';
+    } else if (offered) {
+      body += '<span class="status-pill approved"><i class="fas fa-paper-plane"></i> Awaiting author signature</span>';
     } else if (!pending) {
       body += '<span class="status-pill ' + esc(s) + '">' + esc(s) + '</span>';
     }
