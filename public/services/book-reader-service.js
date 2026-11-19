@@ -470,7 +470,16 @@ async function refreshStats() {
 
 function paintContinueBanner() {
   if (!window.ContinueReadingCard || !STORY.currentProgress) return;
-  ContinueReadingCard.render(document.getElementById('continueReadingMount'), STORY.currentProgress, {
+  const cp = STORY.currentProgress;
+  ContinueReadingCard.render(document.getElementById('continueReadingMount'), {
+    chapterN: cp.chapter,
+    chapterId: cp.cid,
+    chapterTitle: cp.chapterTitle,
+    progress: cp.percent,
+    started: cp.started,
+    chaptersRead: cp.chaptersRead,
+    totalChapters: cp.totalChapters,
+  }, {
     onOpen: function () { continueReading(); },
   });
 }
