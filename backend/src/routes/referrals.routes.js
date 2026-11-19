@@ -19,11 +19,15 @@ function inviteLink(code, req) {
   // A relative link is useless once it is copied into WhatsApp/DMs — the
   // recipient's browser resolves it against whatever page they are on, so the
   // ?ref code is silently lost at signup. Always return an absolute URL.
-  const fromEnv = (env.appUrl || '').replace(/\/$/, '');
-  const fromReq = req ? String(req.protocol || 'https') + '://' + String(req.get ? req.get('host') : '') : '';
-  const baseUrl = fromEnv || (fromReq.indexOf('://') > -1 && fromReq.indexOf('undefined') === -1 ? fromReq : '');
-  if (baseUrl) return baseUrl + '/Pages/signup.html?ref=' + encodeURIComponent(code);
-  return 'signup.html?ref=' + encodeURIComponent(code);
+  const fromEnv = (env.appUrl || env.backendUrl || '').replace(/\/$/, '');
+  const host = req && req.get ? String(req.get('x-forwarded-host') || req.get('host') || '') : '';
+  const proto = req && req.get ? String(req.get('x-forwarded-proto') || '') : '';
+  const localHost = /^(127\.|localhost|0\.0\.0\.0)/i.test(host);
+  const fromReq = (!localHost && host) ? (proto || (req && req.protocol) || 'https') + '://' + host : '';
+  // Last resort: the production host. A relative link here would silently
+  // drop ?ref when pasted into WhatsApp/DMs — that is how invites got lost.
+  const baseUrl = fromEnv || fromReq || 'https://droboard-v2.onrender.com';
+  return baseUrl + '/Pages/signup.html?ref=' + encodeURIComponent(code);
 }
 
 router.get('/code', requireAuth, generalLimiter, async (req, res) => {
