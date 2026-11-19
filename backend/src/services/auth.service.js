@@ -78,7 +78,11 @@ function adminNeedsMfaSetup(user) {
 async function register({ fullName, name, username, email, password, referralCode, country }) {
   const displayName = fullName || name;
   if (!displayName) { const e = new Error('invalid_input'); e.status = 400; throw e; }
-  const exists = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] }).lean();
+  const exists = await User.findOne({ $or: [
+    { email: email.toLowerCase() },
+    { username: username.toLowerCase() },
+    { previousUsernames: username.toLowerCase() },
+  ] }).lean();
   if (exists) { const e = new Error('taken'); e.status = 409; throw e; }
   const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
   // first account on the system automatically becomes the first admin
@@ -466,7 +470,7 @@ async function findOrCreateGoogleUser(googleInfo, { referralCode } = {}) {
     const { base } = uniqueUsernameFromEmail(email, googleInfo.name);
     let username = base;
     for (let i = 0; i < 5; i++) {
-      const clash = await User.exists({ $or: [{ username }, { email }] });
+      const clash = await User.exists({ $or: [{ username }, { previousUsernames: username }, { email }] });
       if (!clash) break;
       username = (base + '_' + randomSuffix(4)).toLowerCase();
     }

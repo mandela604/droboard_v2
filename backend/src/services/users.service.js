@@ -346,7 +346,7 @@ async function updateMe(userId, patch) {
     const v = String(patch.username).toLowerCase().trim();
     if (!/^[a-z][a-z0-9_]{2,19}$/.test(v)) { const e = new Error('bad_username'); e.status = 400; throw e; }
     if (v !== u.username) {
-      const taken = await User.exists({ username: v });
+      const taken = await User.exists({ $or: [{ username: v }, { previousUsernames: v }] });
       if (taken) { const e = new Error('username_taken'); e.status = 409; throw e; }
       // Keep the old handle as an alias: links and @mentions shared before the
       // change must still reach this account, like Instagram's username change.
@@ -771,8 +771,11 @@ async function becomeWriter(userId, { firstBookTitle, genre } = {}) {
 }
 
 async function checkUsername(username) {
-  const exists = await User.exists({ username: String(username || '').toLowerCase() });
-  return { available: !exists };
+  // A handle once used stays reserved: it is a permanent alias to its owner,
+  // so old links and @mentions can never start pointing at someone else.
+  const v = String(username || '').toLowerCase();
+  const taken = await User.exists({ $or: [{ username: v }, { previousUsernames: v }] });
+  return { available: !taken };
 }
 
 async function exportData(userId) {

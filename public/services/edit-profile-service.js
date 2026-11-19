@@ -123,7 +123,7 @@ function checkUsernameAvailability(){
   const v = input.value.trim().toLowerCase();
   clearTimeout(usernameTimer);
   if (!v || v === ownUsername) {
-    setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle keeps working as a link.', true);
+    setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle stays reserved for you, so existing links keep working.', true);
     usernameChecked = v;
     return;
   }
@@ -152,7 +152,7 @@ function fillForm(p){
   document.getElementById('fUsername').value = ownUsername;
   usernameChecked = ownUsername;
   usernameOk = true;
-  setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle keeps working as a link.', true);
+  setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle stays reserved for you, so existing links keep working.', true);
   document.getElementById('fName').value = p.name || '';
   document.getElementById('fEmail').value = p.email || p.userEmail || '';
   // Email verification is an account setting, never a public badge. Only the
