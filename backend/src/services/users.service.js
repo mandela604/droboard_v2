@@ -406,9 +406,16 @@ async function updateMe(userId, patch) {
     if (want.length) {
       // Vocabulary is the Chief's live catalogue — a retired or invented slug
       // would render as a blank pill, so it is refused instead of stored.
-      const live = await Genre.find({ status: 'active' }).select('name slug').lean();
+      const live = await Genre.find({ status: 'active' }).select('id name slug').lean();
       const known = new Set();
-      live.forEach(g => { known.add(String(g.name).toLowerCase()); known.add(String(g.slug).toLowerCase()); });
+      live.forEach(g => {
+        // The UI genre pickers send g.id (that is what the profile pills look
+        // up by), so ids must be valid alongside name/slug or every save fails
+        // with unknown_genre.<id>.
+        if (g.id) known.add(String(g.id).toLowerCase());
+        known.add(String(g.name).toLowerCase());
+        if (g.slug) known.add(String(g.slug).toLowerCase());
+      });
       const bad = want.filter(g => !known.has(g));
       if (bad.length) { const e = new Error('unknown_genre:' + bad.join(',')); e.status = 400; throw e; }
     }
