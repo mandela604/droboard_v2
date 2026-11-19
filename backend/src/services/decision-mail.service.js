@@ -56,9 +56,10 @@ async function sendDecisionEmail(opts) {
     + (message ? '<p style="font-size:14px;line-height:1.7;color:#3a3a3f">' + message + '</p>' : '')
     + reason + cta
     + '<p style="font-size:12px;color:#8e8e93;line-height:1.6;margin-top:26px">'
-    + 'You can reply to this email — it goes to the Droboard editorial team, '
-    + 'or message us inside the app. Nothing here requires you to share '
-    + 'personal details by email.</p>'
+    + 'You can reply to this email — it goes to the Droboard editorial team. '
+    + 'You can also <a href="' + esc(base + '/Pages/chat.html')
+    + '" style="color:#ff2d55">message us inside the app</a>. '
+    + 'Never share passwords or personal documents by email.</p>'
     + '</div>';
 
   // Default Reply-To (the shared editorial inbox) is applied by mail.service.
