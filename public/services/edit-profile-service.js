@@ -123,7 +123,7 @@ function checkUsernameAvailability(){
   const v = input.value.trim().toLowerCase();
   clearTimeout(usernameTimer);
   if (!v || v === ownUsername) {
-    setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle stays reserved for you, so existing links keep working.', true);
+    setUsernameHint('3–20 characters: letters, numbers and underscores. You can change it once every 14 days; your old handle stays reserved for you.', true);
     usernameChecked = v;
     return;
   }
@@ -152,7 +152,7 @@ function fillForm(p){
   document.getElementById('fUsername').value = ownUsername;
   usernameChecked = ownUsername;
   usernameOk = true;
-  setUsernameHint('3–20 characters: letters, numbers and underscores. Your old handle stays reserved for you, so existing links keep working.', true);
+  setUsernameHint('3–20 characters: letters, numbers and underscores. You can change it once every 14 days; your old handle stays reserved for you.', true);
   document.getElementById('fName').value = p.name || '';
   document.getElementById('fEmail').value = p.email || p.userEmail || '';
   // Email verification is an account setting, never a public badge. Only the
@@ -268,7 +268,9 @@ async function saveAll(){
     toast(newEmail ? 'Profile saved — check your new inbox to confirm the email change' : 'Profile saved');
     setTimeout(() => { location.href = 'profile.html'; }, newEmail ? 1200 : 500);
   } catch (err) {
-    toast(err.message || 'Save failed');
+    toast(err.message === 'username_change_too_soon'
+      ? 'You can change your username once every 14 days. Try again later.'
+      : (err.message || 'Save failed'));
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-check"></i> Save changes';
   }

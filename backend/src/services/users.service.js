@@ -346,6 +346,12 @@ async function updateMe(userId, patch) {
     const v = String(patch.username).toLowerCase().trim();
     if (!/^[a-z][a-z0-9_]{2,19}$/.test(v)) { const e = new Error('bad_username'); e.status = 400; throw e; }
     if (v !== u.username) {
+      // Instagram-style cooldown: one username change per 14 days. Old handles
+      // stay reserved, so this also caps how many handles one account can lock.
+      const last = u.usernameChangedAt ? new Date(u.usernameChangedAt).getTime() : 0;
+      if (last && Date.now() - last < 14 * 86400000) {
+        const e = new Error('username_change_too_soon'); e.status = 429; throw e;
+      }
       const taken = await User.exists({ $or: [{ username: v }, { previousUsernames: v }] });
       if (taken) { const e = new Error('username_taken'); e.status = 409; throw e; }
       // Keep the old handle as an alias: links and @mentions shared before the
@@ -354,6 +360,7 @@ async function updateMe(userId, patch) {
         u.previousUsernames = [...(u.previousUsernames || []), u.username];
       }
       u.username = v;
+      u.usernameChangedAt = new Date();
     }
   }
   if (patch.bio !== undefined) {

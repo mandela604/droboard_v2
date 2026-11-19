@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   // Old handles stay resolvable after a username change so shared profile
   // links (?u=oldhandle) keep working. A new account may still claim one.
   previousUsernames: { type: [String], default: [], index: true },
+  usernameChangedAt: { type: Date, default: null },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
   emailVerified: { type: Boolean, default: false },
   emailVerifiedAt: { type: Date, default: null },
