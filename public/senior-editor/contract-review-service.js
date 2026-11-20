@@ -227,8 +227,6 @@
         + '<div class="mz-head"><div class="lbl"><i class="fas fa-coins"></i> Chapter Pricing &amp; Ads ' + stateChip + '</div>'
         + '<div class="mz-head-right"><span class="mz-updated" id="mzUpdated"><i class="fas fa-clock-rotate-left"></i> ' + updatedTxt + '</span>'
         + '<button class="btn btn-primary" id="mzSaveBtn"><i class="fas fa-floppy-disk"></i> Save pricing</button></div></div>'
-        + '<div class="mz-master" id="mzMaster"><div class="t"><b>Make all chapters free</b><span>Every chapter unlocks without coins or ads</span></div>'
-        + '<label class="mz-switch"><input type="checkbox" id="mzFreeAll"><span class="sl"></span></label></div>'
         + '<div id="mzMount"></div>'
         + '<div class="mz-help"><i class="fas fa-circle-info"></i><span>' + (live ? 'Changes go live as soon as you save — adjust anytime.' : 'Pricing is applied when the contract is finalised.') + '</span>'
         + '<span class="mz-dirty" id="mzDirty">Unsaved changes</span></div></div>';
@@ -270,7 +268,7 @@
       });
     });
 
-    // ── Chapter pricing & ads editor (port of the original console flow) ──
+    // ── Chapter pricing & ads — same component as the Review Queue wizard ──
     if (!a || !window.ContractMonetization || !el('mzMount')) return;
     var totalCh = a.chapters || 12;
     var init = { freeChapters: 3, adsPerChapter: 2, allowAdUnlock: true };
@@ -278,42 +276,15 @@
       freeChapters: a.pricing.freeChapters, adsPerChapter: a.pricing.adsPerChapter,
       allowAdUnlock: a.pricing.allowAdUnlock, prices: a.pricing.prices, ads: a.pricing.ads,
     });
-    var mz = null;
-    var syncMaster = function () {};   // hoist a safe no-op before mount()
-    if (a.pricing) init = Object.assign({}, init, {
-      freeChapters: a.pricing.freeChapters, adsPerChapter: a.pricing.adsPerChapter,
-      allowAdUnlock: a.pricing.allowAdUnlock, prices: a.pricing.prices, ads: a.pricing.ads,
-    });
-    mz = ContractMonetization.mount('#mzMount', {
-      totalChapters: totalCh, initial: init, readOnly: false, hideSummary: true,
+    var mz = ContractMonetization.mount('#mzMount', {
+      totalChapters: totalCh, initial: init, readOnly: false,
+      // Show the component's own summary — it's the same rich editor the
+      // Review Queue uses: free input, ads, search, bulk-apply, per-chapter
+      // coins/ads grid, and a live summary of every paid chapter.
       onChange: function () {
         var d = el('mzDirty'); if (d) { d.className = 'mz-dirty show'; d.textContent = 'Unsaved changes'; }
-        syncMaster();
       },
     });
-    syncMaster = function () {
-      var freeAll = el('mzFreeAll'), master = el('mzMaster');
-      if (!freeAll || !master) return;
-      var terms = mz.getTerms();
-      var on = terms.freeChapters >= terms.rows.length;
-      freeAll.checked = on; master.classList.toggle('on', on);
-    };
-    syncMaster();
-    var freeAllEl = el('mzFreeAll'), prevTerms = null;
-    if (freeAllEl) freeAllEl.onchange = function () {
-      var terms = mz.getTerms(), arr = [];
-      for (var ci = 1; ci <= totalCh; ci++) arr.push(ci);
-      if (freeAllEl.checked) {
-        prevTerms = termsToPricing(terms);
-        mz.setChapters(arr, { freeChapters: totalCh, adsPerChapter: 0, allowAdUnlock: false });
-        toast('All ' + totalCh + ' chapters set to free — click Save pricing to publish');
-      } else {
-        var p = prevTerms || { freeChapters: Math.min(3, Math.max(0, totalCh - 1)), adsPerChapter: 2, allowAdUnlock: true };
-        mz.setChapters(arr, p);
-        toast('Free-all off — paywall restored after Chapter ' + p.freeChapters);
-      }
-      syncMaster();
-    };
     var saveBtn = el('mzSaveBtn');
     if (saveBtn) saveBtn.onclick = function () {
       var terms = mz.getTerms();
