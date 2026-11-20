@@ -156,6 +156,7 @@ async function init(){
   populateTypeFilter();
   renderStatCards();
   applyFilters();
+  loadStdRules();
 }
 
 function populateTypeSelect(keep){
@@ -208,6 +209,47 @@ function commitTypes(reselect){
 }
 
 document.getElementById('manageTypesBtn2').addEventListener('click', openTypesModal);
+
+/* ── Standard contract rules (the full rule set authors see in the sign modal & PDF) ── */
+let stdRules = [];
+let stdRulesLoaded = false;
+
+async function loadStdRules(){
+  if (stdRulesLoaded) return stdRules;
+  stdRulesLoaded = true;
+  try {
+    const d = await callBackend('/contract-rules');
+    const r = d && Array.isArray(d.rules) ? d.rules : [];
+    if (r.length) stdRules = r;
+  } catch(e){ console.error('loadStdRules error:', e); }
+  return stdRules;
+}
+
+function renderStdRulesModal(){
+  document.getElementById('stdRulesText').value = stdRules.map(r => String(r || '').trim()).filter(Boolean).join('\n');
+  openModal('stdRulesModal');
+}
+
+document.getElementById('rulesBtn').addEventListener('click', () => {
+  loadStdRules().then(renderStdRulesModal);
+});
+
+document.getElementById('stdRulesSave').addEventListener('click', async () => {
+  const lines = document.getElementById('stdRulesText').value
+    .split('\n').map(s => s.trim()).filter(Boolean).slice(0, 60);
+  const btn = document.getElementById('stdRulesSave');
+  const was = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+  try {
+    const d = await callBackend('/contract-rules', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rules: lines })
+    });
+    stdRules = Array.isArray(d && d.rules) ? d.rules : lines;
+    toast('✅ Standard contract rules saved', 'fa-circle-check');
+    closeModal('stdRulesModal');
+  } catch(e){ toast('Save failed — ' + e.message, 'fa-triangle-exclamation'); }
+  finally { btn.disabled = false; btn.innerHTML = was; }
+});
 
 document.getElementById('tmAddBtn').addEventListener('click', () => {
   const input = document.getElementById('tmNewName');

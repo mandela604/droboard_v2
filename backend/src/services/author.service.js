@@ -11,7 +11,7 @@ const {
 } = require('../models/application.model');
 const { User } = require('../models/user.model');
 const { LaunchCampaign } = require('../models/editorial.model');
-const { Contract } = require('../models/contract.model');
+const { Contract, ContractTemplate } = require('../models/contract.model');
 const { Wallet, LedgerEntry } = require('../models/money.model');
 const { Follow } = require('../models/social.model');
 
@@ -304,8 +304,20 @@ async function listContracts({ userId }) {
       .sort({ createdAt: -1 }).select('bookId submittedAt verificationId').lean(),
     AuthorVerification.findOne({ userId: { $in: ids } }).select('status kyc.type').lean(),
     Contract.find(Object.assign({ status: { $in: ['sent', 'approved', 'signed', 'active'] } }, scope))
-      .sort({ createdAt: -1 }).select('id bookId type status sentAt termMonths revenueSplit').lean(),
+      .sort({ createdAt: -1 }).select('id bookId type status sentAt termMonths revenueSplit duration templateId').lean(),
   ]);
+
+  // The offer's rules live on the chief editor's ContractTemplate (the
+  // "Key clauses" field). The author review modal must show them verbatim,
+  // so resolve the templates for the contracts above in one extra query.
+  const templateIds = Array.from(new Set(contracts.map(c => c.templateId).filter(Boolean)));
+  const templates = templateIds.length
+    ? await ContractTemplate.find({ id: { $in: templateIds } })
+      .select('id name desc clauseText body termLength royaltyRate autoRenew signupBonusMin signupBonusMax completionTarget completionWindowMonths profitShareThreshold profitShareBonus')
+      .lean()
+    : [];
+  const templateById = new Map(templates.map(t => [t.id, t]));
+
   const latest = new Map();
   for (const a of apps) if (!latest.has(a.bookId)) latest.set(a.bookId, a);
   const openOffer = new Map();
@@ -313,6 +325,7 @@ async function listContracts({ userId }) {
   return books.map((b) => {
     const a = latest.get(b.id);
     const c = openOffer.get(b.id);
+    const tpl = c && c.templateId ? templateById.get(c.templateId) : null;
     return {
       id: b.id,
       title: b.title,
@@ -328,6 +341,21 @@ async function listContracts({ userId }) {
       revenueSplit: c ? c.revenueSplit : null,
       kycType: verification && verification.kyc ? verification.kyc.type : null,
       verificationStatus: verification ? verification.status : 'none',
+      // Offer rules/terms for the author's review-and-sign modal + PDF.
+      offerTemplate: c ? ((tpl && tpl.name) || c.type || '') : '',
+      offerDescription: c && tpl ? (tpl.desc || '') : '',
+      offerClauses: c && tpl ? (tpl.clauseText || tpl.body || '') : '',
+      offerTermLength: c ? ((tpl && tpl.termLength) || c.duration || '') : '',
+      offerRoyaltyRate: c && tpl && tpl.royaltyRate != null ? tpl.royaltyRate : null,
+      offerAutoRenew: !!(c && tpl && tpl.autoRenew),
+      offerBonuses: c && tpl ? {
+        signupBonusMin: tpl.signupBonusMin || 0,
+        signupBonusMax: tpl.signupBonusMax || 0,
+        completionTarget: tpl.completionTarget || 0,
+        completionWindowMonths: tpl.completionWindowMonths || 0,
+        profitShareThreshold: tpl.profitShareThreshold || 0,
+        profitShareBonus: tpl.profitShareBonus || 0,
+      } : null,
     };
   });
 }

@@ -15,6 +15,19 @@
 
   var books = [];
   var selectedBook = null;
+  // The platform-wide standard contract rules (fetched once from the API;
+  // contract-pdf.js standardRules() stays the fallback when offline).
+  var fetchedStandardRules = null;
+
+  function fetchStandardRules() {
+    if (fetchedStandardRules) return;
+    fetch('/api/author/contract-rules', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && Array.isArray(d.rules) && d.rules.length) fetchedStandardRules = d.rules;
+      })
+      .catch(function () { /* offline: PDF module defaults apply */ });
+  }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -266,20 +279,201 @@
     });
   }
 
+  /* ── Review & sign: custom modal (never the browser confirm) ─────────────
+   * The modal shows every offer term plus the full rule set: the clauses the
+   * chief editor saved on the contract template, followed by the standard
+   * publishing rules. "Sign & Download" calls the API, then writes a PDF that
+   * captures the author's name, the contract and the signature record.
+   */
+  var pendingSign = null;     // { cid, book }
+  var profilePromise = null;  // one /api/users/me read per page load
+
+  function getProfile() {
+    if (!profilePromise) {
+      profilePromise = fetch('/api/users/me', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    }
+    return profilePromise;
+  }
+
+  function profileName(u) {
+    return (u && (u.fullName || u.name || u.username)) || 'Author';
+  }
+
+  function fmtDate(v) {
+    if (!v) return '—';
+    var d = v instanceof Date ? v : new Date(v);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function addMonths(date, months) {
+    var d = new Date(date.getTime());
+    d.setMonth(d.getMonth() + Number(months || 0));
+    return d;
+  }
+
+  function money(v) {
+    var num = Number(v);
+    if (!isFinite(num)) return '—';
+    return '$' + num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+
+  // Everything the modal and the PDF need, taken from the offer + the signed
+  // contract returned by the API (so the PDF is built from the real record).
+  function contractData(book, signed, user) {
+    signed = signed || {};
+    var now = signed.signedAt ? new Date(signed.signedAt) : new Date();
+    var termMonths = Number(signed.termMonths || book.termMonths || 0);
+    var split = signed.revenueSplit != null ? signed.revenueSplit : book.revenueSplit;
+    return {
+      contractId: signed.id || book.contractId || '',
+      authorName: profileName(user),
+      authorHandle: user && user.username ? user.username : '',
+      bookTitle: book.title || 'Untitled',
+      bookGenre: book.genre || '',
+      templateName: book.offerTemplate || '',
+      contractType: signed.type || book.offerType || 'Publishing',
+      termMonths: termMonths,
+      duration: signed.duration || book.offerTermLength || (termMonths ? termMonths + ' months' : ''),
+      revenueSplit: split == null ? null : split,
+      autoRenew: !!book.offerAutoRenew,
+      effectiveAt: now,
+      expiryAt: termMonths ? addMonths(now, termMonths) : null,
+      description: book.offerDescription || '',
+      clauses: book.offerClauses || '',
+      bonuses: book.offerBonuses || null,
+      contractRules: fetchedStandardRules,
+      signedAt: now,
+      signatureRef: (signed.id || book.contractId || '') + '-' + now.toISOString()
+    };
+  }
+
+  function standardRules(data) {
+    if (Array.isArray(fetchedStandardRules) && fetchedStandardRules.length) return fetchedStandardRules;
+    if (window.ContractPdf && window.ContractPdf.standardRules) return window.ContractPdf.standardRules(data);
+    return [];
+  }
+
+  function clauseList(text) {
+    if (window.ContractPdf && window.ContractPdf.clauseList) return window.ContractPdf.clauseList(text);
+    return String(text || '').split(/\r?\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  function kv(label, value) {
+    return '<div class="sign-cell"><span>' + esc(label) + '</span><b>' + esc(value || '—') + '</b></div>';
+  }
+
+  function renderRuleList(items) {
+    return '<ol class="rules-list">' + items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>';
+  }
+
+  function renderSignModal(book, user) {
+    var body = document.getElementById('signBody');
+    if (!body) return;
+    var data = contractData(book, null, user);
+
+    var bonus = data.bonuses || {};
+    var bonusRows = '';
+    if (bonus.signupBonusMin || bonus.signupBonusMax) {
+      bonusRows += kv('Signup bonus', money(bonus.signupBonusMin) + ' – ' + money(bonus.signupBonusMax));
+    }
+    if (bonus.completionTarget) {
+      bonusRows += kv('Completion bonus', Number(bonus.completionTarget).toLocaleString('en-US') + ' reads'
+        + (bonus.completionWindowMonths ? ' within ' + bonus.completionWindowMonths + ' months' : ''));
+    }
+    if (bonus.profitShareThreshold) {
+      bonusRows += kv('Profit-share bonus', money(bonus.profitShareBonus) + ' at ' + money(bonus.profitShareThreshold));
+    }
+
+    var clauses = clauseList(data.clauses);
+    var rules = standardRules(data);
+
+    body.innerHTML = '<div class="contract-book">'
+      + '<img src="' + esc(coverOf(book)) + '" alt="" onerror="this.onerror=null;this.src=\'../assets/droboard-icon.png\'"/>'
+      + '<div><div class="contract-book-title">' + esc(data.bookTitle) + '</div>'
+      + '<div class="contract-book-meta">' + esc(data.contractType)
+      + (data.templateName ? ' • ' + esc(data.templateName) : '') + '</div></div></div>'
+      + '<div class="sign-ref"><span>Contract reference</span><b>' + esc(data.contractId || '—') + '</b></div>'
+
+      + '<div class="sign-section"><h4><i class="fas fa-user"></i> Parties</h4><div class="sign-grid">'
+      + kv('Author', data.authorName)
+      + kv('Platform', 'Droboard')
+      + kv('Book', data.bookTitle)
+      + kv('Genre', data.bookGenre || '—')
+      + '</div></div>'
+
+      + '<div class="sign-section"><h4><i class="fas fa-file-signature"></i> Contract terms</h4><div class="sign-grid">'
+      + kv('Contract type', data.contractType)
+      + kv('Term', data.duration || 'Per contract')
+      + kv('Revenue split', data.revenueSplit != null
+        ? data.revenueSplit + '% author / ' + (100 - data.revenueSplit) + '% Droboard' : 'Per contract')
+      + kv('Effective date', fmtDate(data.effectiveAt))
+      + kv('Expiry date', data.expiryAt ? fmtDate(data.expiryAt) : '—')
+      + kv('Auto-renewal', data.autoRenew ? 'Yes' : 'No')
+      + bonusRows
+      + '</div></div>'
+
+      + (data.description ? '<div class="sign-section"><h4><i class="fas fa-circle-info"></i> About this contract</h4>'
+        + '<p class="sign-desc">' + esc(data.description) + '</p></div>' : '')
+
+      + (clauses.length ? '<div class="sign-section"><h4><i class="fas fa-list-check"></i> Clauses set by the editorial team</h4>'
+        + renderRuleList(clauses) + '</div>' : '')
+
+      + '<div class="sign-section"><h4><i class="fas fa-scale-balanced"></i> Contract rules</h4>'
+      + renderRuleList(rules) + '</div>'
+
+      + '<div class="sign-section sign-signature"><h4><i class="fas fa-pen-nib"></i> Signature</h4>'
+      + '<div class="sign-sign-line"><b>' + esc(data.authorName) + '</b><span>Signed electronically on '
+      + esc(fmtDate(data.effectiveAt)) + '</span></div>'
+      + '<p class="sign-note">By choosing <b>Sign &amp; Download</b>, you sign this contract electronically and '
+      + 'a PDF copy is saved to your device with your name, the contract terms and this signature record. '
+      + 'Droboard countersigns to activate it on the platform.</p></div>';
+  }
+
+  function closeSignModal() {
+    var modal = document.getElementById('signModal');
+    if (modal) modal.classList.remove('open');
+    pendingSign = null;
+  }
+
   function showOfferConfirm(cid, book) {
-    var msg = 'Sign the ' + (book.offerType || 'publishing') + ' contract for "' + (book.title || 'this book') + '"?\n\n'
-      + 'Term: ' + (book.termMonths ? book.termMonths + ' months' : 'per contract') + '\n'
-      + 'Revenue split: ' + (book.revenueSplit != null ? book.revenueSplit + ' / ' + (100 - book.revenueSplit) : 'per contract')
-      + '\n\nThis is binding once you sign.';
-    if (!window.confirm(msg)) return;
-    var btn = document.querySelector('[data-sign="' + (window.CSS && CSS.escape ? CSS.escape(cid) : cid) + '"]');
+    var modal = document.getElementById('signModal');
+    if (!modal) return;
+    pendingSign = { cid: cid, book: book };
+    // Paint immediately with the name we have (still loads the real one).
+    renderSignModal(book, null);
+    modal.classList.add('open');
+    getProfile().then(function (user) { if (pendingSign) renderSignModal(book, user); });
+  }
+
+  function signAndDownload() {
+    if (!pendingSign) return;
+    var cid = pendingSign.cid;
+    var book = pendingSign.book;
+    var btn = document.getElementById('signConfirm');
+    var old = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing…'; }
-    api.sign(cid).then(function () {
-      toast('✅ Contract signed — it is now active');
-      load();
+
+    getProfile().then(function (user) {
+      return api.sign(cid).then(function (signed) {
+        var data = contractData(book, signed, user);
+        var downloaded = false;
+        try {
+          if (window.ContractPdf) { window.ContractPdf.download(data); downloaded = true; }
+        } catch (err) {
+          console.error('[contract-pdf]', err);
+        }
+        closeSignModal();
+        toast(downloaded
+          ? '✅ Contract signed — your PDF is downloading'
+          : '✅ Contract signed — PDF export is unavailable on this device');
+        load();
+      });
     }).catch(function (e) {
       toast(e.message || 'Could not sign contract');
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-pen"></i> Review & Sign'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = old; }
     });
   }
 
@@ -302,9 +496,20 @@
     var modal = document.getElementById('contractModal');
     if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closeContractModal(); });
 
+    // Review & sign modal (custom confirmation with the full contract rules).
+    var signModal = document.getElementById('signModal');
+    var signClose = document.getElementById('signModalClose');
+    var signCancel = document.getElementById('signCancel');
+    var signConfirm = document.getElementById('signConfirm');
+    if (signClose) signClose.addEventListener('click', closeSignModal);
+    if (signCancel) signCancel.addEventListener('click', closeSignModal);
+    if (signConfirm) signConfirm.addEventListener('click', signAndDownload);
+    if (signModal) signModal.addEventListener('click', function (e) { if (e.target === signModal) closeSignModal(); });
+
     window.handleReject = handleReject;
     window.handleAccept = handleAccept;
 
+    fetchStandardRules();
     var doneBtn = document.getElementById('doneBtn');
     if (doneBtn) doneBtn.addEventListener('click', function () { location.reload(); });
     var backBtn = document.getElementById('backBtn');

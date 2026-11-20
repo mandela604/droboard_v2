@@ -60,6 +60,15 @@ router.post('/contract-templates/:id/pause', ...guard, audit('chief.templates.pa
 router.post('/contract-templates/:id/activate', ...guard, audit('chief.templates.activate'),
   validate(z.object({ params: z.object({ id }) })), ctrl.activateTemplate);
 
+// ---- Standard contract rules ----
+const rulesBody = z.object({
+  rules: z.array(z.string().min(0).max(2000)).max(60),
+}).strict();
+
+router.get('/contract-rules', ...guard, ctrl.contractRules);
+router.put('/contract-rules', ...guard, audit('chief.rules.update'),
+  validate(z.object({ body: rulesBody })), ctrl.setContractRules);
+
 // ---- Author contracts (static paths before :id) ----
 router.get('/author-contracts', ...guard,
   validate(z.object({ query: pageQuery })), ctrl.listContracts);

@@ -107,6 +107,12 @@ async function contracts(req, res) {
   return base.wrap(res, async () => author.listContracts({ userId: req.user.id }));
 }
 
+// The platform-wide standard contract rules the review-and-sign modal
+// renders before the author signs.
+async function contractRules(req, res) {
+  return base.wrap(res, async () => require('../services/contract-rules.service').getContractRules());
+}
+
 async function applyContract(req, res) {
   return base.wrap(res, async () => {
     const out = await author.applyContract({
@@ -198,4 +204,5 @@ module.exports = {
   plot, savePlot, bookChapters, contracts, applyContract, signContract, declineContract, applyCompletion,
   applyVip, chapterReviews, chapterEdits, bookEdits, launchKit, saveLaunchKit,
   verification, submitVerification,
+  contractRules,
 };

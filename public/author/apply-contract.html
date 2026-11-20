@@ -195,6 +195,29 @@ button{font-family:inherit;cursor:pointer}
 
 .contract-sign-row{padding:0 0 4px}
 
+/* ── Review & sign modal (custom contract confirmation) ── */
+.sign-panel{max-width:440px;max-height:88vh}
+#signModal .modal-body{padding:18px 18px 8px}
+.sign-ref{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:rgba(255,0,80,.06);border:1px dashed var(--bd-acc);border-radius:10px;margin:4px 0 2px}
+.sign-ref span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--tx-faint)}
+.sign-ref b{font-size:10.5px;color:var(--acc);word-break:break-all;text-align:right}
+.sign-section{margin-top:16px}
+.sign-section h4{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--tx-high);margin-bottom:9px}
+.sign-section h4 i{font-size:11px;color:var(--acc)}
+.sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sign-cell{background:var(--l2);border:1px solid var(--bd2);border-radius:9px;padding:8px 10px;min-width:0}
+.sign-cell span{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--tx-faint);margin-bottom:3px}
+.sign-cell b{display:block;font-size:12px;font-weight:700;color:var(--tx-high);line-height:1.35;word-break:break-word}
+.sign-desc{font-size:11.5px;line-height:1.6;color:var(--tx-body)}
+.rules-list{margin:0;padding-left:19px}
+.rules-list li{font-size:11.5px;line-height:1.58;color:var(--tx-body);margin-bottom:7px}
+.rules-list li::marker{color:var(--acc);font-weight:800}
+.sign-signature{padding-top:14px;border-top:1px solid var(--bd);margin-top:18px}
+.sign-sign-line{display:flex;flex-direction:column;gap:2px;padding:10px 12px;background:var(--l2);border-radius:10px;margin-bottom:10px}
+.sign-sign-line b{font-size:15px;color:var(--tx-high);font-family:Georgia,'Times New Roman',serif;font-style:italic}
+.sign-sign-line span{font-size:10.5px;color:var(--tx-muted)}
+.sign-note{font-size:11px;line-height:1.55;color:var(--tx-muted)}
+
 /* ──────── Success ──────── */
 .success-view{display:none;text-align:center;padding:40px 20px}
 .success-view.show{display:block}
@@ -308,6 +331,21 @@ button{font-family:inherit;cursor:pointer}
   </div>
 </div>
 
+<!-- Review & Sign Modal (custom confirmation with the full contract rules) -->
+<div class="modal-overlay" id="signModal">
+  <div class="modal-panel sign-panel">
+    <div class="modal-header">
+      <div class="modal-title">Review &amp; Sign Contract</div>
+      <button class="modal-close" id="signModalClose" type="button"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="signBody"></div>
+    <div class="modal-footer">
+      <button class="modal-btn reject" id="signCancel" type="button"><i class="fas fa-xmark"></i> Cancel</button>
+      <button class="modal-btn accept" id="signConfirm" type="button"><i class="fas fa-pen"></i> Sign &amp; Download</button>
+    </div>
+  </div>
+</div>
+
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
@@ -322,7 +360,8 @@ button{font-family:inherit;cursor:pointer}
 <script src="services/drawer-service.js?v=3"></script>
 <script src="../services/notification-store.js?v=8"></script>
 <script src="../component/kyc-form.js?v=1"></script>
-<script src="services/apply-contract-service.js?v=9"></script>
+<script src="services/contract-pdf.js?v=1"></script>
+<script src="services/apply-contract-service.js?v=10"></script>
 <script>ApplyContractService.init();</script>
 <script src="../shared/theme-chrome.js"></script>
   <script src="../component/auth-wall.js?v=1"></script>

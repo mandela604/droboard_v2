@@ -146,6 +146,7 @@ router.get('/books/:id/book-edits', generalLimiter,
   validate(z.object({ params: z.object({ id }) })), ctrl.bookEdits);
 
 router.get('/contracts', generalLimiter, ctrl.contracts);
+router.get('/contract-rules', generalLimiter, ctrl.contractRules);
 router.post('/contracts', writeLimiter, audit('author.contracts.apply'), idUploadMw, jsonDataMw,
   validate(z.object({ body: z.object({
     bookId: z.string().min(1).max(40),

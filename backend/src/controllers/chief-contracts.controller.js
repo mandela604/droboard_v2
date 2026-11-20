@@ -76,7 +76,20 @@ async function rejectContract(req, res) {
   return base.wrap(res, async () => svc.rejectContract(req.valid.params.id, req.valid.body && req.valid.body.reason));
 }
 
+// ── Standard contract rules (the "full rule set": rights, copyright, royalty,
+// term, warranties, content standards, payments, termination, disputes) ──
+const rulesService = require('../services/contract-rules.service');
+
+async function contractRules(req, res) {
+  return base.wrap(res, async () => rulesService.getContractRules());
+}
+
+async function setContractRules(req, res) {
+  return base.wrap(res, async () => rulesService.setContractRules(req.valid.body.rules, req.user.id));
+}
+
 module.exports = {
   listTemplates, consoleTemplates, createTemplate, getTemplate, updateTemplate, deleteTemplate, pauseTemplate, activateTemplate,
   listContracts, activeContracts, pendingOffers, createOffer, signContract, approveContract, rejectContract,
+  contractRules, setContractRules,
 };

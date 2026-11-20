@@ -392,6 +392,7 @@ body{font-family:'Inter',system-ui,sans-serif}
         <option value="usage">Sort: Most used</option>
       </select>
       <button class="mini-btn primary" id="addBtn"><i class="fas fa-plus"></i> New Contract</button>
+      <button type="button" class="tb-plus" id="rulesBtn" title="Edit standard contract rules"><i class="fas fa-scroll-full"></i></button>
     </div>
 
     <div class="ctr-list" id="ctrList"><div class="skeleton"><i class="fas fa-spinner fa-spin"></i> Loading contracts…</div></div>
@@ -527,8 +528,8 @@ body{font-family:'Inter',system-ui,sans-serif}
       </div>
 
       <div class="form-row">
-        <label class="form-label cf-label" data-cf-label="clauses">Key clauses</label>
-        <textarea class="form-textarea" id="fClauses" placeholder="e.g. Non-exclusive serial rights · Signup $20–$50 on first published chapter · Completion bonus at 150k reads within 6 months · Profit-share bonus at $20 threshold…"></textarea>
+        <label class="form-label cf-label" data-cf-label="clauses">Contract rules (key clauses)</label>
+        <textarea class="form-textarea" id="fClauses" placeholder="These rules appear in the author's review-and-sign modal and in the signed PDF — one rule per line. e.g. Non-exclusive serial rights · Signup $20–$50 on first published chapter · Completion bonus at 150k reads within 6 months · Profit-share bonus at $20 threshold…"></textarea>
       </div>
     </div>
     <div class="modal-foot">
@@ -554,6 +555,24 @@ body{font-family:'Inter',system-ui,sans-serif}
     </div>
     <div class="modal-foot">
       <button class="mini-btn ghost" data-close="typesModal">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Standard contract rules editor — the rule set authors see in the sign modal & PDF -->
+<div class="modal-overlay" id="stdRulesModal">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3><i class="fas fa-scroll-full" style="color:var(--accent)"></i> Standard Contract Rules</h3>
+      <button class="modal-close" data-close="stdRulesModal"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p class="cf-hint"><i class="fas fa-info-circle" style="color:var(--accent)"></i> These rules appear in every author's review-and-sign modal and in the signed PDF, one rule per line. Authors always see their own rights (royalty, term, copyright) alongside these.</p>
+      <textarea class="form-textarea" id="stdRulesText" spellcheck="false" placeholder="e.g. Rights granted. The author grants Droboard the right to publish, distribute, market and display the Book during the term.&#10;Copyright. The author keeps full copyright of the Book.&#10;Payments. Royalties are paid on net revenue after platform fees, subject to the minimum withdrawal threshold." rows="14"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="mini-btn ghost" data-close="stdRulesModal">Cancel</button>
+      <button class="mini-btn primary" id="stdRulesSave"><i class="fas fa-save"></i> Save Rules</button>
     </div>
   </div>
 </div>
