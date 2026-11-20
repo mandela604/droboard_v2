@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#000000"/>
-<title>Droboard Â· Official Page</title>
+<title>Droboard · Official Page</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="stylesheet" href="../shared/theme.css"/>
@@ -25,7 +25,7 @@ a{color:inherit;text-decoration:none}
 .phone{width:100%;max-width:420px;min-height:100vh;background:var(--l1);display:flex;flex-direction:column;position:relative;box-shadow:0 0 50px rgba(0,0,0,.10);overflow-x:clip;padding-bottom:calc(var(--safe-b) + var(--nav-h) + 10px)}
 @media (min-width:421px){ .phone{box-shadow:0 0 50px rgba(0,0,0,.14)} }
 
-/* Ã¢â€¢ÂÃ¢â€¢Â TOP BAR Ã¢â€¢ÂÃ¢â€¢Â */
+/* â•â• TOP BAR â•â• */
 .top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(var(--safe-t) + 10px) 14px 10px;background:var(--card);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd);flex-shrink:0}
 [data-theme="dark"] .top-bar{background:var(--card);backdrop-filter:blur(20px)}
 .top-left{display:flex;align-items:center;gap:10px;min-width:0}
@@ -38,7 +38,7 @@ a{color:inherit;text-decoration:none}
 .mini-verified{width:13px;height:13px;border-radius:50%;background:var(--blue);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .mini-verified i{font-size:6px;color:#fff}
 
-/* Ã¢â€¢ÂÃ¢â€¢Â HERO Ã¢â€¢ÂÃ¢â€¢Â */
+/* â•â• HERO â•â• */
 .hero-banner{position:relative;height:130px;width:100%;overflow:hidden;background:radial-gradient(circle at 15% 20%,rgba(255,0,80,.35),transparent 45%),radial-gradient(circle at 85% 75%,rgba(56,189,248,.18),transparent 50%),linear-gradient(135deg,#160308,#000 60%)}
 .hero-banner::after{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:14px 14px;opacity:.5}
 .hero-grad{position:absolute;inset:0;background:linear-gradient(0deg,#000 0%,rgba(0,0,0,.2) 70%,rgba(0,0,0,0) 100%)}
@@ -175,19 +175,19 @@ a{color:inherit;text-decoration:none}
         <div class="dro-icon-btn" id="notifBtn" title="Get notified"><i class="fas fa-bell"></i></div>
         <div class="pg-icon-btn" onclick="DroboardOfficial.sharePage()" title="Share page"><i class="fas fa-share-nodes"></i></div>
       </div>
-      <div class="page-bio" id="pageBio">The official Droboard account. Announcements, writer shoutouts, live debates and the best story picks from across the platform â€” straight from the team that builds it. ðŸ“¤</div>
+      <div class="page-bio" id="pageBio">The official Droboard account. Announcements, writer shoutouts, live debates and the best story picks from across the platform — straight from the team that builds it. 📤</div>
       <div class="pg-stats">
         <div class="pg-stat"><div class="pg-stat-num r" id="statFollowers"></div><div class="pg-stat-label">Followers</div></div>
         <div class="pg-stat"><div class="pg-stat-num b" id="statPosts"></div><div class="pg-stat-label">Posts</div></div>
         <div class="pg-stat"><div class="pg-stat-num g" id="statWritersFeatured"></div><div class="pg-stat-label">Featured</div></div>
       </div>
       <div class="pg-tabs" id="pgTabs">
-        <div class="pg-tab active" data-tab="all">âœ¨ All</div>
-        <div class="pg-tab" data-tab="announcement">ðŸ“¢ Announcements</div>
-        <div class="pg-tab" data-tab="debate">âš–ï¸ Debates</div>
-        <div class="pg-tab" data-tab="shoutout">â­ Shoutouts</div>
-        <div class="pg-tab" data-tab="repost">ðŸ“š Story Picks</div>
-        <div class="pg-tab" data-tab="about">âœ¦ About</div>
+        <div class="pg-tab active" data-tab="all">✨ All</div>
+        <div class="pg-tab" data-tab="announcement">📢 Announcements</div>
+        <div class="pg-tab" data-tab="debate">⚖️ Debates</div>
+        <div class="pg-tab" data-tab="shoutout">⭐ Shoutouts</div>
+        <div class="pg-tab" data-tab="repost">📚 Story Picks</div>
+        <div class="pg-tab" data-tab="about">✦ About</div>
       </div>
     </div>
 
@@ -203,7 +203,7 @@ a{color:inherit;text-decoration:none}
         <div id="managersMount"></div>
         <button id="aboutEditBtn" style="display:none;width:100%;padding:10px;border-radius:12px;border:1.5px dashed var(--bd);background:transparent;color:var(--tx-muted);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px"><i class="fas fa-pen"></i> Edit page info</button>
         <div class="support-strip" onclick="DroboardOfficial.openSupport()">
-          <div class="support-ico">ðŸ’›</div>
+          <div class="support-ico">💛</div>
           <div class="support-body"><div class="support-title">Support Droboard</div><div class="support-sub">Help keep the platform ad-light and independent</div></div>
           <button class="support-btn" onclick="event.stopPropagation();DroboardOfficial.openSupport()">Support</button>
         </div>
@@ -215,9 +215,9 @@ a{color:inherit;text-decoration:none}
           <div class="pg-section-hdr"><div class="pg-section-title"><i class="fas fa-folder-open"></i>Droboard Picks</div></div>
           <div class="coll-scroll" id="collectionsGrid"></div>
         </div>
-        <div style="font-size:13px;color:var(--tx-body);line-height:1.65;padding:2px 0 12px" id="aboutBlurb">Droboard is a home for stories, debates and the readers who live for a good plot twist. This page is run by the Droboard team â€” we post announcements, feature standout writers, host community debates and recommend stories worth your 2am reading session.</div>
+        <div style="font-size:13px;color:var(--tx-body);line-height:1.65;padding:2px 0 12px" id="aboutBlurb">Droboard is a home for stories, debates and the readers who live for a good plot twist. This page is run by the Droboard team — we post announcements, feature standout writers, host community debates and recommend stories worth your 2am reading session.</div>
         <div class="about-item"><div class="about-icon"><i class="fas fa-link" style="color:var(--acc)"></i></div><div><div class="about-label">Links</div><div class="about-val" id="aboutLinks" style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap"></div></div></div>
-        <div class="about-item"><div class="about-icon"><i class="fas fa-gavel" style="color:var(--acc)"></i></div><div><div class="about-label">Community Guidelines</div><ul class="rules-list" id="aboutRules"><li>Be kind â€” debate the story, not the person.</li><li>Tag spoilers so everyone gets to feel the twist.</li><li>No harassment of writers or fellow readers.</li><li>Shoutouts and story picks are curated by the team, not paid placements.</li></ul></div></div>
+        <div class="about-item"><div class="about-icon"><i class="fas fa-gavel" style="color:var(--acc)"></i></div><div><div class="about-label">Community Guidelines</div><ul class="rules-list" id="aboutRules"><li>Be kind — debate the story, not the person.</li><li>Tag spoilers so everyone gets to feel the twist.</li><li>No harassment of writers or fellow readers.</li><li>Shoutouts and story picks are curated by the team, not paid placements.</li></ul></div></div>
       </div>
     </div>
   </div>
@@ -225,7 +225,7 @@ a{color:inherit;text-decoration:none}
 
 <div class="comment-overlay" id="commentOverlay" onclick="if(event.target===this)DroboardOfficial.closeComments()">
   <div class="comment-sheet">
-    <div class="comment-hdr"><h3><i class="fas fa-comment-dots" style="color:var(--acc);font-size:12px"></i> Comments</h3><button class="comment-close" onclick="DroboardOfficial.closeComments()">âœ•</button></div>
+    <div class="comment-hdr"><h3><i class="fas fa-comment-dots" style="color:var(--acc);font-size:12px"></i> Comments</h3><button class="comment-close" onclick="DroboardOfficial.closeComments()">✕</button></div>
     <div class="comment-mount" id="commentMount"></div>
   </div>
 </div>
@@ -237,16 +237,16 @@ a{color:inherit;text-decoration:none}
 <script src="../services/saves-bridge.js?v=2"></script>
 <script src="../component/save-modal.js?v=2"></script>
 <script src="../services/share-payload.js?v=4"></script>
-<script src="../component/share-modal.js?v=17"></script>
-<script src="../component/status-viewer.js?v=17"></script>
+<script src="../component/share-modal.js?v=18"></script>
+<script src="../component/status-viewer.js?v=20"></script>
 <script src="../component/status-ring.js?v=5"></script>
-  <script src="../services/status-service.js?v=13"></script>
+  <script src="../services/status-service.js?v=14"></script>
 <script src="../shared/status-loader.js"></script>
 <script src="../component/report-sheet.js"></script>
 <script src="../component/comment-section.js?v=23"></script>
 <script src="../component/dots-menu.js?v=2"></script>
 <script src="../component/reaction-picker.js?v=5"></script>
-<script src="../component/post-card.js?v=10"></script>
+<script src="../component/post-card.js?v=11"></script>
 <script src="../component/people-to-follow.js?v=7"></script>
 <script src="../component/collection-card.js"></script>
 <script src="../component/tip-picker.js?v=10"></script>

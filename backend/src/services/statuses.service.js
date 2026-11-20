@@ -51,6 +51,8 @@ function toStatus(s, viewerId, opts) {
     storyRef: o.storyRef && o.storyRef.id
       ? { id: String(o.storyRef.id), title: o.storyRef.title || '', author: o.storyRef.author || '', cover: o.storyRef.cover || '' }
       : null,
+    kind: o.kind || '',
+    card: o.card || null,
     expiresAt: o.expiresAt, createdAt: o.createdAt,
   };
   if (isOwner) out.views = views;
@@ -147,7 +149,7 @@ async function statusRoster({ userId, scope = 'any', limit = 20 } = {}) {
         time: relTimeLabel(r.createdAt),
         ts: r.createdAt ? new Date(r.createdAt).getTime() : Date.now(),
         viewed: t.viewed, likes: t.likes, liked: t.liked, isLive: t.isLive,
-        views: t.views, storyRef: t.storyRef,
+        views: t.views, storyRef: t.storyRef, kind: t.kind, card: t.card,
       };
     });
     const unseen = slides.filter(s => !s.viewed).length;
@@ -172,7 +174,7 @@ async function myStatuses({ userId }) {
         id: o.id, bg: o.bg, quote: o.quote, caption: o.caption,
         time: relTimeLabel(o.createdAt), ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
         likes: o.likes, views: o.views || 0, viewed: o.viewed, liked: !!o.liked, isLive: o.isLive,
-        storyRef: o.storyRef, expiresAt: o.expiresAt,
+        storyRef: o.storyRef, kind: o.kind, card: o.card, expiresAt: o.expiresAt,
       };
     }),
   };
@@ -210,7 +212,7 @@ async function writersByHandles({ handles, userId }) {
       time: relTimeLabel(o.createdAt),
       ts: o.createdAt ? new Date(o.createdAt).getTime() : Date.now(),
       likes: o.likes, liked: o.liked, isLive: o.isLive, viewed: o.viewed,
-      storyRef: o.storyRef, expiresAt: o.expiresAt,
+      storyRef: o.storyRef, kind: o.kind, card: o.card, expiresAt: o.expiresAt,
     });
   });
   return wanted.map(handle => ({ handle, statuses: groups[handle] || [] }));
@@ -257,10 +259,20 @@ async function createStatus({ userId, file, data }) {
     try { storyRef.cover = validateMediaUrl(String(data.storyRef.cover || ''), 'cover') || ''; }
     catch (e) { storyRef.cover = ''; }
   }
+  const kind = (data && (data.kind === 'league' || data.kind === 'collection')) ? data.kind : '';
+  let card = null;
+  if (kind && data && data.card && typeof data.card === 'object') {
+    card = {};
+    Object.keys(data.card).slice(0, 16).forEach(k => {
+      const v = data.card[k];
+      if (typeof v === 'number' && Number.isFinite(v)) card[k] = v;
+      else if (v != null) card[k] = String(v).slice(0, 2000);
+    });
+  }
   const doc = await Status.create({
     userId: String(userId), bg,
     quote: (data && data.quote) || '', caption: (data && data.caption) || '',
-    isLive: !!(data && data.isLive), storyRef,
+    isLive: !!(data && data.isLive), storyRef, kind, card,
     expiresAt: new Date(Date.now() + ttlH * 3600000),
   });
   const out = toStatus(doc, userId);

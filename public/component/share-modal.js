@@ -777,12 +777,28 @@
       // A locally-drawn rank card is a data URL. The posts API only accepts
       // real media URLs, so upload it once to Cloudinary and use the returned
       // https URL as the repost cover. http(s) covers are used as-is.
+      function dataUrlToBlob(dataUrl) {
+        var parts = String(dataUrl).split(',');
+        var meta = (parts[0] || '').match(/^data:([^;]*)(;base64)?$/);
+        if (!meta || parts.length < 2) throw new Error('Invalid image data.');
+        var mime = meta[1] || 'image/png';
+        var bin;
+        if (meta[2]) {
+          try { bin = atob(parts[1]); } catch (e) { throw new Error('Invalid image data.'); }
+        } else {
+          try { bin = decodeURIComponent(parts[1]); } catch (e) { throw new Error('Invalid image data.'); }
+        }
+        var buf = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i) & 0xff;
+        return new Blob([buf], { type: mime });
+      }
       var coverUrl = '';
       var srcImg = _data.img || '';
       if (/^data:image\//i.test(srcImg)) {
-        var blob = await (await fetch(srcImg)).blob();
+        // Never fetch(data:) — CSP connect-src blocks it ("Failed to fetch").
+        var blob = dataUrlToBlob(srcImg);
         var fd = new FormData();
-        fd.append('file', new File([blob], 'rank-card.png', { type: 'image/png' }));
+        fd.append('file', new File([blob], 'rank-card.png', { type: blob.type || 'image/png' }));
         var up = await fetch('/api/uploads/image', { method: 'POST', credentials: 'include', body: fd });
         if (up.ok) { var uj = await up.json().catch(() => ({})); coverUrl = uj.url || ''; }
       } else if (/^https?:\/\//i.test(srcImg)) {
@@ -802,19 +818,34 @@
             const storyImg = _data.img || '';
             const isImageBg = !!(storyImg && /^(https?:\/\/|data:image\/)/i.test(storyImg));
             const bg = isImageBg ? storyImg : _selectedBg;
-            const slide = await DroboardStatus.post({
-              bg,
+            const rich = _data.kind === 'league' || _data.kind === 'collection';
+            var slide = {
+              bg: bg,
               quote: payload.caption || payload.text || '',
-              caption: _data.title ? `📖 ${_data.title}` : '',
-              // If we have a story URL, attach it as a storyRef CTA
-              storyRef: (_data.url && _data.title) ? {
+              // Rich cards get their own layout in the viewer — no book prefix.
+              caption: rich ? (_data.title || '') : (_data.title ? `📖 ${_data.title}` : ''),
+            };
+            if (rich) {
+              slide.kind = _data.kind;
+              var c = { title: _data.title || '', sub: _data.sub || '', link: _data.link || '' };
+              if (_data.kind === 'league') {
+                var m = String(_data.sub || '').match(/([\d,]+)\s*pts/i);
+                c.points = m ? m[1] : '';
+                var r = String(_data.sub || '').match(/#(\d+)/);
+                if (!r) r = String(_data.title || '').match(/#(\d+)/);
+                c.rank = r ? r[1] : '';
+              }
+              slide.card = c;
+            } else if (_data.url && _data.title) {
+              slide.storyRef = {
                 id: (new URLSearchParams((_data.url || '').split('?')[1] || '')).get('id') || '',
                 title: _data.title || '',
                 author: (_data.sub || '').replace(/^@/, ''),
                 cover: storyImg || '',
-              } : undefined,
-            });
-            return { ok: true, slide };
+              };
+            }
+            const result = await DroboardStatus.post(slide);
+            return { ok: true, slide: result };
           },
           postToProfile: async (payload) => {
             const caption = payload.caption || '';

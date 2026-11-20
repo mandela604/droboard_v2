@@ -75,6 +75,7 @@
       id: String(s.id || ''), bg: s.bg || '',
       quote: s.quote || '', caption: s.caption || '',
       storyRef: s.storyRef && s.storyRef.id ? s.storyRef : null,
+      kind: s.kind || '', card: s.card || null,
       time: s.time || 'Just now', ts: s.ts || Date.now(),
       likes: s.likes || 0, views: s.views || 0,
       // Keep the viewer's own like from the backend — dropping it here made
@@ -122,9 +123,26 @@
     return e;
   }
 
-  /* data:/blob: preview → real bytes → Cloudflare delivery URL. */
+  /* data:/blob: preview → real bytes → Cloudflare delivery URL.
+     A data: URL must NOT go through fetch(): the site CSP's connect-src does
+     not allow data:, so Chrome throws "Failed to fetch". Decode directly. */
+  function _dataUrlToBlob(dataUrl) {
+    var parts = String(dataUrl).split(',');
+    var meta = (parts[0] || '').match(/^data:([^;]*)(;base64)?$/);
+    if (!meta || parts.length < 2) throw new Error('Invalid image data.');
+    var mime = meta[1] || 'image/png';
+    var bin;
+    if (meta[2]) {
+      try { bin = atob(parts[1]); } catch (e) { throw new Error('Invalid image data.'); }
+    } else {
+      try { bin = decodeURIComponent(parts[1]); } catch (e) { throw new Error('Invalid image data.'); }
+    }
+    var buf = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i) & 0xff;
+    return new Blob([buf], { type: mime });
+  }
   async function _uploadBg(bg) {
-    var blob = await (await fetch(bg)).blob();
+    var blob = /^data:/i.test(bg) ? _dataUrlToBlob(bg) : await (await fetch(bg)).blob();
     if (blob.size > 2 * 1024 * 1024) {
       var e = new Error('Image is too large (max 2 MB).'); e.status = 400; throw e;
     }
@@ -149,6 +167,16 @@
       quote: String(slide.quote || '').slice(0, 500),
       caption: String(slide.caption || '').slice(0, 500),
     };
+    if (slide.kind === 'league' || slide.kind === 'collection') {
+      body.kind = slide.kind;
+      if (slide.card && typeof slide.card === 'object') {
+        body.card = {};
+        Object.keys(slide.card).slice(0, 16).forEach(function (k) {
+          var v = slide.card[k];
+          body.card[k] = (typeof v === 'number' && Number.isFinite(v)) ? v : String(v == null ? '' : v).slice(0, 2000);
+        });
+      }
+    }
     if (slide.storyRef && slide.storyRef.id) {
       body.storyRef = {
         id: String(slide.storyRef.id).slice(0, 120),
@@ -191,7 +219,7 @@
       }
       return {
         id: s.id, bg: s.bg, quote: s.quote, caption: s.caption,
-        storyRef: s.storyRef || null, viewed: viewed,
+        storyRef: s.storyRef || null, kind: s.kind || '', card: s.card || null, viewed: viewed,
         views: s.views || 0, likes: s.likes || 0,
         // Preserve the viewer's like so the heart survives a refresh.
         liked: !!s.liked,
@@ -268,6 +296,7 @@
       id: String((s && s.id) || ''), bg: (s && s.bg) || '',
       quote: (s && s.quote) || '', caption: (s && s.caption) || '',
       storyRef: (s && s.storyRef && s.storyRef.id) ? s.storyRef : null,
+      kind: (s && s.kind) || '', card: (s && s.card) || null,
       time: (s && s.time) || 'Just now', ts: (s && s.ts) || Date.now(),
       likes: (s && s.likes) || 0, liked: !!(s && s.liked),
       isLive: !!(s && s.isLive), expiresAt: (s && s.expiresAt) || null,

@@ -138,6 +138,23 @@
     .pcc-story-title{font-family:'Playfair Display',serif;font-size:13px;font-weight:700;line-height:1.3;color:var(--tx-high);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .pcc-story-author{font-size:10.5px;color:var(--tx-muted);font-weight:600}
 
+    /* Dedicated share cards — Reader League rank / collection. These are
+       posted as reposts but render their OWN full-width design. */
+    .pcc-share-card{position:relative;border-radius:16px;overflow:hidden;margin-bottom:4px;cursor:pointer;min-height:210px;display:flex;flex-direction:column;justify-content:space-between;padding:16px;background:#16060f;color:#fff}
+    .pcc-share-card .pcc-share-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9}
+    .pcc-share-card .pcc-share-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.2) 45%,rgba(0,0,0,.8))}
+    .pcc-share-card .pcc-share-top,.pcc-share-card .pcc-share-bottom{position:relative;z-index:2}
+    .pcc-share-card .pcc-share-badge{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35)}
+    .pcc-share-card.league .pcc-share-badge{background:rgba(255,197,60,.2);border-color:rgba(255,205,90,.6);color:#ffd873}
+    .pcc-share-card .pcc-share-rank{font-size:64px;font-weight:900;line-height:1;text-shadow:0 4px 20px rgba(0,0,0,.5)}
+    .pcc-share-card .pcc-share-pts{font-size:18px;font-weight:800;color:#ffd873;margin-top:4px}
+    .pcc-share-card .pcc-share-title{font-size:22px;font-weight:900;line-height:1.15;text-shadow:0 4px 20px rgba(0,0,0,.5);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .pcc-share-card .pcc-share-sub{font-size:12px;font-weight:600;opacity:.9;margin-top:5px}
+    .pcc-share-card .pcc-share-cta{display:inline-block;font-size:11px;font-weight:800;color:#fff;margin-top:12px;padding:7px 16px;border-radius:999px;background:#ff0050}
+    .pcc-share-card.league .pcc-share-cta{background:linear-gradient(135deg,#ff8a00,#ffc542);color:#2a1400}
+    .pcc-share-card.collection{background:#0e2a1c}
+    .pcc-share-card.collection .pcc-share-badge{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.5);color:#6ee7b7}
+
     /* Chapter drop — now uses shared story-card shape */
     /* Quote */
     .pcc-quote{background:linear-gradient(135deg,rgba(255,0,80,.05),rgba(167,139,250,.05));border:1px solid var(--bd-acc);border-radius:14px;padding:20px 16px 16px;margin-bottom:11px;position:relative}
@@ -403,10 +420,34 @@
       </div>`;
     },
 
-    /* Repost — same horizontal shape as recommendation */
+    /* Repost — same horizontal shape as recommendation, EXCEPT league rank
+       and collection shares, which render their own dedicated card design. */
     'repost': (post) => {
       const o = post.original || {};
       const coverSrc = o.cover || o.avatar || '';
+      const kind = String(o.kind || '').toLowerCase();
+      const url = String(o.url || o.link || '');
+      const isLeague = kind === 'league' || (!kind && /leaderboard\.html/i.test(url));
+      const isCollection = kind === 'collection' || (!kind && /collection\.html/i.test(url));
+      if (isLeague || isCollection) {
+        const escC = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        var rank = String(o.title || '').match(/#(\d+)/);
+        var pts = String(o.text || o.title || '').match(/([\d,]+)\s*pts/i);
+        return `${_pill('repost')}
+          ${post.note ? `<div class="pcc-text" data-pcc-openpost>${esc(post.note)}</div>` : ''}
+          <div class="pcc-share-card ${isLeague ? 'league' : 'collection'}" data-pcc-open>
+            ${coverSrc ? `<img class="pcc-share-cover" src="${esc(coverSrc)}" alt="">` : ''}
+            <div class="pcc-share-fade"></div>
+            <div class="pcc-share-top"><span class="pcc-share-badge">${isLeague ? '&#127942; Reader League' : '&#128193; Collection'}</span></div>
+            <div class="pcc-share-bottom">
+              ${isLeague
+                ? (rank ? `<div class="pcc-share-rank">#${escC(rank[1])}</div>` : '')
+                  + (pts ? `<div class="pcc-share-pts">${escC(pts[1])} pts</div>` : '')
+                : `<div class="pcc-share-title">${escC(o.title || 'Collection')}</div>`}
+              <span class="pcc-share-cta">${isLeague ? 'View leaderboard' : 'Open collection'} &rsaquo;</span>
+            </div>
+          </div>`;
+      }
       return `${_pill('repost')}
         ${post.note ? `<div class="pcc-text" data-pcc-openpost>${esc(post.note)}</div>` : ''}
         <div class="pcc-story-card repost" data-pcc-open>

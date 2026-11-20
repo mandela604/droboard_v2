@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#000000"/>
-<title>Droboard Â· Story</title>
+<title>Droboard · Story</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -17,8 +17,8 @@
   --blue:#38bdf8;--green:#34d399;--gold:#fbbf24;--purple:#a78bfa;--orange:#fb923c;
   --safe-b:env(safe-area-inset-bottom,0px);--nav-h:60px;
 }
-/* â”€â”€â”€ LIGHT THEME (mirrors Settings droboardTheme â†’ body.theme-white,
-       same pattern as bridge.html) â”€â”€â”€ */
+/* ─── LIGHT THEME (mirrors Settings droboardTheme → body.theme-white,
+       same pattern as bridge.html) ─── */
 body.theme-white{
   --bg:#e9e9ec;--l1:#ffffff;--l2:#f3f3f5;--l3:#ffffff;--l4:#ebebed;
   --bd:rgba(0,0,0,.10);--bd2:rgba(0,0,0,.05);--bd-acc:rgba(255,0,80,.25);
@@ -40,7 +40,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--tx-body);font-family:
 body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 ::-webkit-scrollbar{width:2px}::-webkit-scrollbar-thumb{background:rgba(255,0,80,.2)}
 
-/* â”€â”€â”€ TOP BAR â”€â”€â”€ */
+/* ─── TOP BAR ─── */
 .top-bar{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(0,0,0,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--bd)}
 .tb-back{width:36px;height:36px;border-radius:50%;background:var(--l2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;color:#ccc;cursor:pointer;flex-shrink:0}
 .tb-back:active{transform:scale(.9)}
@@ -52,7 +52,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .tb-btn:active{transform:scale(.9)}
 .tb-btn.active{background:rgba(255,0,80,.12);border-color:var(--bd-acc);color:var(--acc)}
 
-/* â”€â”€â”€ HERO â”€â”€â”€ */
+/* ─── HERO ─── */
 .story-hero{position:relative;width:100%;height:280px;overflow:hidden;flex-shrink:0}
 .hero-cover{position:absolute;inset:0;background-size:cover;background-position:center 30%;filter:brightness(.45)}
 .hero-grad{position:absolute;inset:0;background:linear-gradient(0deg,#000 0%,rgba(0,0,0,.7) 45%,rgba(0,0,0,.2) 100%)}
@@ -70,7 +70,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .hw-follow{background:var(--acc);color:#fff;border:none;padding:5px 13px;border-radius:20px;font-size:10px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif}
 .hw-follow.ing{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);color:#ccc}
 
-/* â”€â”€â”€ QUICK STATS â”€â”€â”€ */
+/* ─── QUICK STATS ─── */
 .quick-stats{display:grid;grid-template-columns:repeat(5,1fr);background:var(--l1);border-bottom:1px solid var(--bd)}
 .qs-item{text-align:center;padding:11px 4px;border-right:1px solid var(--bd)}
 .qs-item:last-child{border-right:none}
@@ -81,21 +81,21 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .qs-num.gold{color:var(--gold)}
 .qs-label{font-size:7.5px;color:var(--tx-muted);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
 
-/* â”€â”€â”€ CONTINUE READING â”€â”€â”€
+/* ─── CONTINUE READING ───
    Styles live inside component/continue-reading.js so this page and the
    bridge cannot drift apart. */
 
-/* â”€â”€â”€ SECTION TABS â”€â”€â”€ */
+/* ─── SECTION TABS ─── */
 .section-tabs{display:flex;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--bd);background:rgba(0,0,0,.97);backdrop-filter:blur(12px);position:sticky;top:58px;z-index:100;margin-top:14px}
 .section-tabs::-webkit-scrollbar{display:none}
 .stab{flex-shrink:0;padding:10px 13px;font-size:11px;font-weight:700;color:var(--tx-faint);cursor:pointer;border-bottom:2.5px solid transparent;transition:.2s;white-space:nowrap}
 .stab.active{color:var(--tx-high);border-bottom-color:var(--acc)}
 
-/* â”€â”€â”€ PANELS â”€â”€â”€ */
+/* ─── PANELS ─── */
 .tab-panel{display:none;padding:14px}
 .tab-panel.active{display:block}
 
-/* â”€â”€â”€ SYNOPSIS â”€â”€â”€ */
+/* ─── SYNOPSIS ─── */
 .synopsis-card{background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
 .synopsis-text{font-size:13px;color:var(--tx-body);line-height:1.65}
 .synopsis-text.truncated{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
@@ -111,7 +111,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .tag-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .genre-pill{font-size:9px;font-weight:700;padding:3px 9px;border-radius:12px;background:rgba(255,0,80,.07);border:1px solid var(--bd-acc);color:var(--acc3)}
 
-/* â”€â”€â”€ SEASON ACCORDION â”€â”€â”€ */
+/* ─── SEASON ACCORDION ─── */
 .season-block{margin-bottom:10px;background:var(--l1);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
 .season-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;transition:.15s}
 .season-hdr:active{background:rgba(255,255,255,.02)}
@@ -156,7 +156,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .pg-btn.disabled{opacity:.3;pointer-events:none}
 .pg-ellipsis{font-size:11px;color:var(--tx-faint)}
 
-/* â”€â”€â”€ TEAMS â”€â”€â”€ */
+/* ─── TEAMS ─── */
 .teams-section{margin-bottom:14px}
 .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sh-title{font-size:11px;font-weight:800;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.1em}
@@ -194,7 +194,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .tbl-item{font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;white-space:nowrap}
 .tbl-dot{width:7px;height:7px;border-radius:50%}
 
-/* â”€â”€â”€ POLLS â”€â”€â”€ */
+/* ─── POLLS ─── */
 .poll-card{background:var(--l1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:10px}
 .poll-hdr{padding:12px 14px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:7px}
 .poll-icon{font-size:14px}
@@ -212,7 +212,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .poll-total{font-size:9px;color:var(--tx-faint)}
 .poll-share{font-size:9px;font-weight:700;color:var(--acc3);cursor:pointer}
 
-/* â”€â”€â”€ PREDICTIONS â”€â”€â”€ */
+/* ─── PREDICTIONS ─── */
 .pred-card{background:var(--l1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:10px}
 .pred-hdr{padding:12px 14px;border-bottom:1px solid var(--bd2)}
 .pred-label{font-size:9px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
@@ -229,7 +229,7 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .pred-opt-pct{font-size:11px;font-weight:800;color:var(--purple)}
 .pred-footer{padding:8px 14px;border-top:1px solid var(--bd2);font-size:9px;color:var(--tx-faint);display:flex;align-items:center;gap:5px}
 
-/* â”€â”€â”€ DEBATES â”€â”€â”€ */
+/* ─── DEBATES ─── */
 .debate-card{background:var(--l1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:10px}
 .debate-hdr{padding:12px 14px;border-bottom:1px solid var(--bd2)}
 .debate-live-tag{display:inline-flex;align-items:center;gap:4px;background:rgba(255,0,80,.1);border:1px solid var(--bd-acc);border-radius:8px;padding:3px 8px;font-size:8px;font-weight:800;color:var(--acc);margin-bottom:6px}
@@ -272,16 +272,16 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 .deb-inp:focus{border-color:var(--bd-acc)}
 .deb-post-btn{background:var(--acc);border:none;color:#fff;padding:7px 14px;border-radius:20px;font-size:11px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
 
-/* â”€â”€â”€ TOAST â”€â”€â”€ */
+/* ─── TOAST ─── */
 .toast{position:fixed;bottom:calc(var(--safe-b) + var(--nav-h) + 14px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--l3);border:1px solid var(--bd);color:var(--tx-body);padding:8px 18px;border-radius:28px;font-size:12px;font-weight:600;z-index:900;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* â”€â”€â”€ EMPTY / LOADING â”€â”€â”€ */
+/* ─── EMPTY / LOADING ─── */
 .empty-state{text-align:center;padding:40px 20px;color:var(--tx-faint)}
 .empty-state i{font-size:32px;margin-bottom:10px;display:block}
 .empty-state p{font-size:12px}
 
-/* â”€â”€â”€ AD STRIP â”€â”€â”€ */
+/* ─── AD STRIP ─── */
 .ad-strip{margin:0 0 14px;background:var(--l1);border:1px solid var(--bd);border-radius:13px;padding:10px 12px;display:flex;align-items:center;gap:9px;position:relative}
 .ad-strip::after{content:'AD';position:absolute;top:6px;right:8px;font-size:7px;font-weight:800;color:#333;letter-spacing:.08em}
 .ad-strip-logo{width:34px;height:34px;border-radius:8px;flex-shrink:0;background:rgba(255,0,80,.15);display:flex;align-items:center;justify-content:center;font-size:14px}
@@ -294,12 +294,12 @@ body{padding-bottom:calc(var(--safe-b) + var(--nav-h) + 12px)}
 /* utility */
 .sdiv{height:1px;background:var(--bd);margin:14px 0}
 
-/* â”€â”€â”€ PHONE SHELL (book-details merge) â”€â”€â”€ */
+/* ─── PHONE SHELL (book-details merge) ─── */
 .phone{width:100%;max-width:420px;margin:0 auto;min-height:100vh;background:var(--bg);
   position:relative;box-shadow:0 0 50px rgba(0,0,0,.55);display:flex;flex-direction:column}
 
 
-/* â”€â”€â”€ REVIEWS + MORE-LIKE-THIS (book-details merge) â”€â”€â”€ */
+/* ─── REVIEWS + MORE-LIKE-THIS (book-details merge) ─── */
 .more-row{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
 .more-row::-webkit-scrollbar{display:none}
 .more-card{flex-shrink:0;width:104px;cursor:pointer}
@@ -349,7 +349,7 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <div class="top-bar" id="topBar">
   <div class="tb-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
   <div class="tb-title">
-    <div class="tb-story-name" id="tbStoryName">Loadingâ€¦</div>
+    <div class="tb-story-name" id="tbStoryName">Loading…</div>
     <div class="tb-story-sub" id="tbStorySub"></div>
   </div>
   <div class="tb-actions">
@@ -376,33 +376,33 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <!-- QUICK STATS -->
 <div class="quick-stats" id="quickStats"></div>
 
-<!-- CONTINUE READING â€” self-contained component (component/continue-reading.js) -->
+<!-- CONTINUE READING — self-contained component (component/continue-reading.js) -->
 <div id="continueReadingMount" style="margin:14px 14px 0"></div>
 
 <!-- SECTION TABS -->
 <div class="section-tabs" id="sectionTabs">
-    <div class="stab active" data-tab="chapters" onclick="StoryReaderPage.switchTab('chapters')">ðŸ“– Chapters</div>
-    <div class="stab" data-tab="overview" onclick="StoryReaderPage.switchTab('overview')">â„¹ï¸ Overview</div>
-    <div class="stab" data-tab="teams" onclick="StoryReaderPage.switchTab('teams')" id="teamsTab" style="display:none">âš”ï¸ Teams</div>
-    <div class="stab" data-tab="polls" onclick="StoryReaderPage.switchTab('polls')">ðŸ“Š Polls & Predictions</div>
-    <div class="stab" data-tab="debates" onclick="StoryReaderPage.switchTab('debates')">ðŸ’¬ Debates</div>
+    <div class="stab active" data-tab="chapters" onclick="StoryReaderPage.switchTab('chapters')">📖 Chapters</div>
+    <div class="stab" data-tab="overview" onclick="StoryReaderPage.switchTab('overview')">ℹ️ Overview</div>
+    <div class="stab" data-tab="teams" onclick="StoryReaderPage.switchTab('teams')" id="teamsTab" style="display:none">⚔️ Teams</div>
+    <div class="stab" data-tab="polls" onclick="StoryReaderPage.switchTab('polls')">📊 Polls & Predictions</div>
+    <div class="stab" data-tab="debates" onclick="StoryReaderPage.switchTab('debates')">💬 Debates</div>
 </div>
 
-<!-- â•â•â• CHAPTERS PANEL â•â•â• -->
+<!-- ═══ CHAPTERS PANEL ═══ -->
 <div class="tab-panel active" id="panel-chapters">
   <div id="chaptersContent"></div>
 </div>
 
-<!-- â•â•â• OVERVIEW PANEL â•â•â• -->
+<!-- ═══ OVERVIEW PANEL ═══ -->
 <div class="tab-panel" id="panel-overview">
   <div class="synopsis-card">
     <div class="synopsis-text truncated" id="synopsisText"></div>
-    <span class="synopsis-toggle" id="synToggle" onclick="StoryReaderPage.toggleSynopsis()">Read more â€º</span>
+    <span class="synopsis-toggle" id="synToggle" onclick="StoryReaderPage.toggleSynopsis()">Read more ›</span>
   </div>
 
   <div style="background:var(--l1);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px" id="infoRows"></div>
 
-  <!-- Ad â€” allocated by DroboardAdSlot -->
+  <!-- Ad — allocated by DroboardAdSlot -->
   <div data-ad-slot="bookReader:top" id="adStripWrap" style="margin:0 0 14px"></div>
 
   <!-- Story stats deep dive -->
@@ -421,17 +421,17 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
   <div id="moreRow" style="margin:14px 0 10px"></div>
 </div>
 
-<!-- â•â•â• TEAMS PANEL â•â•â• -->
+<!-- ═══ TEAMS PANEL ═══ -->
 <div class="tab-panel" id="panel-teams">
   <div class="teams-section" id="teamsSection"></div>
 </div>
 
-<!-- â•â•â• POLLS & PREDICTIONS PANEL â•â•â• -->
+<!-- ═══ POLLS & PREDICTIONS PANEL ═══ -->
 <div class="tab-panel" id="panel-polls">
   <div id="pollsContent"></div>
 </div>
 
-<!-- â•â•â• DEBATES PANEL â•â•â• -->
+<!-- ═══ DEBATES PANEL ═══ -->
 <div class="tab-panel" id="panel-debates">
   <div id="debatesContent"></div>
 </div>
@@ -441,7 +441,7 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <div class="toast" id="toast"></div>
 
 <script src="../services/share-payload.js?v=4"></script>
-<script src="../component/share-modal.js?v=17"></script>
+<script src="../component/share-modal.js?v=18"></script>
 <script src="../services/saves-bridge.js?v=2"></script>
 <script src="../component/save-modal.js?v=2"></script>
 <script src="../component/ad-card.js?v=12"></script>
@@ -453,9 +453,9 @@ try{var _st=localStorage.getItem('droboardTheme')||'light';if(_st==='light'){doc
 <script src="../component/ad-slot.js?v=3"></script>
   <script src="../component/discover-card.js?v=10"></script>
 <script src="../component/more-like-this.js"></script>
-<script src="../component/status-viewer.js?v=17"></script>
+<script src="../component/status-viewer.js?v=20"></script>
 <script src="../component/status-ring.js?v=5"></script>
-  <script src="../services/status-service.js?v=13"></script>
+  <script src="../services/status-service.js?v=14"></script>
 <script src="../shared/status-loader.js"></script>
 <script src="../services/reader-engagement-service.js?v=5"></script>
 <script src="../services/rate-api.js?v=3"></script>

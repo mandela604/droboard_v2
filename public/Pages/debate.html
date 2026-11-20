@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#ffffff"/>
-<title>Debate Â· DroBoard</title>
+<title>Debate · DroBoard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 <link rel="stylesheet" href="../shared/theme.css"/>
 <style>
@@ -38,7 +38,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .top-title{font-size:15px;font-weight:800;color:var(--tx-high)}
 .top-sub{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* â”€â”€ QUESTION â”€â”€ */
+/* ── QUESTION ── */
 .deb-q-wrap{padding:18px 14px 14px;border-bottom:8px solid var(--bg)}
 [data-theme="dark"] .deb-q-wrap{border-bottom-color:#000;box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
 .deb-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:4px 10px;border-radius:12px;background:rgba(255,0,80,.08);color:var(--acc);margin-bottom:10px}
@@ -49,14 +49,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-q{font-size:18px;font-weight:800;color:var(--tx-high);line-height:1.3;letter-spacing:-.02em;margin-bottom:6px}
 .deb-prompt{font-size:13px;color:var(--tx-muted);line-height:1.5}
 
-/* â”€â”€ POSTER (who started the debate â€” tap to open profile) â”€â”€ */
+/* ── POSTER (who started the debate — tap to open profile) ── */
 .deb-poster{display:flex;align-items:center;gap:9px;text-decoration:none;margin:-4px 0 12px;width:fit-content}
 .deb-poster-av{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bd);flex-shrink:0;background:var(--l2)}
 .deb-poster-name{font-size:13px;font-weight:800;color:var(--tx-high);line-height:1.2}
 .deb-poster:hover .deb-poster-name{color:var(--acc)}
 .deb-poster-time{font-size:10.5px;color:var(--tx-muted);font-weight:600;margin-left:7px}
 
-/* â”€â”€ VOTE SIDES â”€â”€ */
+/* ── VOTE SIDES ── */
 .deb-sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
 .deb-side{
   border-radius:14px;padding:16px 12px;cursor:pointer;border:2px solid var(--bd);
@@ -86,7 +86,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-closed{margin:0 14px 14px;padding:12px;border-radius:12px;background:var(--l2,#f1f1f1);border:1px solid var(--bd,rgba(0,0,0,.08));font-size:12.5px;font-weight:600;color:var(--tx-muted);text-align:center}
 .deb-sides.shut .deb-side{cursor:default;opacity:.72}
 
-/* â”€â”€ PICK PROMPT â”€â”€ */
+/* ── PICK PROMPT ── */
 .deb-pick-prompt{
   margin:0 14px 14px;padding:14px;border-radius:12px;background:var(--l2);border:1.5px dashed var(--bd);
   text-align:center;cursor:pointer;transition:.15s;
@@ -96,7 +96,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-pick-prompt-t{font-size:12.5px;font-weight:700;color:var(--tx-high)}
 .deb-pick-prompt-s{font-size:11px;color:var(--tx-muted);margin-top:3px}
 
-/* â”€â”€ ARGUMENTS â”€â”€ */
+/* ── ARGUMENTS ── */
 .deb-args{padding:0 14px 20px}
 .deb-args-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .deb-args-title{font-size:14px;font-weight:800;color:var(--tx-high)}
@@ -119,7 +119,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-arg-like.liked{color:var(--acc)}
 .deb-empty{text-align:center;padding:30px 10px;color:var(--tx-muted);font-size:12.5px}
 
-/* â”€â”€ COMMENT INPUT â”€â”€ */
+/* ── COMMENT INPUT ── */
 .deb-input-bar{
   position:sticky;bottom:0;z-index:100;display:flex;gap:8px;align-items:center;
   padding:10px 14px calc(10px + var(--safe-b));background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-top:1px solid var(--bd);
@@ -137,7 +137,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-send:disabled{opacity:.35;pointer-events:none}
 .deb-send:active{transform:scale(.92)}
 
-/* â”€â”€ SIDE PICK MODAL â”€â”€ */
+/* ── SIDE PICK MODAL ── */
 .deb-modal-ov{
   position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
   display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;
@@ -212,7 +212,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   <div class="deb-sides" id="debSides">
     <div class="deb-side for" id="sideFor" onclick="DebatePage.vote('for')">
       <div class="deb-side-check"><i class="fas fa-check"></i></div>
-      <div class="deb-side-emoji">âœ…</div>
+      <div class="deb-side-emoji">✅</div>
       <div class="deb-side-label" id="forLabel">FOR</div>
       <div class="deb-side-bar"><div class="deb-side-fill" id="forFill" style="width:50%"></div></div>
       <div class="deb-side-pct" id="forPct">50%</div>
@@ -220,7 +220,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     </div>
     <div class="deb-side against" id="sideAg" onclick="DebatePage.vote('against')">
       <div class="deb-side-check"><i class="fas fa-check"></i></div>
-      <div class="deb-side-emoji">âŒ</div>
+      <div class="deb-side-emoji">❌</div>
       <div class="deb-side-label" id="agLabel">AGAINST</div>
       <div class="deb-side-bar"><div class="deb-side-fill" id="agFill" style="width:50%"></div></div>
       <div class="deb-side-pct" id="agPct">50%</div>
@@ -238,14 +238,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <div class="toast" id="toast"></div>
 
 <script src="../component/debate-args.js?v=8"></script>
-<script src="../component/status-viewer.js?v=17"></script>
+<script src="../component/status-viewer.js?v=20"></script>
 <script src="../component/status-ring.js?v=5"></script>
-  <script src="../services/status-service.js?v=13"></script>
+  <script src="../services/status-service.js?v=14"></script>
   <script src="../shared/status-loader.js"></script>
 <script src="../component/report-sheet.js"></script>
 <script src="../component/dots-menu.js?v=2"></script>
 <script src="../services/share-payload.js?v=4"></script>
-<script src="../component/share-modal.js?v=17"></script>
+<script src="../component/share-modal.js?v=18"></script>
 <script src="../component/ad-card.js?v=12"></script>
 <script src="../data/ad-data.js"></script>
 <script src="../services/feed-data.js?v=3"></script>

@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#d8d8d8"/>
-<title>Droboard Â· Profile</title>
+<title>Droboard · Profile</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="stylesheet" href="../shared/theme.css"/>
 <style>
@@ -50,7 +50,7 @@ button{font-family:inherit;cursor:pointer}
 .av-ring.role-writer{background:linear-gradient(135deg,var(--acc),var(--acc2))}
 .av-ring.role-reader{background:linear-gradient(135deg,var(--blue),var(--acc))}
 .av-ring.champ{background:linear-gradient(135deg,#f59e0b,#fbbf24,#f59e0b);box-shadow:0 0 28px rgba(245,158,11,.55)}
-/* No status â‡’ NO border at all. Grey means "seen" and must only ever appear
+/* No status ⇒ NO border at all. Grey means "seen" and must only ever appear
    together with a tap that opens the viewer (.viewed-story). */
 .av-ring.no-story{background:transparent;box-shadow:none}
 .av-ring.has-story{background:conic-gradient(from 0deg,#ff0050,#ff7a9a,#f59e0b,#ff0050);box-shadow:0 0 24px var(--glow);cursor:pointer}
@@ -229,7 +229,7 @@ body.is-owner .owner-only-ui{display:inline-flex!important}
 .drawer-item-right{font-size:10px;font-weight:700;color:var(--tx-muted);margin-left:auto}
 .drawer-badge-sm{background:var(--acc);color:#fff;font-size:8px;font-weight:800;min-width:16px;height:16px;border-radius:8px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center}
 .drawer-divider{height:1px;background:var(--bd);margin:6px 12px}
-/* â”€â”€ STORY PICKER (new / manage collection sheets) â”€â”€ */
+/* ── STORY PICKER (new / manage collection sheets) ── */
 .story-pick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;max-height:38vh;overflow-y:auto}
 .story-pick{position:relative;border-radius:10px;overflow:hidden;border:2px solid transparent;cursor:pointer;background:var(--l2)}
 .story-pick img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
@@ -298,7 +298,7 @@ body.is-owner .owner-only-ui{display:inline-flex!important}
         <div class="action-row" id="actionRow"></div>
       </div>
       <div class="profile-name"><span id="profileName"></span><span class="role-tag" id="roleTag"></span></div>
-      <div class="profile-handle"><span id="profileHandle"></span><span class="verified-inline" id="verifiedInline" style="display:none">âœ“ Verified</span></div>
+      <div class="profile-handle"><span id="profileHandle"></span><span class="verified-inline" id="verifiedInline" style="display:none">✓ Verified</span></div>
       <div class="profile-bio" id="profileBio"></div>
       <div class="profile-genres" id="genrePillsDisplay"></div>
       <div class="stats-row" id="statsRow"></div>
@@ -364,59 +364,59 @@ body.is-owner .owner-only-ui{display:inline-flex!important}
     <div class="overlay-handle"></div>
     <div class="overlay-hdr">
       <h3><i class="fas fa-book" style="color:var(--acc3);font-size:13px"></i> My Genres</h3>
-      <button class="overlay-close" id="genreCloseBtn">âœ•</button>
+      <button class="overlay-close" id="genreCloseBtn">✕</button>
     </div>
     <div class="genre-tog-grid" id="genreTogGrid"></div>
-    <button class="genre-save-btn" id="genreSaveBtn">Save Genres âœ“</button>
+    <button class="genre-save-btn" id="genreSaveBtn">Save Genres ✓</button>
   </div>
 </div>
 
-<!-- â”€â”€ NEW COLLECTION â€¦ renders via ProfileData.createCollection â”€â”€ -->
+<!-- ── NEW COLLECTION … renders via ProfileData.createCollection ── -->
 <div class="overlay-bg" id="newCollOv">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
     <div class="overlay-hdr">
       <h3><i class="fas fa-folder" style="color:var(--acc);font-size:13px"></i> New Collection</h3>
-      <button class="overlay-close" id="ncCloseBtn">âœ•</button>
+      <button class="overlay-close" id="ncCloseBtn">✕</button>
     </div>
     <div class="uw-body">
       <div class="uw-step-label">Collection name</div>
       <input class="uw-input" id="ncName" placeholder="e.g. Slow Burn Favorites" maxlength="60"/>
       <div class="uw-step-label">Privacy</div>
       <div class="uw-genre-grid" id="ncPrivGrid">
-        <div class="uw-genre on" data-priv="Public">ðŸŒ Public</div>
-        <div class="uw-genre" data-priv="Followers">ðŸ‘¥ Followers</div>
-        <div class="uw-genre" data-priv="Private">ðŸ”’ Private</div>
+        <div class="uw-genre on" data-priv="Public">🌍 Public</div>
+        <div class="uw-genre" data-priv="Followers">👥 Followers</div>
+        <div class="uw-genre" data-priv="Private">🔒 Private</div>
       </div>
       <div class="uw-step-label">Stories (covers come from these)</div>
-      <input class="uw-input" id="ncStorySearch" placeholder="ðŸ” Search title or authorâ€¦" autocomplete="off"/>
+      <input class="uw-input" id="ncStorySearch" placeholder="🔍 Search title or author…" autocomplete="off"/>
       <div class="story-pick-grid" id="ncStoryGrid"></div>
-      <button class="uw-submit" id="ncCreateBtn">Create Collection âœ“</button>
+      <button class="uw-submit" id="ncCreateBtn">Create Collection ✓</button>
     </div>
   </div>
 </div>
 
-<!-- â”€â”€ MANAGE COLLECTION STORIES â€¦ renders via ProfileData.updateCollection â”€â”€ -->
+<!-- ── MANAGE COLLECTION STORIES … renders via ProfileData.updateCollection ── -->
 <div class="overlay-bg" id="manageCollOv">
   <div class="overlay-sheet">
     <div class="overlay-handle"></div>
     <div class="overlay-hdr">
       <h3><i class="fas fa-images" style="color:var(--acc);font-size:13px"></i> <span id="mcTitle">Collection</span></h3>
-      <button class="overlay-close" id="mcCloseBtn">âœ•</button>
+      <button class="overlay-close" id="mcCloseBtn">✕</button>
     </div>
     <div class="uw-body">
       <div class="uw-step-label">Collection name</div>
       <input class="uw-input" id="mcName" placeholder="Collection name" maxlength="60"/>
       <div class="uw-step-label">Privacy</div>
       <div class="uw-genre-grid" id="mcPrivGrid">
-        <div class="uw-genre on" data-priv="Public">ðŸŒ Public</div>
-        <div class="uw-genre" data-priv="Followers">ðŸ‘¥ Followers</div>
-        <div class="uw-genre" data-priv="Private">ðŸ”’ Private</div>
+        <div class="uw-genre on" data-priv="Public">🌍 Public</div>
+        <div class="uw-genre" data-priv="Followers">👥 Followers</div>
+        <div class="uw-genre" data-priv="Private">🔒 Private</div>
       </div>
       <div class="uw-step-label" id="mcCount">Tap stories to add or remove.</div>
-      <input class="uw-input" id="mcStorySearch" placeholder="ðŸ” Search title or authorâ€¦" autocomplete="off"/>
+      <input class="uw-input" id="mcStorySearch" placeholder="🔍 Search title or author…" autocomplete="off"/>
       <div class="story-pick-grid" id="mcStoryGrid"></div>
-      <button class="uw-submit" id="mcSaveBtn">Save Changes âœ“</button>
+      <button class="uw-submit" id="mcSaveBtn">Save Changes ✓</button>
     </div>
   </div>
 </div>
@@ -465,19 +465,19 @@ body.is-owner .owner-only-ui{display:inline-flex!important}
 <script src="../services/audience-service.js?v=4"></script>
   <script src="../services/ad-service.js?v=9"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
-<script src="../component/status-viewer.js?v=19"></script>
+<script src="../component/status-viewer.js?v=20"></script>
 <script src="../component/status-ring.js?v=5"></script>
   <script src="../shared/status-loader.js"></script>
 <script src="../services/people-service.js?v=4"></script>
-<script src="../services/status-service.js?v=13"></script>
+<script src="../services/status-service.js?v=14"></script>
 <script src="../component/writers-row.js?v=3"></script>
   <script src="../services/store-service.js?v=6"></script>
   <script src="../component/reaction-picker.js?v=5"></script>
-<script src="../component/post-card.js?v=10"></script>
+<script src="../component/post-card.js?v=11"></script>
 <script src="../services/saves-bridge.js?v=2"></script>
 <script src="../component/save-modal.js?v=2"></script>
 <script src="../services/share-payload.js?v=4"></script>
-<script src="../component/share-modal.js?v=17"></script>
+<script src="../component/share-modal.js?v=18"></script>
 <script src="../component/book-card.js?v=4"></script>
 <script src="../services/league-service.js?v=1"></script>
 <script src="../shared/insights-tracker.js?v=3"></script>

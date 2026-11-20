@@ -28,6 +28,10 @@ const statusFormBody = z.object({
     author: z.string().max(120).optional(),
     cover: z.string().max(2800).optional(),
   }).strict().optional(),
+  // Rich share cards: league rank / collection. Card is opaque JSON but
+  // bounded so a crafted request cannot bloat a status row.
+  kind: z.enum(['league', 'collection']).optional(),
+  card: z.record(z.union([z.string().max(2000), z.number()])).optional(),
 }).strict();
 
 const MIME_OK = { 'image/png': true, 'image/jpeg': true, 'image/webp': true, 'image/gif': true };

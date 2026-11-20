@@ -169,6 +169,30 @@
     .dsv2-slide-story span { font-size: 13px; font-weight: 800; color: #161616; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dsv2-slide-story .dsv2-story-go { font-size: 11px; font-weight: 800; color: #ff0050; flex-shrink: 0; }
 
+    /* Dedicated share cards — Reader League rank + collection. The artwork
+       (already the slide bg) fills the slide; these layers sit on top so the
+       card reads as its own design, never as a book status. */
+    .dsv2-share-card { display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    .dsv2-share-fade { position:absolute; inset:0; z-index:1;
+      background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.15) 40%,rgba(0,0,0,.75) 100%); }
+    .dsv2-share-badge { position:relative; z-index:2; align-self:center; margin-bottom:auto; margin-top:64px;
+      background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35);
+      color:#fff; font-size:12px; font-weight:800; padding:7px 16px; border-radius:999px;
+      backdrop-filter:blur(6px); letter-spacing:.03em; }
+    .dsv2-share-card.league .dsv2-share-badge { background:rgba(255,197,60,.2); border-color:rgba(255,205,90,.55); color:#ffd873; }
+    .dsv2-share-body { position:relative; z-index:2; text-align:center; padding:0 24px; }
+    .dsv2-share-rank { color:#fff; font-size:clamp(64px,20vw,120px); font-weight:900; line-height:1;
+      text-shadow:0 6px 30px rgba(0,0,0,.5); }
+    .dsv2-share-pts { color:#ffd873; font-size:20px; font-weight:800; margin-top:8px; }
+    .dsv2-share-title { color:#fff; font-size:clamp(26px,8vw,40px); font-weight:900; line-height:1.15;
+      text-shadow:0 6px 30px rgba(0,0,0,.5); overflow:hidden; text-overflow:ellipsis; }
+    .dsv2-share-sub { color:rgba(255,255,255,.85); font-size:14px; font-weight:600; margin-top:10px; }
+    .dsv2-share-cta { position:relative; z-index:20; align-self:center; margin-bottom:72px;
+      background:#ff0050; color:#fff; font-size:14px; font-weight:800;
+      padding:12px 26px; border-radius:999px; cursor:pointer; pointer-events:auto !important;
+      box-shadow:0 8px 24px rgba(255,0,80,.45); }
+    .dsv2-share-card.league .dsv2-share-cta { background:linear-gradient(135deg,#ff8a00,#ffc542); color:#2a1400; box-shadow:0 8px 24px rgba(255,170,0,.45); }
+
     /* Tap nav zones */
     .dsv2-nav-left {
       position: absolute; left: 0; top: 0; bottom: 0; width: 35%; z-index: 10;
@@ -1036,14 +1060,24 @@
     const timeEl = document.getElementById('dsv2WriterTime');
     const avWrap = document.getElementById('dsv2AvWrap');
 
+    /* Link to the status author's profile, not the viewer's own profile. */
+    const profileUrl = w.handle
+      ? 'profile.html?u=' + encodeURIComponent(String(w.handle).replace(/^@/, ''))
+      : 'profile.html';
     nameEl.textContent = '@' + w.name;
+    nameEl.onclick = function () { location.href = profileUrl; };
     timeEl.textContent = slide.time || '';
 
     if (w.avatar) {
-      avWrap.innerHTML = `<img class="dsv2-writer-av" src="${w.avatar}" alt="${w.name}" onclick="location.href='profile.html'"/>`;
+      avWrap.innerHTML = `<img class="dsv2-writer-av" src="${w.avatar}" alt="${w.name}"/>`;
     } else {
       const init = (w.name || '?')[0].toUpperCase();
-      avWrap.innerHTML = `<div class="dsv2-writer-av-init" onclick="location.href='profile.html'">${init}</div>`;
+      avWrap.innerHTML = `<div class="dsv2-writer-av-init">${init}</div>`;
+    }
+    var avEl = avWrap.firstElementChild;
+    if (avEl) {
+      avEl.style.cursor = 'pointer';
+      avEl.onclick = function () { location.href = profileUrl; };
     }
 
     // ── Slide content (bg may be an image URL or a CSS gradient) ──
@@ -1051,6 +1085,46 @@
       ? `background:${slide.bg}`
       : `background-image:url('${slide.bg || ''}')`;
     const contentEl = document.getElementById('dsv2Content');
+
+    // ── Dedicated share cards: Reader League rank / collection ──
+    // These render THEIR OWN design, not the generic book-status layout.
+    if (slide.kind === 'league' || slide.kind === 'collection') {
+      const c = slide.card || {};
+      const isLeague = slide.kind === 'league';
+      const escHtml = function (v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, function (ch) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+        });
+      };
+      var link = String(c.link || (isLeague ? '/Pages/leaderboard.html' : ''));
+      // Only ever open an internal /Pages/ path — never a foreign URL.
+      if (link.indexOf('/Pages/') !== 0) link = isLeague ? '/Pages/leaderboard.html' : '';
+      var cta = isLeague ? 'View leaderboard' : 'Open collection';
+      contentEl.innerHTML = `
+        <div class="dsv2-slide dsv2-share-card ${isLeague ? 'league' : 'collection'}" style="${bgStyle};background-size:cover;background-position:center">
+          <div class="dsv2-share-fade"></div>
+          <div class="dsv2-share-badge">${isLeague ? '&#127942; Reader League' : '&#128193; Collection'}</div>
+          <div class="dsv2-share-body">
+            ${isLeague
+              ? (c.rank ? `<div class="dsv2-share-rank">#${escHtml(c.rank)}</div>` : '')
+                + (c.points ? `<div class="dsv2-share-pts">${escHtml(c.points)} pts</div>` : '')
+              : `<div class="dsv2-share-title">${escHtml(c.title || 'Collection')}</div>`}
+            <div class="dsv2-share-sub">${escHtml(c.sub || '')}</div>
+          </div>
+          ${link ? `<div class="dsv2-share-cta" data-card-open="${link.replace(/"/g, '&quot;')}">${cta} &rsaquo;</div>` : ''}
+        </div>
+        <div class="dsv2-nav-left"  id="dsv2NavLeft"></div>
+        <div class="dsv2-nav-right" id="dsv2NavRight"></div>
+      `;
+      // Card CTA only; nav + engagement + animation are bound by the common
+      // code below (both layouts share the nav elements).
+      contentEl.querySelectorAll('[data-card-open]').forEach(function (chip) {
+        chip.addEventListener('click', function (e) {
+          e.stopPropagation();
+          location.href = chip.getAttribute('data-card-open');
+        });
+      });
+    } else {
     contentEl.innerHTML = `
       <div class="dsv2-slide" style="${bgStyle};background-size:cover;background-position:center">
         <div class="dsv2-slide-grad"></div>
@@ -1063,10 +1137,6 @@
       <div class="dsv2-nav-left"  id="dsv2NavLeft"></div>
       <div class="dsv2-nav-right" id="dsv2NavRight"></div>
     `;
-
-    // Tap navigation (long-press release clicks are swallowed)
-    document.getElementById('dsv2NavLeft').addEventListener('click',  () => _tapNav(-1));
-    document.getElementById('dsv2NavRight').addEventListener('click', () => _tapNav(1));
     // Linked story chip (status posted with a story attached)
     contentEl.querySelectorAll('[data-story-open]').forEach(function (chip) {
       chip.addEventListener('click', function (e) {
@@ -1075,6 +1145,11 @@
         if (sid) location.href = 'bridge.html?id=' + encodeURIComponent(sid);
       });
     });
+    } // end else (normal status slide layout)
+
+    // Tap navigation (long-press release clicks are swallowed) — both layouts
+    document.getElementById('dsv2NavLeft').addEventListener('click',  () => _tapNav(-1));
+    document.getElementById('dsv2NavRight').addEventListener('click', () => _tapNav(1));
 
     // ── Engagement (per-status like) ──
     const ls = _likeState[_likeKey(w, _slideIdx)] || { liked: false, count: 0 };

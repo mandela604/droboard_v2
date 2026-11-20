@@ -243,6 +243,10 @@ const statusSchema = new mongoose.Schema({
     author: { type: String, default: '' },
     cover: { type: String, default: '' },
   },
+  // Rich share cards (Reader League rank / collection) render their own
+  // dedicated layout in the status viewer instead of the generic book slide.
+  kind: { type: String, default: '' },      // 'league' | 'collection' | ''
+  card: { type: mongoose.Schema.Types.Mixed, default: null }, // card-specific data
   // no index here: the TTL index below is the only one this field gets
   expiresAt: { type: Date, required: true },
 }, { timestamps: true });

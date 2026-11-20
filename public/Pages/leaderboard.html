@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#ffffff"/>
-<title>Droboard Â· Reader League</title>
+<title>Droboard · Reader League</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="stylesheet" href="../shared/theme.css"/>
 <style>
@@ -82,27 +82,27 @@ body{display:flex;justify-content:center}
 <div class="phone">
   <div class="top-bar">
     <div class="tb-back" onclick="history.length>1?history.back():location.href='feed.html'"><i class="fas fa-chevron-left"></i></div>
-    <div class="tb-title"><div class="tb-name">ðŸ† Reader League</div><div class="tb-sub" id="seasonSub">Weekly season</div></div>
-    <div class="season-pill" id="seasonPill">â€”</div>
+    <div class="tb-title"><div class="tb-name">🏆 Reader League</div><div class="tb-sub" id="seasonSub">Weekly season</div></div>
+    <div class="season-pill" id="seasonPill">—</div>
     <button type="button" class="tb-share" id="lbShareBtn" aria-label="Share leaderboard" title="Share"><i class="fas fa-share-nodes"></i></button>
   </div>
 
   <div class="hero">
-    <div class="hero-crown">ðŸ‘‘</div>
+    <div class="hero-crown">👑</div>
     <div class="hero-t">Read. React. Climb.</div>
-    <div class="hero-s" id="heroSub">New season every Monday Â· resets Sunday night</div>
-    <div><span class="hero-my">You are <b id="myRankLbl">#â€“</b> Â· <span id="myPtsLbl">0 pts</span></span></div>
+    <div class="hero-s" id="heroSub">New season every Monday · resets Sunday night</div>
+    <div><span class="hero-my">You are <b id="myRankLbl">#–</b> · <span id="myPtsLbl">0 pts</span></span></div>
     <button type="button" class="hero-share" id="heroShareBtn"><i class="fas fa-share-nodes"></i> Share my rank</button>
   </div>
 
   <div class="crown-banner" id="crownBanner" style="display:none">
-    <div class="cb-ic">ðŸ‘‘</div>
+    <div class="cb-ic">👑</div>
     <div><div class="cb-t" id="crownTitle">Monthly crown</div><div class="cb-s" id="crownSub"></div></div>
   </div>
 
   <div class="tabs">
-    <div class="tab on" id="tabWeekly">âš¡ This week</div>
-    <div class="tab" id="tabAlltime">ðŸ› All-time</div>
+    <div class="tab on" id="tabWeekly">⚡ This week</div>
+    <div class="tab" id="tabAlltime">🏛 All-time</div>
   </div>
 
   <div class="podium" id="podium"></div>
@@ -110,14 +110,14 @@ body{display:flex;justify-content:center}
   <div data-ad-slot="leaderboard:inline" data-ad-format="native" style="padding:14px 14px 0"></div>
 
   <div class="card">
-    <div class="card-t">ðŸŽ Weekly prizes Â· zero cash, all glory</div>
+    <div class="card-t">🎁 Weekly prizes · zero cash, all glory</div>
     <div id="prizes"></div>
   </div>
 
   <div class="card">
-    <div class="card-t">âš¡ How scoring works</div>
+    <div class="card-t">⚡ How scoring works</div>
     <div class="score-grid" id="scoring"></div>
-    <div style="font-size:10px;color:var(--tx-muted);margin-top:9px;line-height:1.5">Reading earns, social earns more. Streak days multiply the grind â€” miss a day, rivals pass you.</div>
+    <div style="font-size:10px;color:var(--tx-muted);margin-top:9px;line-height:1.5">Reading earns, social earns more. Streak days multiply the grind — miss a day, rivals pass you.</div>
   </div>
 
   <div class="me-bar">
@@ -137,7 +137,7 @@ body{display:flex;justify-content:center}
 <script src="../services/notification-store.js?v=8"></script>
 <script src="../services/status-service.js"></script>
 <script src="../services/share-payload.js?v=4"></script>
-<script src="../component/share-modal.js?v=17"></script>
+<script src="../component/share-modal.js?v=18"></script>
 <script>
 (function () {
   'use strict';
@@ -153,8 +153,8 @@ body{display:flex;justify-content:center}
     if (e.avatar) return '<img class="' + cls + '" src="' + esc(e.avatar) + '" loading="lazy" alt=""/>';
     return '<div class="' + cls + '-ph">' + esc((e.name || '?')[0].toUpperCase()) + '</div>';
   }
-  function medal(i) { return ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'][i] || ('#' + (i + 1)); }
-  /* Ranks, points and gaps all come from the board payload â€” the client only
+  function medal(i) { return ['🥇', '🥈', '🥉'][i] || ('#' + (i + 1)); }
+  /* Ranks, points and gaps all come from the board payload — the client only
      numbers what the server ordered. */
   function render() {
     var b = LAST_BOARD;
@@ -163,7 +163,7 @@ body{display:flex;justify-content:center}
     try { champ = ReaderLeague.reigning(); } catch (e) {}
     var isChamp = function (e) { return !!(champ && champ.handle && e.handle === champ.handle && !champ.preview); };
     document.getElementById('seasonSub').textContent = scope === 'weekly'
-      ? 'Week ' + b.season + ' Â· ' + (b.endsInLabel || '')
+      ? 'Week ' + b.season + ' · ' + (b.endsInLabel || '')
       : 'All-time legends';
     document.getElementById('seasonPill').textContent = scope === 'weekly' ? (b.endsInLabel || b.season) : b.season;
     var top = b.entries.slice(0, 3), rest = b.entries.slice(3);
@@ -172,14 +172,14 @@ body{display:flex;justify-content:center}
       var cls = e.rank === 1 ? 'p1' : (e.rank === 2 ? 'p2' : 'p3');
       return '<div class="pod ' + cls + '"' + (isChamp(e) ? ' style="box-shadow:0 0 0 2px var(--gold,#f59e0b)"' : '') + '>' +
         '<div class="pod-medal">' + medal(e.rank - 1) + '</div>' + av(e, 'pod-av') +
-        '<div class="pod-name">' + esc(e.name) + (e.isMe ? ' Â· you' : '') + (isChamp(e) ? ' ðŸ‘‘' : '') + '</div>' +
+        '<div class="pod-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
         '<div class="pod-pts">' + (e.points || 0).toLocaleString() + ' pts</div></div>';
     }).join('');
     var max = Math.max.apply(null, b.entries.map(function (e) { return e.points || 0; }).concat([1]));
     document.getElementById('rows').innerHTML = rest.map(function (e) {
       return '<div class="row' + (e.isMe ? ' me' : '') + '"' + (isChamp(e) ? ' style="border-color:var(--gold,#f59e0b)"' : '') + '>' +
         '<div class="row-rank">' + e.rank + '</div>' + av(e, 'row-av') +
-        '<div class="row-body"><div class="row-name">' + esc(e.name) + (e.isMe ? ' Â· you' : '') + (isChamp(e) ? ' ðŸ‘‘' : '') + '</div>' +
+        '<div class="row-body"><div class="row-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
         '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round((e.points || 0) / max * 100)) + '%"></div></div></div>' +
         '<div class="row-pts"><b>' + (e.points || 0).toLocaleString() + '</b><span>' + (e.gap ? '+' + e.gap + ' to pass' : 'leader') + '</span></div></div>';
     }).join('');
@@ -187,7 +187,7 @@ body{display:flex;justify-content:center}
     b.entries.forEach(function (e) { if (e.isMe) mine = e; });
     if (!mine) {
       // Not on the board yet (no tracked activity this season).
-      document.getElementById('myRankLbl').textContent = '#â€“';
+      document.getElementById('myRankLbl').textContent = '#–';
       document.getElementById('myPtsLbl').textContent = '0 pts';
       document.getElementById('meRow').innerHTML =
         '<div class="row-body"><div class="row-name">Not ranked yet this season</div>' +
@@ -198,7 +198,7 @@ body{display:flex;justify-content:center}
     document.getElementById('myPtsLbl').textContent = (mine.points || 0).toLocaleString() + ' pts';
     document.getElementById('meRow').innerHTML =
       '<div class="row-rank">#' + mine.rank + '</div>' + av(mine, 'row-av') +
-      '<div class="row-body"><div class="row-name">' + esc(mine.name) + ' Â· you</div>' +
+      '<div class="row-body"><div class="row-name">' + esc(mine.name) + ' · you</div>' +
       '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round((mine.points || 0) / max * 100)) + '%"></div></div></div>' +
       '<div class="row-pts"><b>' + (mine.points || 0).toLocaleString() + '</b><span>' + (mine.rank > 1 ? '+' + mine.gap + ' to #' + (mine.rank - 1) : 'leader') + '</span></div>';
   }
@@ -207,10 +207,10 @@ body{display:flex;justify-content:center}
      cover the seconds before it. */
   function renderStatic(cfg) {
     var W = (cfg && cfg.weights) || ReaderLeague.WEIGHTS;
-    var known = { chapter: 'ðŸ“– Chapter', hour: 'â± Hour read', reaction: 'â¤ï¸ Reaction', comment: 'ðŸ’¬ Comment', reply: 'â†©ï¸ Reply', debate: 'ðŸ—³ Debate vote', win: 'ðŸ† Debate win', streak: 'ðŸ”¥ Streak day' };
+    var known = { chapter: '📖 Chapter', hour: '⏱ Hour read', reaction: '❤️ Reaction', comment: '💬 Comment', reply: '↩️ Reply', debate: '🗳 Debate vote', win: '🏆 Debate win', streak: '🔥 Streak day' };
     var pretty = function (k) {
       if (known[k]) return known[k];
-      var icon = 'âœ¦', lbl = k.replace(/_/g, ' ');
+      var icon = '✦', lbl = k.replace(/_/g, ' ');
       try {
         var customI = (ReaderLeague.actionIcon && ReaderLeague.actionIcon(k)) || '';
         if (customI) icon = customI;
@@ -225,13 +225,13 @@ body{display:flex;justify-content:center}
     var prizes = (cfg && cfg.prizes && cfg.prizes.length) ? cfg.prizes : ReaderLeague.PRIZES;
     var medalC = ['#f59e0b', '#a0a0b0', '#a07040'];
     document.getElementById('prizes').innerHTML = prizes.map(function (p, i) {
-      var perk = (p.perks && p.perks.length ? p.perks.join(' Â· ') : p.badge);
+      var perk = (p.perks && p.perks.length ? p.perks.join(' · ') : p.badge);
       return '<div class="prize"><div class="prize-ic" style="background:' + (medalC[i] || '#a0a0b0') + '22;color:' + (medalC[i] || '#a0a0b0') + '"><i class="fas ' + esc(p.icon || 'fa-medal') + '"></i></div>' +
-        '<div class="prize-body"><div class="prize-t">#' + p.place + ' Â· ' + esc(perk) + '</div>' +
+        '<div class="prize-body"><div class="prize-t">#' + p.place + ' · ' + esc(perk) + '</div>' +
         '<div class="prize-s">' + esc(p.badge || '') + ' badge on your profile</div></div></div>';
     }).join('');
   }
-  /* A shareable RANK CARD â€” a bold, unmistakable "league trophy" built from
+  /* A shareable RANK CARD — a bold, unmistakable "league trophy" built from
      canvas shapes so it reads instantly at a glance (and renders identically
      everywhere, unlike emoji). Used as the status background AND the profile
      repost preview. */
@@ -243,7 +243,7 @@ body{display:flex;justify-content:center}
       if (!x) return '';
       var W = 540, H = 675;
 
-      // â”€â”€ Backdrop: deep maroon â†’ gold, with a trophy spotlight â”€â”€
+      // ── Backdrop: deep maroon → gold, with a trophy spotlight ──
       var bg = x.createLinearGradient(0, 0, W, H);
       bg.addColorStop(0, '#16060f'); bg.addColorStop(.5, '#2a0b1c'); bg.addColorStop(1, '#3d1c06');
       x.fillStyle = bg; x.fillRect(0, 0, W, H);
@@ -251,7 +251,7 @@ body{display:flex;justify-content:center}
       glow.addColorStop(0, 'rgba(255,196,60,.30)'); glow.addColorStop(1, 'rgba(255,196,60,0)');
       x.fillStyle = glow; x.fillRect(0, 0, W, H);
 
-      // â”€â”€ Gold frame â”€â”€
+      // ── Gold frame ──
       x.strokeStyle = 'rgba(255,205,90,.55)'; x.lineWidth = 3;
       x.strokeRect(16, 16, W - 32, H - 32);
       x.strokeStyle = 'rgba(255,205,90,.22)'; x.lineWidth = 1;
@@ -259,7 +259,7 @@ body{display:flex;justify-content:center}
 
       x.textAlign = 'center';
 
-      // â”€â”€ Brand â”€â”€
+      // ── Brand ──
       x.fillStyle = '#ffd873'; x.font = '800 19px system-ui';
       x.fillText('D R O B O A R D', W / 2, 66);
       x.fillStyle = '#fff'; x.font = '900 30px system-ui';
@@ -267,7 +267,7 @@ body{display:flex;justify-content:center}
       x.fillStyle = '#ffbcd0'; x.font = '700 15px system-ui';
       x.fillText(scope === 'alltime' ? 'ALL-TIME RANKING' : 'WEEKLY RANKING', W / 2, 132);
 
-      // â”€â”€ Trophy (drawn with shapes) â”€â”€
+      // ── Trophy (drawn with shapes) ──
       var ty = 205;
       x.save();
       x.shadowColor = 'rgba(255,200,60,.55)'; x.shadowBlur = 26;
@@ -288,7 +288,7 @@ body{display:flex;justify-content:center}
       x.fillRect(W / 2 - 26, ty + 48, 52, 9);
       x.restore();
 
-      // â”€â”€ Big rank â”€â”€
+      // ── Big rank ──
       x.fillStyle = '#fff'; x.font = '900 130px system-ui';
       x.shadowColor = 'rgba(255,196,60,.45)'; x.shadowBlur = 20;
       x.fillText('#' + mine.rank, W / 2, 405);
@@ -296,11 +296,11 @@ body{display:flex;justify-content:center}
       x.fillStyle = '#ffd873'; x.font = '800 20px system-ui';
       x.fillText('MY LEAGUE POSITION', W / 2, 440);
 
-      // â”€â”€ Divider â”€â”€
+      // ── Divider ──
       x.strokeStyle = 'rgba(255,205,90,.35)'; x.lineWidth = 2;
       x.beginPath(); x.moveTo(80, 466); x.lineTo(W - 80, 466); x.stroke();
 
-      // â”€â”€ Identity + points â”€â”€
+      // ── Identity + points ──
       x.fillStyle = '#fff'; x.font = '800 34px system-ui';
       x.fillText(String(mine.name || 'Reader').slice(0, 20), W / 2, 516);
       x.fillStyle = '#ffd873'; x.font = '900 44px system-ui';
@@ -308,10 +308,10 @@ body{display:flex;justify-content:center}
       x.fillStyle = '#e9b9c9'; x.font = '700 16px system-ui';
       x.fillText('Season ' + (LAST_BOARD && LAST_BOARD.season ? LAST_BOARD.season : ''), W / 2, 604);
 
-      // â”€â”€ Footer band â”€â”€
+      // ── Footer band ──
       x.fillStyle = 'rgba(255,205,90,.12)'; x.fillRect(24, H - 60, W - 48, 36);
       x.fillStyle = '#ffd873'; x.font = '800 17px system-ui';
-      x.fillText('READ  Â·  REACT  Â·  CLIMB', W / 2, H - 36);
+      x.fillText('READ  ·  REACT  ·  CLIMB', W / 2, H - 36);
       return c.toDataURL('image/png');
     } catch (e) { return ''; }
   }
@@ -319,10 +319,10 @@ body{display:flex;justify-content:center}
     if (typeof window.openShareModal !== 'function') { toast('Share unavailable'); return; }
     var mine = null;
     if (LAST_BOARD) LAST_BOARD.entries.forEach(function (e) { if (e.isMe) mine = e; });
-    if (!mine) { toast('Join the league first â€” read a chapter to earn points'); return; }
+    if (!mine) { toast('Join the league first — read a chapter to earn points'); return; }
     var weekly = scope === 'weekly';
-    var title = 'ðŸ† Iâ€™m #' + mine.rank + ' on the Droboard Reader League!';
-    var sub = (mine.points || 0).toLocaleString() + ' pts Â· ' + (weekly ? 'Week ' + LAST_BOARD.season : 'All-time') + ' Â· beat my rank';
+    var title = '🏆 I’m #' + mine.rank + ' on the Droboard Reader League!';
+    var sub = (mine.points || 0).toLocaleString() + ' pts · ' + (weekly ? 'Week ' + LAST_BOARD.season : 'All-time') + ' · beat my rank';
     openShareModal({
       title: title, sub: sub, img: rankCard(mine),
       url: location.origin + location.pathname + (weekly ? '' : '?scope=alltime'),
@@ -332,17 +332,17 @@ body{display:flex;justify-content:center}
   function renderError(msg) {
     document.getElementById('podium').innerHTML = '';
     document.getElementById('rows').innerHTML =
-      '<div class="row" style="justify-content:center;text-align:center;font-size:12px;color:var(--tx-muted);display:block">Could not load the league â€” ' + esc(msg) + '</div>';
+      '<div class="row" style="justify-content:center;text-align:center;font-size:12px;color:var(--tx-muted);display:block">Could not load the league — ' + esc(msg) + '</div>';
     document.getElementById('seasonSub').textContent = 'Weekly season';
-    document.getElementById('seasonPill').textContent = 'â€”';
-    document.getElementById('myRankLbl').textContent = '#â€“';
+    document.getElementById('seasonPill').textContent = '—';
+    document.getElementById('myRankLbl').textContent = '#–';
     document.getElementById('myPtsLbl').textContent = '0 pts';
     document.getElementById('meRow').innerHTML = '<div class="row-body"><div class="row-name">League unavailable</div></div>';
   }
   function renderPaused() {
-    document.getElementById('heroSub').textContent = 'League paused â€” back soon';
+    document.getElementById('heroSub').textContent = 'League paused — back soon';
     document.getElementById('podium').innerHTML = '';
-    document.getElementById('rows').innerHTML = '<div class="row" style="justify-content:center;text-align:center;font-size:12px;color:var(--tx-muted);display:block">â¸ The league is paused this week. Your activity still counts.</div>';
+    document.getElementById('rows').innerHTML = '<div class="row" style="justify-content:center;text-align:center;font-size:12px;color:var(--tx-muted);display:block">⏸ The league is paused this week. Your activity still counts.</div>';
     document.getElementById('seasonPill').textContent = 'paused';
   }
   async function refresh() {
