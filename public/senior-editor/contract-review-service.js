@@ -237,7 +237,7 @@
     return body;
   }
 
-  function bindDetailEvents(body) {
+  function bindDetailEvents(body, a) {
     body.querySelectorAll('[data-close-detail]').forEach(function (b) {
       b.addEventListener('click', function (e) { e.stopPropagation(); openId = null; renderRows(); });
     });
@@ -278,14 +278,20 @@
       freeChapters: a.pricing.freeChapters, adsPerChapter: a.pricing.adsPerChapter,
       allowAdUnlock: a.pricing.allowAdUnlock, prices: a.pricing.prices, ads: a.pricing.ads,
     });
-    var mz = ContractMonetization.mount('#mzMount', {
+    var mz = null;
+    var syncMaster = function () {};   // hoist a safe no-op before mount()
+    if (a.pricing) init = Object.assign({}, init, {
+      freeChapters: a.pricing.freeChapters, adsPerChapter: a.pricing.adsPerChapter,
+      allowAdUnlock: a.pricing.allowAdUnlock, prices: a.pricing.prices, ads: a.pricing.ads,
+    });
+    mz = ContractMonetization.mount('#mzMount', {
       totalChapters: totalCh, initial: init, readOnly: false, hideSummary: true,
       onChange: function () {
         var d = el('mzDirty'); if (d) { d.className = 'mz-dirty show'; d.textContent = 'Unsaved changes'; }
         syncMaster();
       },
     });
-    var syncMaster = function () {
+    syncMaster = function () {
       var freeAll = el('mzFreeAll'), master = el('mzMaster');
       if (!freeAll || !master) return;
       var terms = mz.getTerms();
