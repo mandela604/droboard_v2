@@ -140,6 +140,7 @@
     const params = new URLSearchParams(location.search);
     const rawId = params.get('id') || params.get('genre') || 'fantasy';
     GENRE_ID = rawId.toLowerCase();
+    try { window.__genreId = GENRE_ID; } catch (e) {}
 
     // Fetch genre hub info and discussions in parallel
     const [genreRes, discRes] = await Promise.all([
