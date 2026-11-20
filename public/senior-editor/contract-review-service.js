@@ -157,7 +157,7 @@
         + '<span class="status-pill ' + esc(isAwaitingSignature(a) ? 'approved' : s) + '">' + esc(displayStatus(a)) + '</span>'
         + '<span class="submitted">' + esc(a.submitted || '') + '</span>'
         + '</div>'
-        + '<div class="item-detail' + (open ? ' show' : '') + '" id="detail-' + esc(a.id) + '">' + detailHtml(a) + '</div>';
+        + '<div class="item-detail' + (open ? ' show' : '') + '" id="detail-' + esc(a.id) + '">' + (open ? detailHtml(a) : '') + '</div>';
     }).join('');
 
     body.querySelectorAll('.item-row').forEach(function (row) {
@@ -166,6 +166,11 @@
         openId = openId === id ? null : id;
         renderRows();
       });
+    });
+    body.querySelectorAll('.item-detail').forEach(function (d) {
+      // Keep interactions inside the expanded detail (pricing editor inputs,
+      // Save button) from bubbling to the row click that would collapse it.
+      d.addEventListener('click', function (e) { e.stopPropagation(); });
     });
     bindDetailEvents(body, list.find(function (x) { return String(x.id) === String(openId); }));
   }
@@ -269,23 +274,29 @@
     });
 
     // ── Chapter pricing & ads — same component as the Review Queue wizard ──
-    if (!a || !window.ContractMonetization || !el('mzMount')) return;
+    if (!a || !window.ContractMonetization) return;
+    // Scope to THIS row's detail — never global getElementById (other rows
+    // may still carry identical helper ids in a stale DOM).
+    const detail = document.getElementById('detail-' + a.id);
+    const mountEl = detail ? detail.querySelector('#mzMount') : null;
+    if (!mountEl) return;
     var totalCh = a.chapters || 12;
     var init = { freeChapters: 3, adsPerChapter: 2, allowAdUnlock: true };
     if (a.pricing) init = Object.assign({}, init, {
       freeChapters: a.pricing.freeChapters, adsPerChapter: a.pricing.adsPerChapter,
       allowAdUnlock: a.pricing.allowAdUnlock, prices: a.pricing.prices, ads: a.pricing.ads,
     });
-    var mz = ContractMonetization.mount('#mzMount', {
+    var mz = ContractMonetization.mount(mountEl, {
       totalChapters: totalCh, initial: init, readOnly: false,
       // Show the component's own summary — it's the same rich editor the
       // Review Queue uses: free input, ads, search, bulk-apply, per-chapter
       // coins/ads grid, and a live summary of every paid chapter.
       onChange: function () {
-        var d = el('mzDirty'); if (d) { d.className = 'mz-dirty show'; d.textContent = 'Unsaved changes'; }
+        var d = detail && detail.querySelector('#mzDirty');
+        if (d) { d.className = 'mz-dirty show'; d.textContent = 'Unsaved changes'; }
       },
     });
-    var saveBtn = el('mzSaveBtn');
+    var saveBtn = detail ? detail.querySelector('#mzSaveBtn') : null;
     if (saveBtn) saveBtn.onclick = function () {
       var terms = mz.getTerms();
       a.pricing = termsToPricing(terms);
@@ -297,8 +308,8 @@
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ freeChapters: terms.freeChapters, adsPerChapter: terms.adsPerChapter, allowAdUnlock: terms.allowAdUnlock, rows: terms.rows }),
         }).then(function () {
-          var u = el('mzUpdated'); if (u) { u.className = 'mz-updated fresh'; u.innerHTML = '<i class="fas fa-circle-check"></i> Updated just now'; }
-          var d = el('mzDirty'); if (d) d.className = 'mz-dirty saved';
+          var u = detail.querySelector('#mzUpdated'); if (u) { u.className = 'mz-updated fresh'; u.innerHTML = '<i class="fas fa-circle-check"></i> Updated just now'; }
+          var d = detail.querySelector('#mzDirty'); if (d) d.className = 'mz-dirty saved';
           toast('Pricing published — "' + a.bookTitle + '"');
         }).catch(function (e) { toast('Pricing not saved — ' + e.message); })
           .then(function () { saveBtn.disabled = false; });
