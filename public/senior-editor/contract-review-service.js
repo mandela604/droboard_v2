@@ -296,6 +296,13 @@
         if (d) { d.className = 'mz-dirty show'; d.textContent = 'Unsaved changes'; }
       },
     });
+    // The component's Apply re-renders the grid but emits no toast — give the
+    // editor clear feedback that prices were staged.
+    mountEl.addEventListener('click', function (e) {
+      if (e.target && e.target.closest && e.target.closest('[data-cm="apply"]')) {
+        toast('Prices applied to all paid chapters — click Save pricing to publish');
+      }
+    });
     var saveBtn = detail ? detail.querySelector('#mzSaveBtn') : null;
     if (saveBtn) saveBtn.onclick = function () {
       var terms = mz.getTerms();

@@ -242,14 +242,22 @@ async function signContract(req, res) {
     if (c.status !== 'approved') { const e = new Error('contract_not_open'); e.status = 409; throw e; }
 
     const t = req.valid.body.pricing;
+    let savedPricing = null;
     if (t) {
+      savedPricing = pricingPatch(t, c.id, c.bookId);
       await ContractPricing.findOneAndUpdate(
         { contractId: c.id },
-        Object.assign(pricingPatch(t, c.id, c.bookId), { status: 'signed' }),
+        Object.assign(savedPricing, { status: 'signed' }),
         { upsert: true, new: true }
       );
     } else {
+      savedPricing = await ContractPricing.findOne({ contractId: c.id }).lean();
       await ContractPricing.updateOne({ contractId: c.id }, { $set: { status: 'signed' } });
+    }
+    // Lock the reader the moment the platform signs (author has already
+    // signed): push the final rows to Chapter.price / Book.vipLocked.
+    if (savedPricing && Array.isArray(savedPricing.rows)) {
+      await applyPricingToChapters(c.bookId, savedPricing.rows);
     }
     const now = new Date();
     c.status = 'signed';
@@ -491,8 +499,39 @@ async function contractPricing(req, res) {
       { $set: patch },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).lean();
+    // The reader enforces the paywall from Chapter.price / Book.vipLocked,
+    // NOT from ContractPricing. Push the saved rows onto the live chapters so
+    // the prices an editor sets here actually lock the book in the readers.
+    await applyPricingToChapters(patch.bookId, patch.rows);
     return doc;
   });
+}
+
+/* Bridge monetization terms to the fields the readers actually read:
+   Chapter.price (book/scroll reader) and Book.vipLocked (full reader).
+   Chapters are matched by their number `n` to the pricing row `num`.
+   Only live/published chapters are touched, and a row price of 0 (free
+   chapters, or an explicit zero) sets the chapter back to free. */
+async function applyPricingToChapters(bookId, rows) {
+  if (!bookId || !Array.isArray(rows) || !rows.length) return;
+  const { Chapter, Book } = require('../models/content.model');
+  const priceByNum = {};
+  rows.forEach(r => {
+    const n = Number(r && r.num);
+    if (Number.isInteger(n) && n > 0) priceByNum[n] = Math.max(0, Number(r.price) || 0);
+  });
+  const chapters = await Chapter.find({ bookId: String(bookId), status: { $in: ['live', 'published'] } })
+    .select('id n price').lean();
+  let anyPaid = false;
+  await Promise.all(chapters.map((ch) => {
+    const n = Number(ch.n);
+    // If a chapter has no explicit row, keep its existing price rather than
+    // silently freeing it.
+    const price = Object.prototype.hasOwnProperty.call(priceByNum, n) ? priceByNum[n] : (Number(ch.price) || 0);
+    if (price > 0) anyPaid = true;
+    return Chapter.updateOne({ id: ch.id }, { $set: { price: price } });
+  }));
+  await Book.updateOne({ id: String(bookId) }, { $set: { vipLocked: anyPaid } });
 }
 
 // Direct offer: the editor picks the author and a chief-editor template (no
