@@ -265,6 +265,21 @@
     </div>`;
     document.title = (POST.title || 'Discussion') + ' · DroBoard';
 
+    // The rich body was rendered by post-card.js's shared RENDERERS (the same
+    // ones feed and profile use), but it was extracted from a throwaway
+    // container, so post-card's delegated click handler is not attached here.
+    // Wire the embedded share card — leaderboard / collection / repost — to
+    // the exact same openLinked() route the feed uses, so "View leaderboard"
+    // and "Open collection" still navigate from the discussion page.
+    if (richBody && window.DroboardPostCard && DroboardPostCard.openLinked) {
+      mount.querySelectorAll('[data-pcc-open]').forEach(function (el) {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function () {
+          DroboardPostCard.openLinked(POST);
+        });
+      });
+    }
+
     // Gray the ring after the status is viewed — same contract as
     // comment-section/debate-args so every host page stays in sync.
     (function bindOpStatusSync() {
