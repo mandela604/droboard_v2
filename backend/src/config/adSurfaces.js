@@ -40,7 +40,7 @@ const PAGE_SLOTS = {
   fullReader: ['fullReader:top', 'fullReader:per-300-words', 'fullReader:bottom'],
   scrollReader: ['scrollReader:top', 'scrollReader:per-300-words', 'scrollReader:bottom'],
   comments: ['comments:list-top', 'comments:every-nth', 'comments:thread-top'],
-  feed: ['feed:in-feed'],
+  feed: ['feed:in-feed', 'feed:vignette'],
   discover: ['discover:strip', 'discover:banner-top', 'discover:inline-banner', 'discover:banner-bottom', 'discover:spotlight'],
   // strip = the in-layout house card; popup = the network overlay zone, which
   // paints over the page wherever its own script decides, so it needs a slot of
@@ -48,7 +48,7 @@ const PAGE_SLOTS = {
   genreHub: ['genreHub:strip', 'genreHub:popup'],
   library: ['library:slider'],
   store: ['store:below-packs'],
-  droboardPage: ['droboardPage:feed'],
+  droboardPage: ['droboardPage:feed', 'droboardPage:vignette'],
   collection: ['collection:top'],
   discussion: ['discussion:inline'],
   debate: ['debate:top', 'debate:inline', 'debate:thread-top'],
