@@ -15,6 +15,8 @@
   var BOOK_ID = null;
   var CHAPTER = null;
   var BOOK = null;
+  // A reviewer opens the editor box read-only with ?review=1 (plus viewer=editor).
+  var REVIEW_MODE = new URLSearchParams(location.search).get('review') === '1';
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -44,13 +46,26 @@
     return body;
   }
 
+  // In read-only review mode the reviewer does not own the book, so read the
+  // manuscript through the senior-editor reviewer endpoints instead.
+  var REVIEW_API = '/api/senior-editor/manuscript';
+  async function reviewCall(path) {
+    var res = await fetch(REVIEW_API + path, { credentials: 'include' });
+    var body = null; try { body = await res.json(); } catch (e) {}
+    if (!res.ok) { var err = new Error((body && body.error) || ('Request failed (' + res.status + ')')); err.status = res.status; throw err; }
+    return body;
+  }
   Svc.get = async function (bookId, num) {
+    if (REVIEW_MODE) return await reviewCall('/' + encodeURIComponent(bookId) + '/chapters/' + encodeURIComponent(num));
     return await call('/books/' + encodeURIComponent(bookId) + '/chapters/' + encodeURIComponent(num));
   };
   Svc.save = async function (bookId, num, payload) {
     return await call('/books/' + encodeURIComponent(bookId) + '/chapters/' + encodeURIComponent(num), { method: 'PUT', body: payload });
   };
-  Svc.getBook = async function (bookId) { return await call('/books/' + encodeURIComponent(bookId)); };
+  Svc.getBook = async function (bookId) {
+    if (REVIEW_MODE) return await reviewCall('/' + encodeURIComponent(bookId));
+    return await call('/books/' + encodeURIComponent(bookId));
+  };
   Svc.listBooks = async function () { return await call('/books'); };
 
   async function resolveBookId() {
@@ -95,6 +110,7 @@
   }
 
   async function save(kind) {
+    if (REVIEW_MODE) { toast('Read-only review — you cannot edit or save this chapter.'); return; }
     var title = document.getElementById('chTitle').value.trim();
     var content = document.getElementById('editor').innerHTML;
     if (!title) { toast('Give the chapter a title first'); return; }
@@ -162,6 +178,22 @@
     });
     var ct = document.getElementById('chTitle');
     if (ct) { ct.readOnly = true; ct.style.background = 'var(--l2,#f5f5f8)'; }
+    document.getElementById('pageTitle').textContent = 'Manuscript (Read Only)';
+    // No author-dashboard drawer / hamburger — the reviewer doesn't own it.
+    var menu = document.getElementById('menuBtn');
+    if (menu) menu.style.display = 'none';
+    // Back goes to the reviewer's queue, not the author workspace.
+    var back = document.getElementById('backBtn');
+    if (back) back.setAttribute('data-review-back', '1');
+    // A clear read-only notice.
+    var info = document.getElementById('chapterInfo');
+    if (info && !document.getElementById('reviewNotice')) {
+      var note = document.createElement('div');
+      note.id = 'reviewNotice';
+      note.style.cssText = 'margin:0 0 12px;padding:10px 12px;border-radius:10px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.28);color:#2563eb;font-size:12px;font-weight:700;line-height:1.45';
+      note.innerHTML = '<i class="fas fa-eye" style="margin-right:6px"></i> Read-only review — this manuscript belongs to an author. Editing and dashboard navigation are disabled.';
+      info.parentNode.insertBefore(note, info);
+    }
   }
 
   async function load() {
@@ -176,15 +208,18 @@
   function CHAPTER_NUM() { return NUM; }
 
   async function init() {
-    if (window.AuthorDrawer) {
+    var params = new URLSearchParams(location.search);
+    var isViewer = REVIEW_MODE || (params.get('viewer') || '') === 'editor';
+    var chapterParam = params.get('chapter') || '1';
+
+    // No author-dashboard drawer or nav for a reviewer.
+    if (!isViewer && window.AuthorDrawer) {
       try { window.AuthorDrawer.render('edit-chapter.html'); } catch (e) {}
       try { window.AuthorDrawer.bind(); } catch (e) {}
     }
-    var params = new URLSearchParams(location.search);
-    var isViewer = (params.get('viewer') || '') === 'editor';
-    var chapterParam = params.get('chapter') || '1';
 
     document.getElementById('backBtn').addEventListener('click', function () {
+      if (REVIEW_MODE) { window.location.href = '../senior-editor/review-queue.html'; return; }
       if (window.history.length > 1) window.history.back(); else window.location.href = 'book-workspace.html';
     });
     document.getElementById('saveBtn').addEventListener('click', function () { save('save'); });

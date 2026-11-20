@@ -19,6 +19,21 @@ router.use(requireAuth, requireRole('senior_editor', 'chief_editor', 'admin'));
 // The signed-in editor's real identity for the shared topbar/user chip.
 router.get('/me', generalLimiter, ctrl.me);
 
+// Read-only manuscript access for reviewers (they don't own the book, so the
+// author namespace's owner-scoped endpoints return 404). Scoped by the
+// editor's assigned authors in the controller — read only, never writes.
+router.get('/manuscript/:bookId', generalLimiter,
+  validate(z.object({ params: z.object({ bookId: z.string().min(1).max(120) }) })),
+  ctrl.manuscriptBook);
+router.get('/manuscript/:bookId/chapters', generalLimiter,
+  validate(z.object({ params: z.object({ bookId: z.string().min(1).max(120) }) })),
+  ctrl.manuscriptChapters);
+router.get('/manuscript/:bookId/chapters/:num', generalLimiter,
+  validate(z.object({ params: z.object({
+    bookId: z.string().min(1).max(120), num: z.string().min(1).max(20),
+  }) })),
+  ctrl.manuscriptChapter);
+
 // Platform-wide surfaces: any editor may read, only the chief counter signs.
 const chiefOnly = requireRole('chief_editor', 'admin');
 

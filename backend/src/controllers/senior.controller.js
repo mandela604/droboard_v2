@@ -80,6 +80,41 @@ async function reviewQueue(req, res) {
   return base.wrap(res, async () => sidebar.reviews(req.user, req.valid.query));
 }
 
+// Read-only manuscript access for a reviewer. The reviewer does not own the
+// book, so the author namespace's owner-scoped reads 404. Here we verify the
+// book is inside this editor's assigned-author scope and return plain content.
+async function assertReviewScope(req, bookId) {
+  const { Book } = require('../models/content.model');
+  const book = await Book.findOne({ id: String(bookId) }).lean();
+  if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
+  const ids = await senior.scopeAuthorIds(req.user); // null = unscoped staff
+  if (ids !== null && !ids.includes(String(book.authorId))) {
+    const e = new Error('not_found'); e.status = 404; throw e;
+  }
+  return book;
+}
+async function manuscriptBook(req, res) {
+  return base.wrap(res, async () => assertReviewScope(req, req.valid.params.bookId));
+}
+async function manuscriptChapters(req, res) {
+  return base.wrap(res, async () => {
+    await assertReviewScope(req, req.valid.params.bookId);
+    const { Chapter } = require('../models/content.model');
+    const items = await Chapter.find({ bookId: String(req.valid.params.bookId) }).sort({ n: 1 }).lean();
+    return { items, total: items.length };
+  });
+}
+async function manuscriptChapter(req, res) {
+  return base.wrap(res, async () => {
+    await assertReviewScope(req, req.valid.params.bookId);
+    const { Chapter } = require('../models/content.model');
+    const num = Number(req.valid.params.num);
+    const ch = await Chapter.findOne({ bookId: String(req.valid.params.bookId), n: num }).lean();
+    if (!ch) { const e = new Error('not_found'); e.status = 404; throw e; }
+    return ch;
+  });
+}
+
 async function booksList(req, res) {
   return base.wrap(res, async () => sidebar.books(req.user, req.valid.query));
 }
@@ -1041,7 +1076,7 @@ module.exports = {
   res, me, dashboard, activity, signContract, sendMessage, reviewDecide, contractSend,
   approveChapterEdit, rejectChapterEdit, approveBookEdit, rejectBookEdit,
   flagBook, unflagBook, myAuthors, referralCode, rotateReferralCode,
-  reviewQueue, booksList, completionList, completionApprove, completionReject,
+  reviewQueue, manuscriptBook, manuscriptChapters, manuscriptChapter, booksList, completionList, completionApprove, completionReject,
   chapterEditList, bookEditList, authorsList,
   messagesList, messageThread, messageUpdate, messageSend, messagesReadAll,
   reportResolve, reportDismiss, reportReopen,

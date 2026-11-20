@@ -98,10 +98,12 @@
     renderPagination();
   }
 
-  // Open the full reader in read-only review mode (no edit controls there either).
+  // Open the chapter in the editor box but in read-only viewer mode — the
+  // reviewer sees the real manuscript in the editor UI without being able to
+  // change or save anything, and without the reader's like/comment controls.
   function openReviewReader(num) {
-    window.location.href = '../Pages/full-reader.html?story=' + encodeURIComponent(BOOK_ID)
-      + '&ch=' + encodeURIComponent(num || 1) + '&review=1';
+    window.location.href = 'edit-chapter.html?book=' + encodeURIComponent(BOOK_ID)
+      + '&chapter=' + encodeURIComponent(num || 1) + '&review=1&viewer=editor';
   }
 
   function editChapter(num) {
@@ -317,9 +319,23 @@
 
   var api = window.BookWorkspaceService || {};
   api.PAGE_SIZE = 12;
-  api.getBook = api.getBook || async function (bookId) { return await callBackend('/books/' + bookId); };
+  // Reviewer read endpoints (scoped, read-only) — the author namespace is
+  // owner-only and would 404 for an editor reviewing someone else's book.
+  async function reviewCall(path) {
+    var res = await fetch('/api/senior-editor/manuscript' + path, { credentials: 'include' });
+    var body = null; try { body = await res.json(); } catch (e) {}
+    if (!res.ok) { var err = new Error((body && body.error) || ('Request failed (' + res.status + ')')); err.status = res.status; throw err; }
+    return body;
+  }
+  api.getBook = api.getBook || async function (bookId) {
+    if (REVIEW_MODE) return await reviewCall('/' + encodeURIComponent(bookId));
+    return await callBackend('/books/' + bookId);
+  };
   api.getBooks = api.getBooks || async function () { return await callBackend('/books'); };
   api.getChapters = api.getChapters || async function (bookId, page, pageSize) {
+    if (REVIEW_MODE) {
+      return await reviewCall('/' + encodeURIComponent(bookId) + '/chapters');
+    }
     return await callBackend('/books/' + bookId + '/chapters?page=' + page + '&limit=' + pageSize);
   };
   // Live-only: a draft goes to the author's own editor (or the chief's
