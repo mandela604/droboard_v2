@@ -182,7 +182,9 @@
       { label: 'Books', value: s.books, cls: 'b' },
       { label: 'Reads', value: s.reads, cls: 'r' },
       { label: 'Likes', value: s.likes, cls: 'g' },
-      rankStat, // 6th stat: writers earn league points too — don't hide it
+      // Rank is not in the writer stats row — writers still see it via the
+      // bio-adjacent pill (rankAfterBio, "shows beside edit"). Readers keep
+      // Rank in their stats row (the branch below is unchanged).
     ];
     return [
       { label: 'Following', value: s.following, cls: '' },
