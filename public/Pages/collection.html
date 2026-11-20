@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>DroBoard · Collection</title>
+<title>DroBoard Â· Collection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -175,7 +175,7 @@ a{color:inherit;text-decoration:none}
       <button class="btn-follow" id="followBtn"><i class="fas fa-plus"></i> Follow Collection</button>
     </div>
 
-    <!-- AD SLOT ── filled by ad-slot.js (drop-in component) -->
+    <!-- AD SLOT â”€â”€ filled by ad-slot.js (drop-in component) -->
     <div data-ad-slot="collection:top" style="padding:0 16px 6px"></div>
 
     <!-- TABS -->
@@ -207,7 +207,7 @@ a{color:inherit;text-decoration:none}
     <div class="report-handle"></div>
     <div class="report-hdr">
       <h3><i class="fas fa-flag"></i> Report Collection</h3>
-      <button class="report-close" id="reportCloseBtn">✕</button>
+      <button class="report-close" id="reportCloseBtn">âœ•</button>
     </div>
     <div class="report-body" id="reportBody">
       <div class="report-label">Why are you reporting this collection?</div>
@@ -230,11 +230,11 @@ a{color:inherit;text-decoration:none}
     <div class="report-handle"></div>
     <div class="report-hdr">
       <h3><i class="fas fa-plus" style="color:var(--pink)"></i> Add Story</h3>
-      <button class="report-close" id="addStoryClose">✕</button>
+      <button class="report-close" id="addStoryClose">âœ•</button>
     </div>
     <div class="report-body">
       <div class="report-label">Tap stories to add to this collection</div>
-      <input id="addStorySearch" placeholder="🔍 Search title or author…" autocomplete="off" style="width:100%;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;margin-bottom:8px"/>
+      <input id="addStorySearch" placeholder="ðŸ” Search title or authorâ€¦" autocomplete="off" style="width:100%;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;margin-bottom:8px"/>
       <div id="addStoryGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:38vh;overflow-y:auto;padding-bottom:8px"></div>
       <button class="report-submit" id="addStoryConfirm" style="margin-top:12px">Add Selected</button>
     </div>
@@ -244,28 +244,29 @@ a{color:inherit;text-decoration:none}
 <div class="report-overlay" id="sortOverlay">
   <div class="report-sheet">
     <div class="report-handle"></div>
-    <div class="report-hdr"><h3><i class="fas fa-sort" style="color:var(--pink)"></i> Sort Stories</h3><button class="report-close" id="sortClose">✕</button></div>
+    <div class="report-hdr"><h3><i class="fas fa-sort" style="color:var(--pink)"></i> Sort Stories</h3><button class="report-close" id="sortClose">âœ•</button></div>
     <div class="report-body" id="sortOptions">
       <div class="report-reason" data-sort="latest"><i class="fas fa-clock"></i> Latest First</div>
       <div class="report-reason" data-sort="likes"><i class="fas fa-heart"></i> Most Liked</div>
       <div class="report-reason" data-sort="reads"><i class="fas fa-eye"></i> Most Viewed</div>
-      <div class="report-reason" data-sort="title"><i class="fas fa-font"></i> Title A–Z</div>
+      <div class="report-reason" data-sort="title"><i class="fas fa-font"></i> Title Aâ€“Z</div>
     </div>
   </div>
 </div>
 
-<!-- SCRIPTS: data → service → component → init -->
+<!-- SCRIPTS: data â†’ service â†’ component â†’ init -->
 <script src="../services/collection-service.js?v=2"></script>
 <script src="../component/bottom-nav.js"></script>
 <script src="../services/share-payload.js?v=4"></script>
-<script src="../component/share-modal.js?v=15"></script>
+<script src="../services/status-service.js?v=13"></script>
+<script src="../component/share-modal.js?v=17"></script>
 <script src="../shared/insights-tracker.js?v=3"></script>
-<script src="../services/collection-page-service.js"></script>
+<script src="../services/collection-page-service.js?v=2"></script>
 
-<!-- AD SLOT COMPONENT ── order: ad-service → ad-card → ad-slot -->
+<!-- AD SLOT COMPONENT â”€â”€ order: ad-service â†’ ad-card â†’ ad-slot -->
 <script src="../services/audience-rules.js?v=2"></script>
 <script src="../services/audience-service.js?v=4"></script>
-<script src="../services/ad-service.js?v=8"></script>
+<script src="../services/ad-service.js?v=9"></script>
 <script src="../services/ad-revenue-service.js?v=10"></script>
 <script src="../component/ad-card.js?v=12"></script>
 <script src="../component/ad-slot.js?v=3"></script>

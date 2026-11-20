@@ -18,7 +18,7 @@
      There is NO demo fallback — if the API is unreachable the error
      propagates up and the UI shows the error state. */
   async function getInventory(page, slot) {
-    const url = `${API_BASE}/ads?placement=${encodeURIComponent(page || '')}`;
+    let url = `${API_BASE}/ads?placement=${encodeURIComponent(page || '')}`;
     if (slot) url += `&slot=${encodeURIComponent(slot)}`;
     const res = await fetch(url, { credentials: 'include' });
     if (!res.ok) {
