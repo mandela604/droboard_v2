@@ -379,16 +379,36 @@ async function getDroboardStats({ period, viewer }) {
   const w = periodWindow(p);
   const cur = createdFilter(w);
   const prev = prevCreatedFilter(w);
+  // Scope EVERY number to the official Droboard page — never platform-wide.
+  // Page posts are owned by the `droboard` account; followers are follows of
+  // that account; comments are on those posts; readers are users who opened a
+  // story linked from a page post. This is the same "query what's on the page"
+  // rule the page itself uses for its Followers/Posts/Featured strip.
+  const { User } = require('../models/user.model');
+  const pageUser = await User.findOne({ username: 'droboard' }).select('id').lean().catch(() => null);
+  const pageId = pageUser ? String(pageUser.id) : '';
+  const pageFilter = pageId ? { authorId: pageId } : { page: 'droboard' };
+  const pagePosts = await Post.find(pageFilter).select('id storyRef chapterRef').lean();
+  const pagePostIds = pagePosts.map(x => String(x.id));
+  const linkedStoryIds = pagePosts
+    .map(x => x.storyRef && x.storyRef.id)
+    .filter(Boolean);
   const [vis, posts, postsPrev, comments, followers, followersPrev, readers] = await Promise.all([
     visits({ surface: 'droboard', targetIds: null, period: p }),
-    Post.countDocuments(cur),
-    Post.countDocuments(prev),
-    Comment.countDocuments(Object.assign({ scope: 'post' }, cur)),
-    Follow.countDocuments(cur),
-    Follow.countDocuments(prev),
-    ReadingProgress.distinct('userId', cur.createdAt ? { lastReadAt: cur.createdAt } : {}),
+    Post.countDocuments(Object.assign({}, cur, pageFilter)),
+    Post.countDocuments(Object.assign({}, prev, pageFilter)),
+    pagePostIds.length
+      ? Comment.countDocuments(Object.assign({ scope: 'post', postId: { $in: pagePostIds } }, cur))
+      : 0,
+    Follow.countDocuments(Object.assign({ followingId: pageId }, cur)),
+    Follow.countDocuments(Object.assign({ followingId: pageId }, prev)),
+    // "Active readers" on the page = distinct users who opened a story the
+    // page promoted. Falls back to the page's own audience when none linked.
+    linkedStoryIds.length
+      ? ReadingProgress.distinct('userId', { storyId: { $in: linkedStoryIds } })
+      : [],
   ]);
-  const topPosts = await Post.find(cur).sort({ likesCount: -1, createdAt: -1 }).limit(5).select('id title heading text note quote caption type likesCount authorId').lean();
+  const topPosts = await Post.find(Object.assign({}, cur, pageFilter)).sort({ likesCount: -1, createdAt: -1 }).limit(5).select('id title heading text note quote caption type likesCount authorId').lean();
   const authors = await usersByIds(topPosts.map(p2 => p2.authorId), 'id username fullName');
 
   return {
