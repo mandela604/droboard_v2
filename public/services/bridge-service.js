@@ -738,19 +738,24 @@
   }
 
   function openShare() {
-    if (window.DroboardShare) DroboardShare.open(STORY_ID);
-    else if (window.openShareModal) openShareModal({
+    const shareData = {
       title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href,
       contentId: STORY_ID, contentType: 'books',
-      // The share was persisted by the server (POST /api/share). Repaint the
-      // stat strip from the response — no reload, no optimistic fake number.
+      // The share is persisted by the server (POST /api/share). Repaint the
+      // stat strip from its response — no reload, no optimistic fake number.
       onShared: function (res) {
         if (!res || typeof res.sharesCount !== 'number') return;
         DATA.stats.shares = res.sharesCount;
         DATA.shares = res.sharesCount;
         try { renderStats(); } catch (e) { /* strip not on screen */ }
       },
-    });
+    };
+    // DroboardShare.open() takes a payload OBJECT. Passing the bare STORY_ID
+    // used to mangle it into an object of character keys, leaving the modal
+    // without contentId/contentType — _recordShare() returned early, no share
+    // was persisted, and the stored count stayed at 0 forever.
+    if (window.DroboardShare) DroboardShare.open(shareData);
+    else if (window.openShareModal) openShareModal(shareData);
     else toast('Share unavailable');
   }
 
