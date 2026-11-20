@@ -36,7 +36,13 @@
   function fmtNum(n) { return String(n || 0); }
 
   async function callApi(path, opts) {
-    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include' }, opts || {}));
+    // '/contracts/:id/pricing' is a sibling endpoint under /api/senior-editor;
+    // everything else ('/:id/approve', '/:id/reject', '?page=…') is relative to
+    // the contract-applications base.
+    const url = path.indexOf('/contracts/') === 0
+      ? '/api/senior-editor' + path
+      : API_BASE + path;
+    const res = await fetch(url, Object.assign({ credentials: 'include' }, opts || {}));
     let j = null; try { j = await res.json(); } catch (e) {}
     if (!res.ok) throw new Error((j && j.error) || ('API error ' + res.status));
     return j;
