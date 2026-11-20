@@ -99,7 +99,9 @@ router.put('/payment-methods/:id/default', requireAuth, writeLimiter, audit('fin
 router.get('/withdrawals', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.withdrawals);
 router.post('/withdrawals', requireAuth, writeLimiter, validate(z.object({
   query: z.object({ authorId: z.string().max(40).optional() }).strict(),
-  body: z.object({ amount: z.number().min(100), methodId: z.string().min(1).max(40) }).strict(),
+  // No hardcoded floor: the real minimum lives in the CoinRate doc and is
+  // enforced in requestWithdrawal so changing it needs no code deploy.
+  body: z.object({ amount: z.number().min(0), methodId: z.string().min(1).max(40) }).strict(),
 })), ctrl.requestWithdrawal);
 
 router.get('/disputes', requireAuth, generalLimiter, validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.disputes);

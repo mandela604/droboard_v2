@@ -34,6 +34,9 @@ const SECTIONS = {
       <div class="ca-head" style="margin-top:0;padding-bottom:14px;border-bottom:1px solid var(--border)"><h2>Coin Rate</h2><p>Set how coins convert to real currency</p></div>
       <div class="form-group" style="margin-top:18px"><label>Coin-to-Dollar Rate ($)</label><div class="desc">How much 1 coin costs in USD</div><input type="number" id="f-coinRate" value="0.02" min="0.01" step="0.01"/><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> 1 coin = $<span id="coinRatePreview">0.02</span> &nbsp;|&nbsp; 100 coins = $<span id="coinRate100">2.00</span></div></div>
 
+      <div class="ca-head" style="margin-top:28px"><h2>Withdrawals</h2><p>Minimum amount an author can withdraw</p></div>
+      <div class="form-group"><label>Minimum Withdrawal (₦)</label><div class="desc">Lowest withdrawal an author can request. Saved to the live backend and enforced on the server — no code deploy needed to change it.</div><input type="number" id="f-minWithdrawal" min="0" step="1" value="100"/></div>
+
       <div class="ca-head" style="margin-top:28px"><h2>Display Currency</h2><p>Two separate policies: staff screens restate, reader prices follow the reader</p></div>
       <div class="form-group" style="margin-top:18px"><label>Staff currency (Naira recommended)</label><div class="desc">Every admin, editor and finance screen restates its dollar figures into this currency. Reader prices and author earnings ignore it.</div><select id="f-curBase" class="f-inp" style="max-width:240px"><option value="NGN">NGN ₦ Naira</option><option value="USD">USD $ Dollar</option><option value="GBP">GBP £ Pound</option></select></div>
       <div class="form-group"><label>Lock reader prices to one currency</label><div class="desc">Unlocked: each reader sees the ladder leg for their own location, and a market with no leg shows as unavailable. Locked: every reader page shows this one currency.</div><select id="f-curLock" class="f-inp" style="max-width:240px"><option value="">Auto (per-location)</option><option value="NGN">NGN ₦ only</option><option value="USD">USD $ only</option><option value="GBP">GBP £ only</option></select><div style="margin-top:8px;padding:10px 14px;background:var(--table-head);border-radius:8px;font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--accent);margin-right:6px"></i> Now showing: <b id="curNow">—</b></div></div>
@@ -147,6 +150,20 @@ const SECTIONS = {
 let activeSection = 'general';
 
 const SETTINGS_KEY = 'dro_sa_platform_settings';
+const COIN_RATE_API = '/api/super-admin/revenue/coin-rate';
+
+// Live minimum withdrawal from the backend CoinRate doc. Kept separate from
+// the localStorage settings blob so the server stays the source of truth.
+async function loadCoinRate() {
+  const el = document.getElementById('f-minWithdrawal');
+  if (!el) return;
+  try {
+    const res = await fetch(COIN_RATE_API, { credentials: 'include' });
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (cfg && cfg.minWithdrawal != null) el.value = cfg.minWithdrawal;
+  } catch (e) { /* keep the default shown in markup */ }
+}
 
 function readSavedSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) { return {}; }
@@ -187,6 +204,7 @@ function renderSection(sectionId) {
   `;
   activeSection = sectionId;
   applySavedSettings();
+  if (sectionId === 'coin-economy') loadCoinRate();
   if (window.DroboardCurrency) syncCurrencyInputs();
 }
 
@@ -200,9 +218,26 @@ document.querySelectorAll('.sn-item').forEach(item => {
 });
 
 // ── Save button ────────────────────────────────────────
-document.getElementById('saveAllBtn').addEventListener('click', () => {
+document.getElementById('saveAllBtn').addEventListener('click', async () => {
   const merged = Object.assign(readSavedSettings(), collectSettings());
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged)); } catch (e) {}
+  // Persist the live minimum withdrawal to the backend (requirePerm edit_rates).
+  const minEl = document.getElementById('f-minWithdrawal');
+  if (minEl) {
+    const val = Math.max(0, Math.floor(Number(minEl.value) || 0));
+    try {
+      const res = await fetch(COIN_RATE_API, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minWithdrawal: val }),
+      });
+      if (res.ok) { minEl.value = val; toast('✅ Settings saved · minimum withdrawal updated'); }
+      else toast('⚠ Settings saved locally, but minimum withdrawal could not be saved (' + res.status + ')');
+    } catch (e) {
+      toast('⚠ Settings saved locally, but minimum withdrawal could not be saved');
+    }
+    return;
+  }
   toast('✅ Settings saved');
 });
 

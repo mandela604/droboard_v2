@@ -208,6 +208,24 @@ async function requestWithdrawal(req, res) {
     const { amount, methodId } = req.valid.body;
     const m = await PaymentMethod.findOne({ id: methodId, authorId }).lean();
     if (!m) { const e = new Error('no_method'); e.status = 400; throw e; }
+    // Minimum is configured in the CoinRate doc (Super Admin → Platform
+    // Settings), never hardcoded here. The client shows the same number, but
+    // the server is the authority — a crafted request cannot bypass it.
+    const cfg = await revenue.coinRateGet();
+    const min = Math.max(0, Number(cfg && cfg.minWithdrawal) || 0);
+    if (amount < min) {
+      const e = new Error('below_minimum'); e.status = 400;
+      e.required = min; throw e;
+    }
+    // Cannot request more than the withdrawable balance. The author page
+    // gates on this too, but the server must enforce it against a crafted API
+    // call (earlier a request with zero balance was accepted).
+    const wallet = await Wallet.findOne({ userId: authorId, kind: 'author' }).lean();
+    const available = Math.max(0, Number(wallet && wallet.fiatAvail) || 0);
+    if (amount > available) {
+      const e = new Error('insufficient'); e.status = 409;
+      e.balance = available; throw e;
+    }
     const w = await Withdrawal.create({
       authorId, amount, method: m.type === 'bank' ? 'Bank Transfer' : m.type === 'paypal' ? 'PayPal' : 'Mobile Money',
       paymentMethodId: m.id, account: m.email || m.phoneNumber || '••••',
