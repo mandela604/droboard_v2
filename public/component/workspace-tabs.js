@@ -208,8 +208,14 @@
     configure, setTheme, getTheme, toggleTheme, setLocalTheme
   };
 
-  if (document.body) build();
-  else document.addEventListener('DOMContentLoaded', build);
+  // A reviewer opening a manuscript with ?review=1 must not get the workspace
+  // navigation tabs (Overview/Plotting/Characters/...) — they don't own the
+  // dashboard and must have no route to those pages from here.
+  var _review = new URLSearchParams(location.search).get('review') === '1';
+  if (!_review) {
+    if (document.body) build();
+    else document.addEventListener('DOMContentLoaded', build);
+  }
 
 })();
 

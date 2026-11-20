@@ -33,6 +33,10 @@
   var currentPage = 1;
   var totalPages = 1;
   var SEARCH = '';
+  // A reviewer (senior editor) opens a manuscript they do not own with ?review=1.
+  // In that mode the workspace becomes a read-only viewer: no edit controls,
+  // no author-dashboard drawer/navigation.
+  var REVIEW_MODE = new URLSearchParams(location.search).get('review') === '1';
 
   function chapterBadge(ch) {
     if (ch.status === 'published' || ch.status === 'live') return '<span class="ch-dot published"></span>';
@@ -75,13 +79,29 @@
     document.getElementById('pgInfo').textContent = 'Showing ' + (start + 1) + '–' + (start + pageItems.length) + ' of ' + list.length + ' chapters';
     document.getElementById('chapterList').innerHTML = pageItems.map(function (ch, i) {
       return '<div class="chapter-card fade" style="animation-delay:' + (i * 0.03) + 's">'
-        + '<div class="ch-top"><div class="ch-title-row"><span class="ch-title">' + esc(ch.num) + '. ' + esc(ch.title) + '</span>' + chapterBadge(ch) + '</div>'
-        + '<div style="display:flex;align-items:center;gap:6px"><button class="ch-edit-btn" onclick="editChapter(' + Number(ch.num) + ')" title="Edit chapter"><i class="fas fa-pen"></i></button>'
-        + '<span class="ch-more"><i class="fas fa-ellipsis"></i></span></div></div>'
+        + '<div class="ch-top"><div class="ch-title-row">' + (REVIEW_MODE
+            ? '<span class="ch-title" data-review-chapter="' + Number(ch.num) + '">' + esc(ch.num) + '. ' + esc(ch.title) + '</span>'
+            : '<span class="ch-title">' + esc(ch.num) + '. ' + esc(ch.title) + '</span>') + chapterBadge(ch) + '</div>'
+        + (REVIEW_MODE ? '' :
+          '<div style="display:flex;align-items:center;gap:6px"><button class="ch-edit-btn" onclick="editChapter(' + Number(ch.num) + ')" title="Edit chapter"><i class="fas fa-pen"></i></button>'
+        + '<span class="ch-more"><i class="fas fa-ellipsis"></i></span></div>') + '</div>'
         + '<div class="ch-meta-row"><span class="ch-meta">' + esc(ch.words) + ' words &middot; ' + esc(ch.date) + '</span>'
         + '<span class="ch-views">' + (ch.views !== '–' ? '<i class="far fa-eye"></i> ' + esc(ch.views) + ' Reads' : '–') + '</span></div></div>';
     }).join('');
+    if (REVIEW_MODE) {
+      document.querySelectorAll('[data-review-chapter]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          openReviewReader(this.getAttribute('data-review-chapter'));
+        });
+      });
+    }
     renderPagination();
+  }
+
+  // Open the full reader in read-only review mode (no edit controls there either).
+  function openReviewReader(num) {
+    window.location.href = '../Pages/full-reader.html?story=' + encodeURIComponent(BOOK_ID)
+      + '&ch=' + encodeURIComponent(num || 1) + '&review=1';
   }
 
   function editChapter(num) {
@@ -254,6 +274,26 @@
     }
     PAGE_SIZE = (window.BookWorkspaceService && window.BookWorkspaceService.PAGE_SIZE) || 12;
     initWorkspace();
+
+    if (REVIEW_MODE) {
+      // Lock the module down: no drawer, no top-bar controls, no editing.
+      document.body.classList.add('review-mode');
+      var banner = document.querySelector('.review-banner');
+      if (banner) banner.style.display = '';
+      // The book title opens the manuscript read-only in the full reader.
+      var bt = document.querySelector('.bh-title');
+      if (bt) {
+        bt.setAttribute('title', 'Open manuscript (read-only)');
+        bt.addEventListener('click', function () { openReviewReader(1); });
+      }
+      // Back button returns to the reviewer's queue, not the author center.
+      var back = document.getElementById('backBtn');
+      if (back) back.setAttribute('onclick', "location.href='../senior-editor/review-queue.html'");
+      // Hard-block any edit entry point even if something calls it directly.
+      window.editChapter = function () { window.alert('Read-only review — editing is disabled.'); };
+      return; // skip drawer, new-chapter, lock modal and all other bindings
+    }
+
     if (window.AuthorDrawer) { window.AuthorDrawer.render('book-workspace.html'); window.AuthorDrawer.bind(); }
     document.getElementById('newChapterBtn').addEventListener('click', function () {
       location.href = '../Pages/create.html?book=' + encodeURIComponent(BOOK_ID) + '&newChapter=1';
