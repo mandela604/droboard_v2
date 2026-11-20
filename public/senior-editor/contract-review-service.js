@@ -167,7 +167,7 @@
         renderRows();
       });
     });
-    bindDetailEvents(body);
+    bindDetailEvents(body, list.find(function (x) { return String(x.id) === String(openId); }));
   }
 
   function detailHtml(a) {
@@ -215,6 +215,24 @@
     } else if (!pending) {
       body += '<span class="status-pill ' + esc(s) + '">' + esc(displayStatus(a)) + '</span>';
     }
+    // Chapter pricing & ads editor — available on every decided contract
+    // (offer sent / author signed / signed). Kept here so pricing can be set
+    // after the author signs, exactly like the original console flow.
+    const canPrice = offered && s !== 'rejected';
+    if (canPrice && window.ContractMonetization) {
+      const live = s === 'signed' || s === 'active';
+      const stateChip = live ? '<span class="mz-state live">LIVE</span>' : '<span class="mz-state draft">DRAFT</span>';
+      const updatedTxt = a.pricingUpdated ? 'Updated ' + a.pricingUpdated : (live ? 'Default pricing' : 'Not applied yet');
+      body += '<div class="detail-contract-select mz-panel">'
+        + '<div class="mz-head"><div class="lbl"><i class="fas fa-coins"></i> Chapter Pricing &amp; Ads ' + stateChip + '</div>'
+        + '<div class="mz-head-right"><span class="mz-updated" id="mzUpdated"><i class="fas fa-clock-rotate-left"></i> ' + updatedTxt + '</span>'
+        + '<button class="btn btn-primary" id="mzSaveBtn"><i class="fas fa-floppy-disk"></i> Save pricing</button></div></div>'
+        + '<div class="mz-master" id="mzMaster"><div class="t"><b>Make all chapters free</b><span>Every chapter unlocks without coins or ads</span></div>'
+        + '<label class="mz-switch"><input type="checkbox" id="mzFreeAll"><span class="sl"></span></label></div>'
+        + '<div id="mzMount"></div>'
+        + '<div class="mz-help"><i class="fas fa-circle-info"></i><span>' + (live ? 'Changes go live as soon as you save — adjust anytime.' : 'Pricing is applied when the contract is finalised.') + '</span>'
+        + '<span class="mz-dirty" id="mzDirty">Unsaved changes</span></div></div>';
+    }
     body += '<button class="btn btn-ghost" data-close-detail><i class="fas fa-xmark"></i> Close</button></div></div>';
     return body;
   }
@@ -251,6 +269,73 @@
           .catch(function (err) { toast('Could not reject — ' + err.message); b.disabled = false; });
       });
     });
+
+    // ── Chapter pricing & ads editor (port of the original console flow) ──
+    if (!a || !window.ContractMonetization || !el('mzMount')) return;
+    var totalCh = a.chapters || 12;
+    var init = { freeChapters: 3, adsPerChapter: 2, allowAdUnlock: true };
+    if (a.pricing) init = Object.assign({}, init, {
+      freeChapters: a.pricing.freeChapters, adsPerChapter: a.pricing.adsPerChapter,
+      allowAdUnlock: a.pricing.allowAdUnlock, prices: a.pricing.prices, ads: a.pricing.ads,
+    });
+    var mz = ContractMonetization.mount('#mzMount', {
+      totalChapters: totalCh, initial: init, readOnly: false, hideSummary: true,
+      onChange: function () {
+        var d = el('mzDirty'); if (d) { d.className = 'mz-dirty show'; d.textContent = 'Unsaved changes'; }
+        syncMaster();
+      },
+    });
+    var syncMaster = function () {
+      var freeAll = el('mzFreeAll'), master = el('mzMaster');
+      if (!freeAll || !master) return;
+      var terms = mz.getTerms();
+      var on = terms.freeChapters >= terms.rows.length;
+      freeAll.checked = on; master.classList.toggle('on', on);
+    };
+    syncMaster();
+    var freeAllEl = el('mzFreeAll'), prevTerms = null;
+    if (freeAllEl) freeAllEl.onchange = function () {
+      var terms = mz.getTerms(), arr = [];
+      for (var ci = 1; ci <= totalCh; ci++) arr.push(ci);
+      if (freeAllEl.checked) {
+        prevTerms = termsToPricing(terms);
+        mz.setChapters(arr, { freeChapters: totalCh, adsPerChapter: 0, allowAdUnlock: false });
+        toast('All ' + totalCh + ' chapters set to free — click Save pricing to publish');
+      } else {
+        var p = prevTerms || { freeChapters: Math.min(3, Math.max(0, totalCh - 1)), adsPerChapter: 2, allowAdUnlock: true };
+        mz.setChapters(arr, p);
+        toast('Free-all off — paywall restored after Chapter ' + p.freeChapters);
+      }
+      syncMaster();
+    };
+    var saveBtn = el('mzSaveBtn');
+    if (saveBtn) saveBtn.onclick = function () {
+      var terms = mz.getTerms();
+      a.pricing = termsToPricing(terms);
+      a.pricingUpdated = 'just now';
+      saveBtn.disabled = true;
+      // Live API — pricing applies to the signed Contract, not the application.
+      if (a.contractId) {
+        callApi('/contracts/' + encodeURIComponent(a.contractId) + '/pricing', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ freeChapters: terms.freeChapters, adsPerChapter: terms.adsPerChapter, allowAdUnlock: terms.allowAdUnlock, rows: terms.rows }),
+        }).then(function () {
+          var u = el('mzUpdated'); if (u) { u.className = 'mz-updated fresh'; u.innerHTML = '<i class="fas fa-circle-check"></i> Updated just now'; }
+          var d = el('mzDirty'); if (d) d.className = 'mz-dirty saved';
+          toast('Pricing published — "' + a.bookTitle + '"');
+        }).catch(function (e) { toast('Pricing not saved — ' + e.message); })
+          .then(function () { saveBtn.disabled = false; });
+      } else {
+        toast('Pricing saved as draft — it applies when the contract is finalised');
+        saveBtn.disabled = false;
+      }
+    };
+  }
+
+  function termsToPricing(terms) {
+    var out = { freeChapters: terms.freeChapters, adsPerChapter: terms.adsPerChapter, allowAdUnlock: terms.allowAdUnlock, prices: {}, ads: {} };
+    (terms.rows || []).forEach(function (r) { out.prices[r.num] = r.price; out.ads[r.num] = r.ads; });
+    return out;
   }
 
   function renderPager(total) {
