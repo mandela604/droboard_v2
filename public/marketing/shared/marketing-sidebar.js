@@ -211,8 +211,15 @@
 
     const instId = 'mkg' + (++_instanceCounter);
     const activeItem = options.activeItem || 'dashboard';
-    const user = Object.assign({ name: 'User', role: 'Marketing Lead', avatar: null }, options.user || {});
-    const notifCount = options.notifCount != null ? options.notifCount : 0;
+    // Identity is ALWAYS the signed-in user — never a hardcoded persona from
+    // a page option. Notifications come from the real unread-count endpoint.
+    const sess = (window.AuthSession && window.AuthSession.getSync && window.AuthSession.getSync()) || {};
+    const roles = (window.AuthSession && window.AuthSession.getRoles && window.AuthSession.getRoles()) || [];
+    const roleLabel = roles.indexOf('admin') !== -1 ? 'Administrator'
+      : roles.indexOf('chief_editor') !== -1 ? 'Chief Editor'
+      : roles.indexOf('senior_editor') !== -1 ? 'Senior Editor'
+      : roles.indexOf('marketing') !== -1 ? 'Marketing Lead' : 'Team Member';
+    const user = { name: sess.name || sess.handle || 'User', role: roleLabel, avatar: sess.avatar || '' };
     const existingContent = container.innerHTML;
 
     function navHtml() {
@@ -268,7 +275,7 @@
             </button>
             <a class="mkg-tb-icon-btn" id="${instId}-bell" href="#" style="display:flex;align-items:center;justify-content:center;text-decoration:none">
               <i class="fas fa-bell"></i>
-              ${notifCount > 0 ? `<span class="mkg-tb-badge">${notifCount}</span>` : ''}
+              <span class="mkg-tb-badge" id="${instId}-badge" style="display:none"></span>
             </a>
             <div class="mkg-tb-profile" id="${instId}-profile">
               ${user.avatar ? `<img src="${_esc(user.avatar)}" alt="${_esc(user.name)}"/>` : ''}
@@ -279,6 +286,18 @@
           <div class="mkg-content" id="${instId}-content"></div>
         </div>
       </div>`;
+
+    // Real unread badge — replaces the old hardcoded 3/5 from demo pages.
+    fetch('/api/notifications/unread-count', { credentials: 'include' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .then(function (b) {
+        var n = (b && Number(b.count)) || 0;
+        var badge = document.getElementById(instId + '-badge');
+        if (!badge || !n) return;
+        badge.textContent = n > 99 ? '99+' : String(n);
+        badge.style.display = '';
+      })
+      .catch(function () {});
 
     const contentEl = document.getElementById(instId + '-content');
     contentEl.innerHTML = existingContent;
@@ -324,15 +343,15 @@
     document.getElementById(instId + '-bell').addEventListener('click', (e) => {
       e.preventDefault();
       if (typeof options.onBellClick === 'function') options.onBellClick();
-      else _toast(`${notifCount} new notification${notifCount === 1 ? '' : 's'}`);
+      else location.href = '../Pages/notifications.html';
     });
     document.getElementById(instId + '-profile').addEventListener('click', () => {
       if (typeof options.onProfileClick === 'function') options.onProfileClick();
-      else _toast('👤 Account menu');
+      else location.href = '../Pages/profile.html';
     });
     document.getElementById(instId + '-support').addEventListener('click', () => {
       if (typeof options.onSupportClick === 'function') options.onSupportClick();
-      else _toast('Opening support chat…');
+      else location.href = '../Pages/chat.html';
     });
 
     return {
