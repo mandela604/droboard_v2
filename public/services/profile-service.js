@@ -11,6 +11,7 @@
 
   let PROFILE = null;
   let VIEW_HANDLE = null;
+  let OWNER_RANK = null;   // resolved weekly rank of the profile owner, for the bio-adjacent pill
   let ME_HANDLE = null;
   let REQ_HANDLE = null;   // the raw ?u= param, null when it's my own profile
   let IS_OWNER = false;
@@ -163,29 +164,30 @@
   }
   async function getStatsForProfile(p) {
     const s = p.stats || {};
+    // Resolve the PROFILE OWNER's rank first so BOTH layouts can show it.
+    // myRank() always resolves the viewer, which leaked your own position onto
+    // other people's cards. rankOf() looks the owner up on the same board.
+    var _rank = null;
+    try {
+      if (window.ReaderLeague && typeof ReaderLeague.rankOf === 'function') {
+        _rank = await ReaderLeague.rankOf(p.handle || p.username || '', p.id || '');
+      }
+    } catch (e) { _rank = null; }
+    OWNER_RANK = _rank;   // shared with the bio-adjacent rank pill
+    const rankStat = { label: 'Rank', value: (_rank && _rank.rank) ? '#' + _rank.rank : '—', cls: 'gold', href: 'leaderboard.html', sub: (_rank && _rank.endsIn) || 'No weekly rank yet' };
+
     if (p.isWriter) return [
       { label: 'Following', value: s.following, cls: '' },
       { label: 'Followers', value: s.followers, cls: 'r' },
       { label: 'Books', value: s.books, cls: 'b' },
       { label: 'Reads', value: s.reads, cls: 'r' },
       { label: 'Likes', value: s.likes, cls: 'g' },
+      rankStat, // 6th stat: writers earn league points too — don't hide it
     ];
-    var _rank = null;
-    // The rank belongs to the PROFILE OWNER, not the signed-in visitor.
-    // myRank() always resolves the viewer, which showed "#1" on every other
-    // reader's card. rankOf() looks the owner up on the same weekly board.
-    try {
-      if (window.ReaderLeague && !p.isWriter && typeof ReaderLeague.rankOf === 'function') {
-        _rank = await ReaderLeague.rankOf(p.handle || p.username || '', p.id || '');
-      }
-    } catch (e) { _rank = null; }
     return [
       { label: 'Following', value: s.following, cls: '' },
       { label: 'Followers', value: s.followers, cls: 'r' },
-      // A reader's rank always occupies this slot — on someone else's profile
-      // it is THAT person's position. Unranked readers get an honest dash,
-      // never the viewer's rank and never a misleading "Saved" count.
-      { label: 'Rank', value: (_rank && _rank.rank) ? '#' + _rank.rank : '—', cls: 'gold', href: 'leaderboard.html', sub: (_rank && _rank.endsIn) || 'No weekly rank yet' },
+      rankStat,
       { label: 'Time Spent', value: (Number(s.readingHours) || 0) + 'h', cls: 'g' },
       { label: 'Streak', value: (Number(s.streak) || 0) + 'd', cls: '' },
     ];
@@ -494,6 +496,25 @@
     document.querySelectorAll('#statsRow .stat-item[data-href]').forEach(el => {
       el.addEventListener('click', () => location.href = el.dataset.href);
     });
+    renderRankPill();
+  }
+
+  /* Rank pill directly after the "+ Edit" under the bio — a second placement
+     so we can compare which reads better before committing to one. */
+  function renderRankPill() {
+    const box = document.getElementById('genrePillsDisplay');
+    if (!box) return;
+    const old = document.getElementById('rankAfterBio');
+    if (old) old.remove();
+    const value = (OWNER_RANK && OWNER_RANK.rank) ? '#' + OWNER_RANK.rank : '—';
+    const pill = document.createElement('a');
+    pill.id = 'rankAfterBio';
+    pill.className = 'genre-pill';
+    pill.style.cssText = 'text-decoration:none;margin-left:6px;background:rgba(255,0,80,.1);border-color:var(--bd-acc);color:var(--gold,#D4AF37)';
+    pill.href = 'leaderboard.html';
+    pill.textContent = '🏆 Rank ' + value;
+    pill.title = (OWNER_RANK && OWNER_RANK.endsIn) ? 'League rank · ends in ' + OWNER_RANK.endsIn + 'h' : 'No weekly rank yet';
+    box.appendChild(pill);
   }
   function renderReviewStrip(p) {
     /* Owner-only row directly under the stats row. Submitted manuscripts are
