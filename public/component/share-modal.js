@@ -774,6 +774,21 @@
     };
 
     try {
+      // A locally-drawn rank card is a data URL. The posts API only accepts
+      // real media URLs, so upload it once to Cloudinary and use the returned
+      // https URL as the repost cover. http(s) covers are used as-is.
+      var coverUrl = '';
+      var srcImg = _data.img || '';
+      if (/^data:image\//i.test(srcImg)) {
+        var blob = await (await fetch(srcImg)).blob();
+        var fd = new FormData();
+        fd.append('file', new File([blob], 'rank-card.png', { type: 'image/png' }));
+        var up = await fetch('/api/uploads/image', { method: 'POST', credentials: 'include', body: fd });
+        if (up.ok) { var uj = await up.json().catch(() => ({})); coverUrl = uj.url || ''; }
+      } else if (/^https?:\/\//i.test(srcImg)) {
+        coverUrl = srcImg;
+      }
+
       // ── Wire DroboardAPI lazily from whatever services are on this page ──
       if (!window.DroboardAPI) {
         window.DroboardAPI = {
@@ -781,9 +796,11 @@
             if (!window.DroboardStatus || typeof DroboardStatus.post !== 'function') {
               throw new Error('Status service not available');
             }
-            // If sharing a story, use the story cover as bg image for a visual status
+            // A rank card is a data URL; anything real is http(s). Both can be
+            // uploaded as the status background — status-service.post()
+            // converts data:/blob: through _uploadBg before posting.
             const storyImg = _data.img || '';
-            const isImageBg = !!(storyImg && /^https?:\/\//.test(storyImg));
+            const isImageBg = !!(storyImg && /^(https?:\/\/|data:image\/)/i.test(storyImg));
             const bg = isImageBg ? storyImg : _selectedBg;
             const slide = await DroboardStatus.post({
               bg,
@@ -830,17 +847,15 @@
                 chapterN: target.chapterN || '',
                 reader: target.reader || '',
                 name: authorName,
-                // The rank card is a data-URL preview only. Never put it in
-                // the post body — it blows past the request size limit. Real
-                // uploaded/media URLs are fine; data: URLs are dropped.
-                avatar: /^https?:\/\//i.test(_data.img || '') ? _data.img : '',
+                // Locally-drawn rank card was uploaded above; real covers pass through.
+                avatar: coverUrl,
                 time: 'Just now',
                 // A repost carries the SOURCE HEADLINE + LINK, never its body.
                 // The sharer writes their own text in `note` above; copying a
                 // repost/recommendation body here would make reposts inherit
                 // somebody else's words forever.
                 text: '',
-                cover: /^https?:\/\//i.test(_data.img || '') ? _data.img : '',
+                cover: coverUrl,
                 title: _data.title || '',
               },
             };
