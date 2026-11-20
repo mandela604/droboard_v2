@@ -4,6 +4,7 @@ const multer = require('multer');
 const { z } = require('zod');
 const ctrl = require('../controllers/author.controller');
 const { requireAuth } = require('../middleware/auth');
+const { requireRole } = require('../middleware/guards');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
@@ -164,11 +165,11 @@ router.post('/contracts/:contractId/decline', writeLimiter, audit('author.contra
     body: z.object({ reason: z.string().max(500).optional() }).strict(),
   })), ctrl.declineContract);
 
-// Writer badge: same identity form, usable before any contract exists. Any
-// signed-in user may submit — this is the step that unlocks contract signing,
-// so gating it behind the `writer` role is a catch-22 (readers got 403).
+// Writer badge: same identity form, usable before any contract exists. The
+// author center is gated to writers at the page level (api-config.js gate),
+// so only a writer should reach this endpoint — keep the server guard too.
 router.get('/verification', generalLimiter, ctrl.verification);
-router.post('/verification', writeLimiter, audit('author.verification.submit'),
+router.post('/verification', requireRole('writer'), writeLimiter, audit('author.verification.submit'),
   idUploadMw, jsonDataMw,
   validate(z.object({ body: z.object({ kyc }).strict() })), ctrl.submitVerification);
 

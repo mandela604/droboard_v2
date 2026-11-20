@@ -532,9 +532,13 @@
     list.innerHTML = rows.map(function (b) {
       const title = esc(b.title || 'Untitled');
       const cover = b.cover ? '<img src="' + escAttr(b.cover) + '" alt=""/>' : '';
+      const inner = cover + '<span>' + title + '</span><span class="review-chip-tag">Under Review</span>';
+      // Readers (book still under review, not yet approved) must not be linked
+      // into the writer-only author center / book workspace. Show the same chip
+      // as plain status text; it becomes a link once they are approved writers.
+      if (!p.isWriter) return '<div class="review-chip review-chip-static">' + inner + '</div>';
       return '<a class="review-chip" href="../author/book-workspace.html?book='
-        + encodeURIComponent(b.id || '') + '">' + cover + '<span>' + title
-        + '</span><span class="review-chip-tag">Under Review</span></a>';
+        + encodeURIComponent(b.id || '') + '">' + inner + '</a>';
     }).join('');
   }
 
