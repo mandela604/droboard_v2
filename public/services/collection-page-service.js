@@ -261,21 +261,44 @@
 
   function initButtons() {
     const followBtn = document.getElementById('followBtn');
+    let followBusy = false;
     followBtn.addEventListener('click', async () => {
+      if (followBusy) return;
+      if (window.RequireAuth && !RequireAuth.ensure('follow this collection')) return;
       const want = !following;
-      following = want;
+      followBusy = true;
+      followBtn.disabled = true;
+      following = want;          // optimistic, rolled back on failure
       paintFollow();
       try {
         const j = await liveReq(want ? 'POST' : 'DELETE', '/collections/' + encodeURIComponent(collId()) + '/follow');
-        if (j && j.followers != null && currentCollection) { currentCollection.followers = j.followers; renderStats(currentCollection); }
-      } catch (e) { following = !want; paintFollow(); }
+        // Server truth: the response carries the persisted state plus the
+        // follower total recounted from CollectionFollow rows. On the next
+        // load the detail GET returns the same `following` flag from the DB.
+        following = j && typeof j.following === 'boolean' ? j.following : want;
+        paintFollow();
+        if (j && j.followers != null && currentCollection) {
+          currentCollection.followers = j.followers;
+          renderStats(currentCollection);
+        }
+        showToast(following ? '✅ Following this collection' : 'Unfollowed this collection');
+      } catch (e) {
+        following = !want;
+        paintFollow();
+        showToast('Could not update follow — ' + ((e && e.message) || 'try again'));
+      } finally {
+        followBusy = false;
+        followBtn.disabled = false;
+      }
     });
 
     function doShare() {
       if (typeof openShareModal === 'function') {
         openShareModal({ title: currentCollection.title, sub: currentCollection.sub, img: currentCollection.cover, url: location.href, contentId: collId(), contentType: 'collections' });
       } else { showToast('Share: ' + location.href); }
-      liveReq('POST', '/collections/' + encodeURIComponent(collId()) + '/share', { channel: 'page' }).catch(() => {});
+      // No legacy /collections/:id/share call here: the share sheet records the
+      // event itself (POST /api/share) for whichever channel the user picks.
+      // Firing both endpoints double-counted a single share.
     }
     document.getElementById('topShareBtn')?.addEventListener('click', doShare);
     document.getElementById('bottomShareBtn')?.addEventListener('click', doShare);
