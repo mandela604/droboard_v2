@@ -447,11 +447,12 @@ async function publishBookForSubmission(bookId) {
       { id: String(bookId), status: { $in: ['under_review'] } },
       { $set: { status: 'published' } }
     );
-    // A published book must publish its manuscript chapters too. Without this
-    // the book shows in Discover but has zero visible chapters.
+    // A published book must publish its manuscript chapters too. Chapters
+    // submitted through the review queue sit in 'pending_review', not 'draft',
+    // so both must be flipped or Discover shows a book with zero chapters.
     if (res && res.modifiedCount > 0) {
       await Chapter.updateMany(
-        { bookId: String(bookId), status: { $in: ['draft'] } },
+        { bookId: String(bookId), status: { $in: ['draft', 'pending_review'] } },
         { $set: { status: 'live' } }
       );
     }

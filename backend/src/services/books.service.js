@@ -369,7 +369,7 @@ async function repairPublishedBookChapters() {
       const live = await Chapter.countDocuments({ bookId: String(b.id), status: { $in: ['live', 'published'] } });
       if (live > 0) continue;
       const r = await Chapter.updateMany(
-        { bookId: String(b.id), status: 'draft' },
+        { bookId: String(b.id), status: { $in: ['draft', 'pending_review'] } },
         { $set: { status: 'live' } }
       );
       if (r && r.modifiedCount > 0) fixed++;
@@ -420,7 +420,7 @@ async function applyBookProposal({ proposal, reviewerId }) {
   if (book.status === 'published') {
     const { Chapter } = require('../models/content.model');
     await Chapter.updateMany(
-      { bookId: String(book.id), status: 'draft' },
+      { bookId: String(book.id), status: { $in: ['draft', 'pending_review'] } },
       { $set: { status: 'live' } }
     );
   }
