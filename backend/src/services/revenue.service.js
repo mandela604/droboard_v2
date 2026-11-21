@@ -16,7 +16,9 @@ const HEX24 = /^[0-9a-fA-F]{24}$/;
    Returns null when there is no signed contract with a valid percentage. */
 async function signedWriterShare({ bookId, authorId }) {
   const { Contract } = require('../models/contract.model');
-  const base = { status: { $in: ['signed', 'active'] } };
+  // 'approved' = author has signed (platform countersignature still pending) —
+  // that is the contract the author is bound to, so its split is authoritative.
+  const base = { status: { $in: ['approved', 'signed', 'active'] } };
   let doc = null;
   if (bookId) {
     doc = await Contract.findOne(Object.assign({}, base, { bookId: String(bookId) }))
