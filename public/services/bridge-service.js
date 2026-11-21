@@ -457,12 +457,8 @@
     renderPoll();
     renderDebate();
     renderPred();
-
-    // The cards start collapsed so the pills act as tabs. Open the first
-    // engagement the writer actually posted so it visibly renders on load
-    // instead of looking like the page has no engagement at all.
-    var first = e.poll ? 'poll' : (e.debate ? 'debate' : (e.pred ? 'pred' : null));
-    if (first && S.engOpen == null) toggleEng(first);
+    // All cards stay collapsed by default — the reader opts in by tapping a
+    // pill. The Debate card keeps its "Full Debate" link to debate.html.
   }
 
   /* The engagement on the story page is the BOOK's engagement (created by
