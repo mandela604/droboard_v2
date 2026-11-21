@@ -187,7 +187,7 @@ function escRx(s) {
 }
 
 async function me(userId) {
-  const u = await User.findOne({ id: userId }).lean();
+  const u = await User.findOne({ id: userId }).select('+passwordHash').lean();
   if (!u) { const e = new Error('not_found'); e.status = 404; throw e; }
   const [reads, ent, wallet, vipApp] = await Promise.all([
     ReadingProgress.countDocuments({ userId, finished: true }),
@@ -207,6 +207,7 @@ async function me(userId) {
   const plan = ent && ent.plan ? 'premium' : 'free';
   return Object.assign(publicShape(u), {
     email: u.email, emailVerified: u.emailVerified, phone: u.phone || null, phoneVerified: !!u.phoneVerified,
+    hasPassword: !!u.passwordHash,
     following: u.followingCount || 0, followers: u.followerCount || 0, reads,
     mfaEnabled: !!u.mfaEnabled,
     settings: Object.assign({ theme: 'dark', notifications: true, privacy: 'public', readingActivity: true }, u.settings || {}),
@@ -433,6 +434,61 @@ async function updateMe(userId, patch) {
   }
   await u.save();
   return publicShape(u.toJSON ? u.toJSON() : u);
+}
+
+// OAuth-only accounts have no password. Verify ownership of the email address
+// with a 6-digit code, then set the first password. No old password required.
+async function requestPasswordSetup(userId) {
+  const u = await User.findOne({ id: userId }).select('+passwordHash');
+  if (!u || u.deletedAt) { const e = new Error('not_found'); e.status = 404; throw e; }
+  if (u.passwordHash) { const e = new Error('already_has_password'); e.status = 400; throw e; }
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  u.resetTokenHash = hashToken(code);
+  u.resetExpiresAt = new Date(Date.now() + 10 * 60000);
+  await u.save();
+  let emailed = false;
+  try {
+    const mail = require('./mail.service');
+    await mail.sendMail({
+      to: u.email,
+      subject: 'Set your Droboard password',
+      html: '<p>Enter this code in Settings to set your password:</p><p style="font-size:24px;font-weight:800;letter-spacing:4px">' + code + '</p><p>It expires in 10 minutes. If you did not request this, ignore this email.</p>',
+      text: 'Your Droboard password setup code: ' + code + ' (expires in 10 minutes)',
+    });
+    emailed = true;
+  } catch (e) { emailed = false; }
+  const result = { ok: true, emailed };
+  if (require('./mail.service').cfg().provider === 'log') result.devCode = code;
+  return result;
+}
+
+async function confirmPasswordSetup(userId, { code, newPassword }) {
+  const u = await User.findOne({ id: userId }).select('+passwordHash');
+  if (!u || u.deletedAt) { const e = new Error('not_found'); e.status = 404; throw e; }
+  if (u.passwordHash) { const e = new Error('already_has_password'); e.status = 400; throw e; }
+  if (!u.resetTokenHash || u.resetTokenHash !== hashToken(String(code || '')) || !u.resetExpiresAt || u.resetExpiresAt < new Date()) {
+    const e = new Error('bad_code'); e.status = 400; throw e;
+  }
+  if (!newPassword || String(newPassword).length < 8 || String(newPassword).length > 128) {
+    const e = new Error('bad_new_password'); e.status = 400; throw e;
+  }
+  u.passwordHash = await argon2.hash(String(newPassword), { type: argon2.argon2id });
+  u.resetTokenHash = null;
+  u.resetExpiresAt = null;
+  u.failedLoginCount = 0;
+  u.lockedUntil = null;
+  await u.save();
+  try {
+    const { notify } = require('./notifications.service');
+    await notify({
+      recipientId: String(u.id), type: 'security',
+      title: 'Your password was set',
+      desc: 'You can now sign in with your email and password as well as Google.',
+      link: '/Pages/settings.html', linkLabel: 'Account security',
+      key: 'security:password-set:' + String(u._id),
+    });
+  } catch (e) {}
+  return { ok: true };
 }
 
 // FIX 2a: change password with old-password check + kill all other sessions.
@@ -834,7 +890,7 @@ async function exportData(userId) {
 module.exports = {
   me, profile, searchUsers, relTime,
   readingStatsFor,
-  updateMe, changePassword, requestEmailChange, confirmEmailChange, deleteMe,
+  updateMe, changePassword, requestPasswordSetup, confirmPasswordSetup, requestEmailChange, confirmEmailChange, deleteMe,
   getSettings, updateSettings,
   followersOf, followingOf, follow, unfollow,
   blockUser, unblockUser, listBlocks, muteUser, unmuteUser, listMutes,

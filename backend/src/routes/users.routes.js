@@ -91,6 +91,17 @@ router.post('/me/password', requireAuth, writeLimiter,
   }).strict() })),
   async (req, res) => base.wrap(res, async () => users.changePassword(req.user.id, req.valid.body)));
 
+// OAuth-only accounts: request a 6-digit email code, then set the first password.
+router.post('/me/password/setup', requireAuth, writeLimiter,
+  async (req, res) => base.wrap(res, async () => users.requestPasswordSetup(req.user.id)));
+
+router.post('/me/password/setup/confirm', requireAuth, writeLimiter,
+  validate(z.object({ body: z.object({
+    code: z.string().min(4).max(10),
+    newPassword: z.string().min(8).max(128),
+  }).strict() })),
+  async (req, res) => base.wrap(res, async () => users.confirmPasswordSetup(req.user.id, req.valid.body)));
+
 // FIX 2b: request + confirm email change.
 router.post('/me/email/request', requireAuth, writeLimiter,
   validate(z.object({ body: z.object({

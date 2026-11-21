@@ -530,7 +530,6 @@ function openWizard(step){
   if(step === 3){
     syncPricingFromDOM();
     buildSummary();
-    document.getElementById('contractPassword').value = '';
     document.getElementById('contractModalError').classList.remove('show');
   }
 }
@@ -565,7 +564,6 @@ function openContractModal(id){
     // per-chapter summary at the bottom of the table is noise here.
     hideSummary: true,
   });
-  document.getElementById('contractPassword').value = '';
   document.getElementById('contractModalError').classList.remove('show');
   document.getElementById('contractModalOv').classList.add('open');
   openWizard(1);
@@ -585,7 +583,6 @@ async function submitAccept(){
   const freeChapters = t.freeChapters;
   const allowAdUnlock = t.allowAdUnlock;
   const adsPerChapter = t.adsPerChapter;
-  const password = document.getElementById('contractPassword').value;
   const errBox = document.getElementById('contractModalError');
 
   if (!s.kyc || s.kyc.status !== 'approved' || !s.kyc.type) {
@@ -599,8 +596,6 @@ async function submitAccept(){
     errBox.classList.add('show');
     return;
   }
-
-  if (!password) { errBox.textContent = 'Please enter your password to confirm this action.'; errBox.classList.add('show'); return; }
 
   const contract = CONTRACTS.find(c => c.id === contractId);
   const paid = t.rows.filter(function (ch) { return !ch.free; });

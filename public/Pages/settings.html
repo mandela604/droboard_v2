@@ -152,6 +152,14 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
         </div>
         <i class="fas fa-chevron-right setting-chevron"></i>
       </div>
+      <div class="setting-row" id="setPasswordRow" style="display:none">
+        <div class="setting-icon" style="background:rgba(22,163,74,.08);color:var(--green)"><i class="fas fa-key"></i></div>
+        <div class="setting-info">
+          <div class="setting-label">Set password</div>
+          <div class="setting-desc">Add a password to your Google account</div>
+        </div>
+        <i class="fas fa-chevron-right setting-chevron"></i>
+      </div>
     </div>
 
     <!-- Privacy -->
@@ -244,6 +252,27 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
   </div>
 </div>
 
+<!-- Set-password modal (OAuth-only) -->
+<div class="modal-overlay" id="setupPwOverlay">
+  <div class="modal-card">
+    <div class="modal-card-head">
+      <div class="modal-card-title">Set Password</div>
+      <button class="modal-card-close" id="setupPwClose"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-card-body">
+      <div id="setupPwInfo" style="font-size:12px;color:var(--tx-muted);line-height:1.6;margin-bottom:12px">You signed in with Google, so your account has no password yet. Verify your email with a code, then choose a password. After that you can sign in with either Google or your email + password.</div>
+      <div style="margin-bottom:10px"><button type="button" class="btn-ghost" id="setupPwSend" style="width:100%">Send code to my email</button><div id="setupPwEmail" style="font-size:11px;color:var(--tx-muted);margin-top:6px"></div><div id="setupPwDev" style="font-size:11px;color:var(--green);margin-top:6px;display:none"></div></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">Verification code</label><input type="text" id="setupPwCode" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none;letter-spacing:2px"/></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">New Password</label><input type="password" id="setupPwNew" placeholder="At least 8 characters" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/></div>
+      <div style="margin-bottom:4px"><label style="font-size:11px;font-weight:700;color:var(--tx-muted)">Confirm New Password</label><input type="password" id="setupPwConfirm" placeholder="Repeat new password" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx-high);font-size:13px;outline:none"/></div>
+    </div>
+    <div class="modal-card-foot">
+      <button class="btn-ghost" id="setupPwCancel">Cancel</button>
+      <button class="btn-primary" id="setupPwSave">Set Password</button>
+    </div>
+  </div>
+</div>
+
 <!-- Email modal -->
 <div class="modal-overlay" id="emailOverlay">
   <div class="modal-card">
@@ -307,7 +336,7 @@ button{font-family:inherit;cursor:pointer}::-webkit-scrollbar{display:none}
 <script src="../services/auth-session.js?v=4"></script>
 <script src="../services/profile-data.js?v=3"></script>
 <script src="../component/profile-menu.js?v=5"></script>
-<script src="../services/settings-service.js?v=3"></script>
+<script src="../services/settings-service.js?v=4"></script>
 <script>SettingsPage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>

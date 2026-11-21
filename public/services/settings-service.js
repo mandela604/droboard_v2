@@ -36,6 +36,11 @@ async function getProfile(){
   if (!res.ok) throw new Error('Profile API failed: ' + res.status);
   const data = await res.json();
   currentProfile = data.user || data.data || data;
+  // OAuth-only accounts (no password) get "Set password" instead of "Change password".
+  var pr=document.getElementById('passwordRow'), sr=document.getElementById('setPasswordRow');
+  if(pr) pr.style.display = currentProfile.hasPassword === false ? 'none' : '';
+  if(sr) sr.style.display = currentProfile.hasPassword === false ? '' : 'none';
+  var spEmail=document.getElementById('setupPwEmail'); if(spEmail) spEmail.textContent=currentProfile.email||'';
   return {
     name: currentProfile.name || currentProfile.handle || '',
     handle: currentProfile.handle || '',
@@ -330,6 +335,46 @@ async function init(){
     }, 600);
   });
 }
+
+
+  // ── Set password (OAuth-only) ──
+  (function(){
+    var ov=document.getElementById('setupPwOverlay'); if(!ov) return;
+    function open(){ ov.classList.add('open'); }
+    function close(){ ov.classList.remove('open'); }
+    var row=document.getElementById('setPasswordRow'); if(row) row.addEventListener('click', open);
+    document.getElementById('setupPwClose').addEventListener('click', close);
+    document.getElementById('setupPwCancel').addEventListener('click', close);
+    ov.addEventListener('click', function(e){ if(e.target===ov) close(); });
+    document.getElementById('setupPwSend').addEventListener('click', async function(){
+      try{
+        var r=await fetch(API_BASE+'/users/me/password/setup',{method:'POST',credentials:'include'});
+        var j=await r.json().catch(function(){return {};});
+        if(!r.ok){ toast(j.error||'Failed to send code'); return; }
+        toast(j.emailed?'Code sent to your email':'Could not email code');
+        var dev=document.getElementById('setupPwDev');
+        if(j.devCode){ dev.style.display='block'; dev.textContent='Dev code: '+j.devCode; }
+      }catch(e){ toast('Failed to send code'); }
+    });
+    document.getElementById('setupPwSave').addEventListener('click', async function(){
+      var code=document.getElementById('setupPwCode').value.trim();
+      var nw=document.getElementById('setupPwNew').value;
+      var cf=document.getElementById('setupPwConfirm').value;
+      if(!code){ toast('Enter the verification code'); return; }
+      if(!nw||!cf){ toast('Fill both password fields'); return; }
+      if(nw!==cf){ toast('Passwords do not match'); return; }
+      try{
+        var r=await fetch(API_BASE+'/users/me/password/setup/confirm',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({code:code,newPassword:nw})});
+        var j=await r.json().catch(function(){return {};});
+        if(!r.ok){ toast(j.error||'Failed to set password'); return; }
+        toast('Password set — you can now sign in with email and password');
+        document.getElementById('setupPwCode').value='';document.getElementById('setupPwNew').value='';document.getElementById('setupPwConfirm').value='';
+        var dev=document.getElementById('setupPwDev'); if(dev) dev.style.display='none';
+        close();
+        await getProfile();
+      }catch(e){ toast('Failed to set password'); }
+    });
+  })();
 
 global.SettingsPage={ init:init, setTheme:setTheme, getTheme:getTheme, toast:toast, getProfile:getProfile, loadSettings:loadSettings };
 
