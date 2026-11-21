@@ -293,21 +293,41 @@
     } else { toast(url); }
   }
 
+  /* ── loading / error states ──
+     Nothing but a spinner is visible until the real debate resolves. If the
+     network fails, the debate UI is never revealed — a clear error with a
+     retry button replaces it, so no stale placeholder can be mistaken for
+     real content. */
+  function showDebateError(err) {
+    var loader = document.getElementById('debLoader');
+    if (loader) loader.style.display = 'none';
+    var content = document.getElementById('debContent');
+    if (content) content.style.display = 'none';
+    var box = document.getElementById('debError');
+    if (!box) return;
+    box.style.display = '';
+    box.innerHTML = '<i class="fas fa-exclamation-circle"></i>'
+      + '<div>Could not load this debate</div>'
+      + '<div style="font-size:11.5px;font-weight:500;opacity:.8;margin-top:6px">' + esc((err && err.message) || 'Request failed') + '</div>'
+      + '<button type="button" class="deb-retry" id="debRetryBtn"><i class="fas fa-rotate-right" style="margin-right:6px"></i>Try again</button>';
+    var retry = document.getElementById('debRetryBtn');
+    if (retry) retry.addEventListener('click', function () { location.reload(); });
+  }
+
   /* ── init ── */
   async function init() {
     try {
       DEBATE = await resolveDebate();
     } catch (e) {
-      // Never leave a blank page: say what failed so the user can retry or
-      // open a different debate.
       console.error('[debate-page]', e);
-      var q = document.getElementById('debQ');
-      if (q) q.textContent = 'Could not load this debate';
-      var mount = document.getElementById('argsMount');
-      if (mount) mount.innerHTML = '<div class="deb-empty">' + esc((e && e.message) || 'Request failed') + '</div>';
+      showDebateError(e);
       return;
     }
     // S already populated from API in resolveDebate
+    var loader = document.getElementById('debLoader');
+    if (loader) loader.style.display = 'none';
+    var content = document.getElementById('debContent');
+    if (content) content.style.display = '';
 
     if (window.DroboardDotsMenu) {
       DroboardDotsMenu.configure({

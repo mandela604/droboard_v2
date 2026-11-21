@@ -118,6 +118,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .deb-arg-like{font-size:11px;color:var(--tx-muted);cursor:pointer;display:flex;align-items:center;gap:4px}
 .deb-arg-like.liked{color:var(--acc)}
 .deb-empty{text-align:center;padding:30px 10px;color:var(--tx-muted);font-size:12.5px}
+/* Loading / error states — no placeholder or demo content is ever painted. */
+.deb-state{padding:60px 24px;text-align:center;color:var(--tx-muted);font-size:13px;font-weight:600}
+.deb-state i{display:block;font-size:30px;color:var(--acc);margin-bottom:14px}
+.deb-state.deb-error i{color:#e5484d}
+.deb-state .deb-retry{display:inline-block;margin-top:16px;padding:10px 20px;border:1px solid var(--bd);border-radius:12px;color:var(--tx-high);font-size:12px;cursor:pointer}
 
 /* ── COMMENT INPUT ── */
 .deb-input-bar{
@@ -202,9 +207,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     <div class="deb-top-ad-slot" id="debTopAdSlot" data-ad-slot="debate:top"></div>
   </div>
 
+  <div class="deb-state" id="debLoader"><i class="fas fa-spinner fa-spin"></i>Loading debate…</div>
+  <div class="deb-state deb-error" id="debError" style="display:none"></div>
+
+  <div id="debContent" style="display:none">
   <div class="deb-q-wrap">
     <a class="deb-poster" id="debPoster" style="display:none"></a>
-    <div class="deb-badge" id="debBadge"><span class="deb-live"></span> Live Debate</div>
+    <div class="deb-badge" id="debBadge"></div>
     <div class="deb-q" id="debQ"></div>
     <div class="deb-prompt" id="debPrompt"></div>
   </div>
@@ -214,25 +223,26 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
       <div class="deb-side-check"><i class="fas fa-check"></i></div>
       <div class="deb-side-emoji">✅</div>
       <div class="deb-side-label" id="forLabel">FOR</div>
-      <div class="deb-side-bar"><div class="deb-side-fill" id="forFill" style="width:50%"></div></div>
-      <div class="deb-side-pct" id="forPct">50%</div>
-      <div class="deb-side-count" id="forCnt">0</div>
+      <div class="deb-side-bar"><div class="deb-side-fill" id="forFill" style="width:0%"></div></div>
+      <div class="deb-side-pct" id="forPct"></div>
+      <div class="deb-side-count" id="forCnt"></div>
     </div>
     <div class="deb-side against" id="sideAg" onclick="DebatePage.vote('against')">
       <div class="deb-side-check"><i class="fas fa-check"></i></div>
       <div class="deb-side-emoji">❌</div>
       <div class="deb-side-label" id="agLabel">AGAINST</div>
-      <div class="deb-side-bar"><div class="deb-side-fill" id="agFill" style="width:50%"></div></div>
-      <div class="deb-side-pct" id="agPct">50%</div>
-      <div class="deb-side-count" id="agCnt">0</div>
+      <div class="deb-side-bar"><div class="deb-side-fill" id="agFill" style="width:0%"></div></div>
+      <div class="deb-side-pct" id="agPct"></div>
+      <div class="deb-side-count" id="agCnt"></div>
     </div>
   </div>
-  <div class="deb-total" id="debTotal">0 joined the discussion</div>
+  <div class="deb-total" id="debTotal"></div>
   <div class="deb-closed" id="debClosed" style="display:none"></div>
 
   <div class="deb-args">
     <div id="argsMount"></div>
   </div>
+  </div><!-- /#debContent -->
 </div>
 
 <div class="toast" id="toast"></div>
@@ -256,7 +266,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <script src="../component/ad-slot.js?v=3"></script>
 <script src="../services/league-service.js"></script>
 <script src="../component/expiry-chips.js?v=8"></script>
-<script src="../services/debate-service.js?v=4"></script>
+<script src="../services/debate-service.js?v=5"></script>
 <script>DebatePage.init();</script>
 <script src="../shared/theme-chrome.js"></script>
 </body>
