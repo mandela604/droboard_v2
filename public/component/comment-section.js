@@ -622,6 +622,30 @@
         if (du.statuses && !currentUser.statuses) currentUser.statuses = du.statuses;
       }
     } catch (e) {}
+    // "Act as @droboard": show the page as the commenter in the composer when
+    // the platform-wide toggle is on. The toggle is in app-nav on every page.
+    function applyPageIdentity() {
+      try {
+        if (window.ActAsPage && window.ActAsPage.enabled()) {
+          currentUser.name = 'Droboard';
+          currentUser.handle = '@droboard';
+          currentUser.avatar = '../assets/droboard-icon.png';
+          currentUser.asPage = true;
+        }
+      } catch (e) {}
+    }
+    applyPageIdentity();
+    try {
+      document.addEventListener('droboard-act-as-page', function () {
+        applyPageIdentity();
+        // Re-render the composer avatar in place if present (both main + thread).
+        try {
+          container.querySelectorAll('[data-dcs-my-av]').forEach(function (av) {
+            av.innerHTML = currentUser.avatar ? '<img src="' + currentUser.avatar + '"/>' : ((currentUser.name || '?')[0].toUpperCase());
+          });
+        } catch (e) {}
+      });
+    } catch (e) {}
     let comments = (options.comments || []).map(c => _normalize(_canonStatuses(c)));
     let open = !options.collapsible || !!options.startOpen;
     let pickedTeam = currentUser.team || null;
@@ -817,10 +841,19 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
       const label = v === 'writer' ? 'Verified Writer' : 'Verified';
       return `<div class="dcs-verified" title="${label}"><i class="fas fa-check"></i></div>`;
     }
+    // Page-authored comments display as @droboard with the page logo, and the
+    // author link goes to droboard-page.html (see goToProfile).
+    function authorView(c) {
+      if (c && c.asPage) {
+        return { name: 'Droboard', handle: '@droboard', avatar: '../assets/droboard-icon.png' };
+      }
+      return { name: c && c.name, handle: c && c.handle, avatar: c && c.avatar };
+    }
     function buildAvatar(c) {
-      const inner = c.avatar
-        ? `<img src="${c.avatar}" loading="lazy"/>`
-        : `<div class="dcs-av-initial" style="background:${c.avatarBg || 'rgba(255,0,80,.25)'}">${(c.name || '?')[0].toUpperCase()}</div>`;
+      const v = authorView(c);
+      const inner = v.avatar
+        ? `<img src="${v.avatar}" loading="lazy"/>`
+        : `<div class="dcs-av-initial" style="background:${c.avatarBg || 'rgba(255,0,80,.25)'}">${(v.name || '?')[0].toUpperCase()}</div>`;
       return `<div class="dcs-av-wrap" data-dcs-avatar="${c.id}">` +
         DroboardStatusRing.html(c, {
           size: 32, key: c.name || '', innerHtml: inner,
@@ -912,7 +945,8 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
             ${buildAvatar(c)}
             <div class="dcs-cbody">
               <div class="dcs-chead">
-                <span class="dcs-name" data-dcs-nameclick="${c.id}">${_esc(c.name)}</span>
+                <span class="dcs-name${c.asPage ? ' dcs-page-name' : ''}" data-dcs-nameclick="${c.id}">${_esc(authorView(c).name || c.name)}</span>
+                ${c.asPage ? '<i class="fas fa-shield-halved" style="font-size:9px;color:var(--acc,#ff0050);margin-left:3px" title="Official page"></i>' : ''}
                 ${teamTag(c.team)}
                 <span class="dcs-time">${_esc(c.time)}</span>
                 ${c.edited ? `<span class="dcs-edited-tag">(edited)</span>` : ''}
@@ -1491,6 +1525,8 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     })();
     function goToProfile(cid) {
       const c = findById(comments, cid);
+      // A page-authored comment links to the page, not a personal profile.
+      if (c && c.asPage) { location.href = 'droboard-page.html'; return; }
       if (typeof options.onProfileClick === 'function') { options.onProfileClick(c); return; }
       location.href = 'profile.html?u=' + encodeURIComponent((c && c.name) || '');
     }
@@ -1627,6 +1663,8 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     return {
       id: c.id, name: c.name, handle: c.handle || c.name,
       avatar: c.avatar || '', verified: !!c.verified, wid: c.wid,
+      // Page-authored comment (shown as @droboard, links to the page).
+      asPage: !!c.asPage, postedBy: c.postedBy || '',
       time: c.time || '', edited: !!c.edited,
       text: c.text || '', likes: c.likes || 0, liked: !!c.liked,
       reactions: c.reactions || {},
@@ -1670,6 +1708,9 @@ const expandedIds = new Set(); // comment ids the reader expanded via "See more"
     if (o.discussionId) body.discussionId = String(o.discussionId);
     if (o.parentId) body.parentId = o.parentId;
     if (o.team) body.team = o.team;
+    // Platform-wide "act as @droboard": page managers can post under the page
+    // identity. The server re-checks permission; this is only the request flag.
+    try { if (window.ActAsPage && window.ActAsPage.enabled()) body.asPage = true; } catch (e) {}
     const res = await fetch(COMMENTS_API + '/comments', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

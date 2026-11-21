@@ -648,5 +648,6 @@ module.exports = {
   toggleLike, toggleSave, toggleHide, clearSaved, votePoll, retractPollVote, voteDebate, retractDebateVote, loadOr404, canWrite,
   reactToPost, unreactPost, reactionState, sharePost,
   listManagers, addManager, updateManagerRole, removeManager, canManagePage,
+  pageAccountId, isPageManager,
   getPageSettings, savePageSettings,
 };

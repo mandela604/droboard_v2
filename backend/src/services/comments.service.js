@@ -73,6 +73,8 @@ async function shapeForReader(rows, viewerId) {
       id: String(r.id || ''),
       name: r.author.name, handle: r.author.handle, avatar: r.author.avatar,
       verified: r.author.verified, wid: String(r.authorId || ''),
+      // Page-authored comment: shown as @droboard and linked to droboard-page.html.
+      asPage: !!r.postedBy, postedBy: String(r.postedBy || ''),
       time: relTime(r.createdAt), edited: !!r.edited,
       text: r.text, likes: r.likes || 0, liked,
       reactions: rxObj,
@@ -84,7 +86,8 @@ async function shapeForReader(rows, viewerId) {
       postId: r.postId || null, discussionId: r.discussionId || null,
       parentId: r.parentId || null,
       // Viewer authority — the FE hides the delete/edit affordances when false.
-      mine: viewerId ? String(r.authorId || '') === String(viewerId) : false,
+      // A page manager who authored it (postedBy) still owns it.
+      mine: viewerId ? (String(r.authorId || '') === String(viewerId) || String(r.postedBy || '') === String(viewerId)) : false,
     };
   });
 }
@@ -92,12 +95,27 @@ async function shapeForReader(rows, viewerId) {
 function canWrite(comment, user) {
   if (!user) return false;
   if ((user.roles || []).includes('admin')) return true;
-  return String(comment.authorId) === String(user.id);
+  if (String(comment.authorId) === String(user.id)) return true;
+  // A page-authored comment is owned by the human in postedBy.
+  if (comment.postedBy && String(comment.postedBy) === String(user.id)) return true;
+  return false;
 }
 
 async function createComment({ authorId, user, data }) {
-  const { scope, storyId, chapterId, postId, discussionId, parentId, team, text } = data;
+  const { scope, storyId, chapterId, postId, discussionId, parentId, team, text, asPage } = data;
   const actor = user || { id: authorId, roles: [] };
+  // "Act as @droboard": a page manager may comment under the page's identity.
+  // The page is the displayed author, the real human stays in postedBy for audit.
+  // Permission is checked with the REAL actor (below), never the page id.
+  let displayAuthorId = authorId;
+  let postedBy = null;
+  if (asPage) {
+    if (!await require('./posts.service').canManagePage(actor.id)) {
+      const e = new Error('page_comment_forbidden'); e.status = 403; throw e;
+    }
+    const pageId = await require('./posts.service').pageAccountId();
+    if (pageId) { displayAuthorId = pageId; postedBy = String(actor.id); }
+  }
   let parent = null;
   if (parentId) {
     parent = await Comment.findOne({ id: parentId }).lean();
@@ -137,11 +155,14 @@ async function createComment({ authorId, user, data }) {
     const e = new Error('chapter_id_required'); e.status = 400; throw e;
   }
   const comment = await Comment.create({
-    authorId, scope: ownScope, storyId: ownStoryId, chapterId: ownChapterId,
+    authorId: displayAuthorId, postedBy: postedBy || null,
+    scope: ownScope, storyId: ownStoryId, chapterId: ownChapterId,
     postId: ownPostId, discussionId: ownDiscussionId,
     parentId: parentId || null, team: team || null, text,
   });
-  await counters.bump(authorId, 'commentCount', 1);
+  // The activity stat belongs to the real human who typed it, even when the
+  // comment is displayed as the page.
+  await counters.bump(postedBy || authorId, 'commentCount', 1);
   if (parentId) await Comment.updateOne({ id: parentId }, { $inc: { repliesCount: 1 } });
   // Keep Post.commentsCount in sync for feed post comments
   if (scope === 'post' && postId) {
@@ -157,7 +178,10 @@ async function createComment({ authorId, user, data }) {
   //   5. A comment on a DISCUSSION thread notifies the thread author too
   //      (a debate/story thread is someone's content, same as a post).
   try {
-    const actor = await User.findOne({ id: String(authorId) }).select('username fullName avatar').lean();
+    // Display identity is the page when acting as page, but notifications must
+    // be attributed to / de-duped against the REAL human who typed it.
+    const notifActorId = postedBy || authorId;
+    const actor = await User.findOne({ id: String(notifActorId) }).select('username fullName avatar').lean();
     const actorName = (actor && (actor.fullName || actor.username)) || 'Someone';
     const snippet = text.slice(0, 60);
     const { notifyActor } = require('./notifications.service');
@@ -171,11 +195,11 @@ async function createComment({ authorId, user, data }) {
 
     const descSnippet = snippet ? `"${snippet}${snippet.length === 60 ? '…' : ''}"` : '';
     const actorHandle = (actor && actor.username) || '';
-    const notifyOpts = { actorId: String(authorId), link, linkLabel: 'View' };
+    const notifyOpts = { actorId: String(notifActorId), link, linkLabel: 'View' };
 
     // 1. Notify parent comment author (reply notification)
     const parentAuthorId = parent ? String(parent.authorId) : null;
-    if (parentAuthorId && parentAuthorId !== String(authorId)) {
+    if (parentAuthorId && parentAuthorId !== String(notifActorId)) {
       await notifyActor({
         ...notifyOpts,
         recipientId: parentAuthorId,
@@ -183,7 +207,7 @@ async function createComment({ authorId, user, data }) {
         title: `{@${actorHandle}|${actorName}} replied to your comment`,
         desc: descSnippet,
         linkLabel: 'View reply',
-        key: 'reply:' + authorId + ':' + comment.id,
+        key: 'reply:' + notifActorId + ':' + comment.id,
       }).catch(() => {});
     }
 
@@ -204,7 +228,7 @@ async function createComment({ authorId, user, data }) {
       const d = await Discussion.findOne({ id: String(discussionId || postId) }).select('authorId').lean();
       if (d) { ownerId = String(d.authorId); ownerKind = 'discussion'; }
     }
-    if (ownerId && ownerId !== String(authorId) && ownerId !== parentAuthorId) {
+    if (ownerId && ownerId !== String(notifActorId) && ownerId !== parentAuthorId) {
       // Different person from the parent comment author — send separate notification
       await notifyActor({
         ...notifyOpts,
@@ -212,11 +236,13 @@ async function createComment({ authorId, user, data }) {
         type: 'comment',
         title: `{@${actorHandle}|${actorName}} commented on your ${ownerKind === 'post' ? 'post' : ownerKind === 'discussion' ? 'discussion' : 'story'}`,
         desc: descSnippet,
-        key: 'comment:' + authorId + ':' + comment.id,
+        key: 'comment:' + notifActorId + ':' + comment.id,
       }).catch(() => {});
     }
   } catch (e) { /* non-fatal — never break the comment save */ }
-  const [card] = await shapeForReader([comment.toObject()], authorId);
+  // Shape for the REAL actor so `mine` is true for the manager who typed it —
+  // they can edit/delete their own page-authored comment.
+  const [card] = await shapeForReader([comment.toObject()], postedBy || authorId);
   return card;
 }
 

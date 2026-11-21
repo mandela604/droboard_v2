@@ -17,6 +17,8 @@ const commentBody = z.object({
   parentId: z.string().max(40).optional(),
   team: z.string().max(40).optional(),
   text: z.string().min(1).max(2000),
+  // Page managers may comment as @droboard. Permission is checked server-side.
+  asPage: z.boolean().optional(),
 }).strict();
 
 router.get('/', generalLimiter, optionalAuth, validate(z.object({ query: z.object({

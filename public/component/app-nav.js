@@ -392,4 +392,56 @@
     }
     setTimeout(function () { ptrHide(); }, 600);
   }, { passive: true });
+
+  /* ── 5) ACT AS @droboard (platform-wide) ─────────────────────────────
+     Page managers can comment/react as the official page on ANY surface.
+     One tiny floating toggle, injected here because app-nav is the only script
+     on every page. The preference persists in localStorage; comment-section
+     reads window.ActAsPage.enabled() to add `asPage` to the payload.
+     Server-side authority stays in posts.service.isPageManager — this widget
+     is visibility only; every write is re-checked on the backend. */
+  (function actAsPage() {
+    var KEY = 'dro_act_as_page';
+    function enabled() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+    function set(v) { try { v ? localStorage.setItem(KEY, '1') : localStorage.removeItem(KEY); } catch (e) {} }
+    window.ActAsPage = { enabled: enabled, set: set };
+
+    function canManage() {
+      if (window.canModerate && window.canModerate()) return Promise.resolve(true);
+      // Ask the backend directly — works on every page, authoritative.
+      return fetch('/api/page/me/manager', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : { canPost: false }; })
+        .then(function (j) { return !!(j && j.canPost); })
+        .catch(function () { return false; });
+    }
+
+    function paint() {
+      var el = document.getElementById('droActAsPageBtn');
+      if (!el) return;
+      el.innerHTML = enabled()
+        ? '<i class="fas fa-shield-halved"></i><span> As @droboard</span>'
+        : '<i class="fas fa-user"></i><span> As me</span>';
+      el.classList.toggle('on', enabled());
+    }
+    function mount() {
+      if (document.getElementById('droActAsPageBtn')) { paint(); return; }
+      canManage().then(function(ok){
+        if (!ok) return;
+        var b = document.createElement('button');
+        b.id = 'droActAsPageBtn';
+        b.type = 'button';
+        b.title = 'Toggle comment identity: you / @droboard';
+        b.style.cssText = 'position:fixed;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:1500;border:none;border-radius:999px;padding:8px 13px;font:700 11.5px/1 system-ui,sans-serif;background:#1a1730;color:#fff;box-shadow:0 6px 20px rgba(0,0,0,.35);display:flex;align-items:center;gap:6px;cursor:pointer;opacity:.9';
+        b.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          set(!enabled()); paint();
+          try { document.dispatchEvent(new CustomEvent('droboard-act-as-page', { detail: { enabled: enabled() } })); } catch (err) {}
+        });
+        (document.body || document.documentElement).appendChild(b);
+        paint();
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+    else mount();
+  })();
 })();

@@ -87,6 +87,9 @@ postSchema.index({ hiddenBy: 1 });
 
 const commentSchema = new mongoose.Schema({
   authorId: { type: String, ref: 'User', required: true, index: true },
+  // When a page manager comments as @droboard, authorId is the page account so
+  // the card reads @droboard; postedBy keeps the real human for the audit trail.
+  postedBy: { type: String, ref: 'User', default: null, index: true },
   scope: { type: String, enum: ['story', 'chapter', 'post', 'discussion'], required: true },
   storyId: { type: String, ref: 'Book', index: true },
   chapterId: { type: String, ref: 'Chapter', index: true },

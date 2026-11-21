@@ -518,6 +518,7 @@ function attachPostCard(){
       const body={ scope:'post', postId:String(post.id), text:c.text };
       if(parentId) body.parentId=parentId;
       if(c.team) body.team=c.team;
+      try{ if(window.ActAsPage && window.ActAsPage.enabled()) body.asPage=true; }catch(e){}
       api('/comments', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
         .then(function(card){
           const shaped=shapeComments([card])[0];
