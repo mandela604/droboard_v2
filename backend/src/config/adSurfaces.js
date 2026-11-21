@@ -37,7 +37,7 @@ const PAGES = [
 ];
 
 const PAGE_SLOTS = {
-  fullReader: ['fullReader:top', 'fullReader:per-300-words', 'fullReader:bottom'],
+  fullReader: ['fullReader:top', 'fullReader:center', 'fullReader:bottom'],
   scrollReader: ['scrollReader:top', 'scrollReader:per-300-words', 'scrollReader:bottom'],
   comments: ['comments:list-top', 'comments:every-nth', 'comments:thread-top'],
   feed: ['feed:in-feed', 'feed:vignette'],

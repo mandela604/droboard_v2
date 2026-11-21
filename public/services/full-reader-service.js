@@ -570,7 +570,7 @@
         htmlParas += "<p>" + p + "</p>";
         wordCount += countWords(p);
         if (wordCount >= gap) {
-          if (!isPremiumUser() && ADST.adsEnabled !== false && slotOn('fullReader:per-300-words') && !chapterAdFree(seasonIdx, chIdx)) {
+          if (!isPremiumUser() && ADST.adsEnabled !== false && false && slotOn('fullReader:per-300-words') && !chapterAdFree(seasonIdx, chIdx)) {
             let adHtml = "";
             const pool = (window._fullReaderBanners && window._fullReaderBanners.length) ? window._fullReaderBanners : null;
             if (pool && window.DroboardAdCard) {
@@ -631,6 +631,7 @@
       } catch (e) {}
     } else {
       try { fillTopSlot(); } catch (e) {}
+      try { fillCenterSlot(); } catch (e) {}
       try { fillBottomSlot(); } catch (e) {}
     }
     if (!locked) { try { syncThreadAds(); } catch (e) {} }
@@ -1023,6 +1024,15 @@
   // are checked here; the creative itself is filled by DroboardAdSlot.
   // The component is mounted explicitly (no data-ad-slot attribute) so its
   // auto-scanner never bypasses the chapter-level gates below.
+  function fillCenterSlot() {
+    const host = document.getElementById('chCenterAd');
+    if (!host) return;
+    const allowed = ADST.adsEnabled !== false && slotOn('fullReader:center') && !chapterAdFree(curSeasonIdx, curChIdx);
+    if (!allowed || !window.DroboardAdSlot) { host.style.display = 'none'; return; }
+    DroboardAdSlot.mount(document.getElementById('chCenterAdSlot') || host, { slot: 'fullReader:center', page: 'fullReader', storyId: storyIdNow(), max: 1 }).then(function (filled) {
+      host.style.display = filled ? '' : 'none';
+    });
+  }
   function fillTopSlot() {
     const wrap = document.getElementById("adSlotWrap");
     const slot = document.getElementById("adSlot");
