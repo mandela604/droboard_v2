@@ -441,14 +441,32 @@
     if (btn) btn.style.display = (DATA.synopsis.short || '').length > 300 ? '' : 'none';
   }
 
+  function engLabel(kind, item, count) {
+    // Show the real question/motion the writer posted, with the live count —
+    // never a generic "No X yet" when the book actually has engagement.
+    const q = String((item && item.q) || '').replace(/\s+/g, ' ').trim();
+    const short = q.length > 34 ? q.slice(0, 33).trimEnd() + '…' : q;
+    if (!item) return 'No ' + (kind === 'poll' ? 'poll' : kind === 'debate' ? 'debate' : 'prediction') + ' yet';
+    return (short || 'Live') + ' · ' + fmtN(count) + (kind === 'debate' ? ' live' : kind === 'poll' ? ' votes' : ' locked');
+  }
+
   function renderEngagement() {
     const e = DATA.engagement;
-    document.getElementById('pollSub').textContent = e.poll ? fmtN(e.poll.opts.reduce((s, o) => s + o.v, 0)) + ' votes' : 'No poll yet';
-    document.getElementById('debateSub').textContent = e.debate ? fmtN(e.debate.dFor + e.debate.dAg) + ' live' : 'No debate yet';
-    document.getElementById('predSub').textContent = e.pred ? fmtN(e.pred.opts.reduce((s, o) => s + o.v, 0)) + ' locked' : 'No prediction yet';
+    const pollVotes = e.poll ? e.poll.opts.reduce((s, o) => s + o.v, 0) : 0;
+    const debVotes = e.debate ? e.debate.dFor + e.debate.dAg : 0;
+    const predVotes = e.pred ? e.pred.opts.reduce((s, o) => s + o.v, 0) : 0;
+    document.getElementById('pollSub').textContent = engLabel('poll', e.poll, pollVotes);
+    document.getElementById('debateSub').textContent = engLabel('debate', e.debate, debVotes);
+    document.getElementById('predSub').textContent = engLabel('pred', e.pred, predVotes);
     renderPoll();
     renderDebate();
     renderPred();
+
+    // The cards start collapsed so the pills act as tabs. Open the first
+    // engagement the writer actually posted so it visibly renders on load
+    // instead of looking like the page has no engagement at all.
+    var first = e.poll ? 'poll' : (e.debate ? 'debate' : (e.pred ? 'pred' : null));
+    if (first && S.engOpen == null) toggleEng(first);
   }
 
   /* The engagement on the story page is the BOOK's engagement (created by
