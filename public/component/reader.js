@@ -573,12 +573,51 @@ function _renderRxSlot(story) {
   function openBuyCoins(retryFn) { _openBuyCoins(retryFn || null); }
   function getBalance() { return _wallet.balance; }
   function setBalance(n) { _wallet.balance = Math.max(0, +n || 0); _syncWalletUI(); }
+
+  /* Seed the sheet wallet from the server. The reader used to start at 0 and
+     never load the real balance, so the coin pill always showed 0 even with
+     coins in the wallet. Call on attach; a failure just leaves the last value. */
+  async function loadBalance() {
+    const coins = await loadBalanceValue();
+    if (coins != null) setBalance(coins);
+  }
   function spend(n) {
     n = +n || 0;
     if (_wallet.balance < n) return false;
     _wallet.balance -= n;
     _syncWalletUI();
     return true;
+  }
+
+  /* Server-backed coin unlock. Creates a real Entitlement in the DB so the
+     chapter stays unlocked after reload. The server reads the price from
+     Chapter.price, deducts coins and records the unlock idempotently.
+     Resolves { ok, balance, error }. */
+  async function unlockChapter(bookId, chapterId) {
+    try {
+      const res = await fetch('/api/wallet/unlock', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: String(bookId), chapterId: String(chapterId) }),
+      });
+      const j = await res.json().catch(function () { return {}; });
+      if (!res.ok) return { ok: false, error: (j && j.error) || ('unlock failed (' + res.status + ')') };
+      // The unlock endpoint returns { ok, price, balance:<number>, alreadyOwned }
+      if (j && typeof j.balance === 'number') setBalance(j.balance);
+      else if (j && j.balance != null && j.balance.coins != null) setBalance(j.balance.coins);
+      else if (j && j.coins != null) setBalance(j.coins);
+      else { const b = await loadBalanceValue(); if (b != null) setBalance(b); }
+      return { ok: true, result: j };
+    } catch (e) { return { ok: false, error: 'network error' }; }
+  }
+
+  async function loadBalanceValue() {
+    try {
+      const res = await fetch('/api/wallet/balance', { credentials: 'include' });
+      if (!res.ok) return null;
+      const j = await res.json().catch(function () { return null; });
+      return j && j.coins != null ? j.coins : null;
+    } catch (e) { return null; }
   }
 
   function _openInsufficientBalance(need, have, retryFn) {
@@ -1088,6 +1127,10 @@ function _renderRxSlot(story) {
         sub: `by @${(story.writer && story.writer.name) || 'writer'}`,
         img: story.cover,
         url: _quoteUrl(story),
+        // Without an id/type the share sheet records nothing: _recordShare()
+        // needs both to POST /api/share and bump the persisted story counter.
+        contentId: story.id,
+        contentType: 'books',
       });
     } else {
       _toast('📤 Share link copied!');
@@ -1165,6 +1208,8 @@ function _renderRxSlot(story) {
           sub: `"${qText}" — @${(qStory.writer && qStory.writer.name) || 'writer'}`,
           img: qStory.cover,
           url: _quoteUrl(qStory),
+          contentId: qStory.id,
+          contentType: 'books',
         });
       } else {
         _toast('📤 Share link copied!');
@@ -1211,6 +1256,7 @@ function _renderRxSlot(story) {
   function attach(hooks) {
     _hooks = hooks || {};
     _build();
+    loadBalance();   // real coin balance, not a hardcoded 0
     // Re-price bundles if geo-detection resolves after the sheet opened.
     if (window.DroboardCurrency && !attach._curSub) {
       attach._curSub = true;
@@ -1223,6 +1269,6 @@ function _renderRxSlot(story) {
     }
   }
 
-  window.DroboardReader = { attach, open, close, openBuyCoins, getBalance, setBalance, spend };
+  window.DroboardReader = { attach, open, close, openBuyCoins, getBalance, setBalance, spend, unlockChapter };
 
 })();

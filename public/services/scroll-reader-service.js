@@ -65,13 +65,24 @@
     if (fc) fc.textContent = fmtN(balance != null ? balance : (window.DroboardReader ? DroboardReader.getBalance() : 0));
   }
 
-  function attemptUnlock(fromCh, howMany, cost) {
+  async function attemptUnlock(fromCh, howMany, cost) {
     if (!window.DroboardReader) { toast("Reader unavailable — please reload"); return; }
-    if (!DroboardReader.spend(cost)) {
-      // Coin lock: open the shared sheet; the unlock retries after purchase.
+    const bookId = DATA && DATA.id;
+    const all = DATA && DATA.chapters ? DATA.chapters : [];
+    const last = howMany === "all" ? all.length : Math.min(all.length, fromCh + howMany - 1);
+    const targets = all.filter(c => c.n >= fromCh && c.n <= last);
+    if (DroboardReader.getBalance() < cost) {
       DroboardReader.openBuyCoins(function () { attemptUnlock(fromCh, howMany, cost); });
       return;
     }
+    // Persist each unlock to the DB before unlocking locally.
+    let okAll = true;
+    for (const ch of targets) {
+      if (!ch.liveId) continue;
+      const r = await DroboardReader.unlockChapter(bookId, ch.liveId);
+      if (!r.ok) { okAll = false; toast("Unlock failed — " + (r.error || "try again")); break; }
+    }
+    if (!okAll) return;
     updateCoinDisplays(DroboardReader.getBalance());
     markUnlockMode(fromCh, howMany, 'coin');
     unlockChapters(fromCh, howMany);

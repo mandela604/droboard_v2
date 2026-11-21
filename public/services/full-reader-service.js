@@ -439,16 +439,28 @@
     "</div>";
   }
 
-  function attemptUnlockChapter(seasonIdx, chIdx, mode, cost) {
+  async function attemptUnlockChapter(seasonIdx, chIdx, mode, cost) {
     if (!window.DroboardReader) { toast("Reader unavailable — please reload"); return; }
-    if (!DroboardReader.spend(cost)) {
-      // Coin lock: open the shared sheet; the unlock retries after purchase.
+    const bookId = storyIdNow();
+    const chs = SEASONS_DATA[seasonIdx].chs;
+    const last = mode === "one" ? chIdx : (mode === "story" ? chs.length - 1 : Math.min(chs.length - 1, chIdx + 4));
+    const targets = [];
+    for (let i = chIdx; i <= last; i++) if (chs[i]) targets.push(chs[i]);
+    // Balance guard for the whole selection (server re-checks per chapter).
+    if (DroboardReader.getBalance() < cost) {
       toast("Not enough coins — top up below");
       DroboardReader.openBuyCoins(function () { attemptUnlockChapter(seasonIdx, chIdx, mode, cost); });
       return;
     }
+    // Persist each unlock to the DB (real Entitlement) before marking locally.
+    let okAll = true;
+    for (const ch of targets) {
+      if (!ch.liveId) continue;
+      const r = await DroboardReader.unlockChapter(bookId, ch.liveId);
+      if (!r.ok) { okAll = false; toast("Unlock failed — " + (r.error || "try again")); break; }
+    }
+    if (!okAll) return;
     updateCoinPill(DroboardReader.getBalance());
-    const chs = SEASONS_DATA[seasonIdx].chs;
     if (mode === "one") {
       markUnlockRange(seasonIdx, chIdx, 1, 'coin');
       chs[chIdx].state = "current";
