@@ -408,7 +408,7 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
       <div class="eng-card" id="card-poll">
         <div class="ec-header"><span class="ec-badge poll">📊 Poll</span><div class="ec-q" id="pollQ"></div></div>
         <div class="ec-opts" id="pollOpts"></div>
-        <div class="ec-footer"><span class="ec-total" id="pollTotal"></span><span class="ec-share" onclick="toast('📤 Share poll…')"><i class="fas fa-share-alt" style="font-size:9px"></i> Share</span></div>
+        <div class="ec-footer"><span class="ec-total" id="pollTotal"></span><span class="ec-share" onclick="BridgePage.shareEngagement('poll')"><i class="fas fa-share-alt" style="font-size:9px"></i> Share</span></div>
       </div>
       <div class="eng-card" id="card-debate">
         <div class="ec-header"><span class="ec-badge debate"><span class="live-dot"></span> Live Debate</span><div class="ec-q" id="debateQ"></div></div>
@@ -430,7 +430,7 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
       <div class="eng-card" id="card-pred">
         <div class="ec-header"><span class="ec-badge pred">🔮 Prediction</span><div class="ec-q" id="predQ"></div></div>
         <div class="ec-opts" id="predOpts"></div>
-        <div class="ec-footer"><span class="ec-total" id="predTotal"></span><span class="ec-share" onclick="toast('📤 Share…')"><i class="fas fa-share-alt" style="font-size:9px"></i> Share</span></div>
+        <div class="ec-footer"><span class="ec-total" id="predTotal"></span><span class="ec-share" onclick="BridgePage.shareEngagement('pred')"><i class="fas fa-share-alt" style="font-size:9px"></i> Share</span></div>
       </div>
     </div>
 
@@ -571,7 +571,7 @@ try{var _bt=localStorage.getItem('droboardTheme')||'light';if(_bt==='light'){doc
 
 <!-- ═══ Page service ═══ -->
 <script src="../component/continue-reading.js?v=4"></script>
-<script src="../services/bridge-service.js?v=25"></script>
+<script src="../services/bridge-service.js?v=26"></script>
 
 <script>
 BridgePage.init();

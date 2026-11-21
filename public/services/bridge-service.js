@@ -18,6 +18,10 @@
   function fmtN(n) { n = +n || 0; if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'; if (n >= 1000) return (n / 1000).toFixed(1) + 'k'; return String(n); }
   function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+  // Expose the toast globally too — a few legacy inline onclick attributes
+  // still call bare toast(), which would otherwise throw "toast is not defined".
+  window.toast = toast;
+
   function toast(m) {
     let t = document.getElementById('bridgeToast');
     if (!t) {
@@ -747,8 +751,8 @@
     else toast('Save unavailable');
   }
 
-  function openShare() {
-    const shareData = {
+  function openShare(overrides) {
+    const shareData = Object.assign({
       title: DATA.title, sub: DATA.writer.name, img: DATA.cover, url: location.href,
       contentId: STORY_ID, contentType: 'books',
       // The share is persisted by the server (POST /api/share). Repaint the
@@ -759,7 +763,7 @@
         DATA.shares = res.sharesCount;
         try { renderStats(); } catch (e) { /* strip not on screen */ }
       },
-    };
+    }, overrides || {});
     // DroboardShare.open() takes a payload OBJECT. Passing the bare STORY_ID
     // used to mangle it into an object of character keys, leaving the modal
     // without contentId/contentType — _recordShare() returned early, no share
@@ -767,6 +771,19 @@
     if (window.DroboardShare) DroboardShare.open(shareData);
     else if (window.openShareModal) openShareModal(shareData);
     else toast('Share unavailable');
+  }
+
+  // Share a specific book-level engagement. The share still persists against
+  // the book (contentId/contentType stay the same), but the sheet headline is
+  // the actual poll / prediction question the reader is looking at.
+  function shareEngagement(kind) {
+    const item = engItem(kind === 'pred' ? 'pred' : kind);
+    const label = kind === 'poll' ? 'Poll' : kind === 'pred' ? 'Prediction' : 'Debate';
+    const q = String((item && item.q) || '').replace(/\s+/g, ' ').trim();
+    openShare({
+      title: (q || label).slice(0, 90),
+      sub: label + ' · ' + DATA.title + ' · ' + DATA.writer.name,
+    });
   }
 
   function setupScrollListener() {
@@ -824,8 +841,11 @@
       return true;
     } catch (e) {
       const msg = (e && e.message) || 'Vote failed';
-      toast(/already_voted/i.test(msg) ? '✅ Already voted!' : 'Vote failed — ' + msg);
+      // Re-read the server truth BEFORE telling the reader anything. Otherwise
+      // "Already voted" can appear while the option is still unhighlighted —
+      // the server had the vote but this page's local state did not yet.
       try { await refreshEngagement(); } catch (e2) { /* keep current paint */ }
+      toast(/already_voted/i.test(msg) ? '✅ Already voted!' : 'Vote failed — ' + msg);
       return false;
     }
   }
@@ -1045,6 +1065,7 @@
     openTip,
     openSave,
     openShare,
+    shareEngagement,
     toggleRate,
     openRateModal,
     rateStar,
