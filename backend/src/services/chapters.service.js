@@ -162,6 +162,28 @@ async function createChapter({ bookId, data }) {
     poll: normPollLike(data.poll), prediction: normPollLike(data.prediction), debate: normPollLike(data.debate),
   });
   await Book.updateOne({ id: bookId }, { $inc: { chapterCount: 1, wordCount: ch.words || 0 } });
+  // Keep the SE pricing table in sync: a chapter that inherited a price (or
+  // was given one) gets a row in the signed contract's ContractPricing doc so
+  // the editor sees the same number the reader uses. Editors can still override.
+  if (ch.price > 0) {
+    try {
+      const { Contract } = require('../models/contract.model');
+      const { ContractPricing } = require('../models/revenue.model');
+      const contract = await Contract.findOne({ bookId: String(bookId), status: { $in: ['approved', 'signed', 'active'] } }).select('id').lean();
+      if (contract) {
+        const cp = await ContractPricing.findOne({ contractId: contract.id }).lean();
+        if (cp) {
+          const rows = Array.isArray(cp.rows) ? cp.rows.slice() : [];
+          if (!rows.some(r => Number(r.num) === n)) {
+            rows.push({ num: n, title: ch.title || ('Chapter ' + n), price: ch.price, ads: cp.adsPerChapter || 0, free: false });
+            rows.sort((a, b) => Number(a.num) - Number(b.num));
+            await ContractPricing.updateOne({ contractId: contract.id },
+              { $set: { rows: rows, paidCount: rows.filter(r => !r.free).length } });
+          }
+        }
+      }
+    } catch (e) { /* pricing table sync is best-effort; Chapter.price is authoritative */ }
+  }
   return ch.toJSON();
 }
 
