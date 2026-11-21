@@ -441,23 +441,19 @@
     if (btn) btn.style.display = (DATA.synopsis.short || '').length > 300 ? '' : 'none';
   }
 
-  function engLabel(kind, item, count) {
-    // Show the real question/motion the writer posted, with the live count —
-    // never a generic "No X yet" when the book actually has engagement.
-    const q = String((item && item.q) || '').replace(/\s+/g, ' ').trim();
-    const short = q.length > 34 ? q.slice(0, 33).trimEnd() + '…' : q;
-    if (!item) return 'No ' + (kind === 'poll' ? 'poll' : kind === 'debate' ? 'debate' : 'prediction') + ' yet';
-    return (short || 'Live') + ' · ' + fmtN(count) + (kind === 'debate' ? ' live' : kind === 'poll' ? ' votes' : ' locked');
+  function engLabel(kind, item) {
+    // Compact indicator: a small count when the writer posted engagement,
+    // a short dash when the book has none. The full question is never shown
+    // here — it lives inside the card once the pill opens it.
+    if (!item) return '—';
+    return '1 ' + (kind === 'poll' ? 'poll' : kind === 'debate' ? 'debate' : 'prediction');
   }
 
   function renderEngagement() {
     const e = DATA.engagement;
-    const pollVotes = e.poll ? e.poll.opts.reduce((s, o) => s + o.v, 0) : 0;
-    const debVotes = e.debate ? e.debate.dFor + e.debate.dAg : 0;
-    const predVotes = e.pred ? e.pred.opts.reduce((s, o) => s + o.v, 0) : 0;
-    document.getElementById('pollSub').textContent = engLabel('poll', e.poll, pollVotes);
-    document.getElementById('debateSub').textContent = engLabel('debate', e.debate, debVotes);
-    document.getElementById('predSub').textContent = engLabel('pred', e.pred, predVotes);
+    document.getElementById('pollSub').textContent = engLabel('poll', e.poll);
+    document.getElementById('debateSub').textContent = engLabel('debate', e.debate);
+    document.getElementById('predSub').textContent = engLabel('pred', e.pred);
     renderPoll();
     renderDebate();
     renderPred();
