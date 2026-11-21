@@ -10,6 +10,15 @@ const collections = require('./collections.service');
 
 const WRITER_ROLES = ['writer', 'senior_editor', 'chief_editor', 'admin'];
 
+// Brand names must never be used as a personal handle. Block the exact name
+// AND anything containing it (droboard2, my_droboard, droboard_official…),
+// case-insensitively, so nobody can impersonate or squat the official page.
+const RESERVED_HANDLE_PARTS = ['droboard'];
+function isReservedUsername(raw) {
+  const v = String(raw || '').toLowerCase();
+  return RESERVED_HANDLE_PARTS.some(p => v.indexOf(p) !== -1);
+}
+
 function joinedLabel(d) {
   if (!d) return '';
   try {
@@ -345,6 +354,7 @@ async function updateMe(userId, patch) {
   if (patch.username !== undefined) {
     const v = String(patch.username).toLowerCase().trim();
     if (!/^[a-z][a-z0-9_]{2,19}$/.test(v)) { const e = new Error('bad_username'); e.status = 400; throw e; }
+    if (isReservedUsername(v)) { const e = new Error('username_reserved'); e.status = 409; throw e; }
     if (v !== u.username) {
       // Instagram-style cooldown: one username change per 14 days. Old handles
       // stay reserved, so this also caps how many handles one account can lock.
@@ -788,6 +798,7 @@ async function checkUsername(username) {
   // A handle once used stays reserved: it is a permanent alias to its owner,
   // so old links and @mentions can never start pointing at someone else.
   const v = String(username || '').toLowerCase();
+  if (isReservedUsername(v)) return { available: false, reason: 'reserved' };
   const taken = await User.exists({ $or: [{ username: v }, { previousUsernames: v }] });
   return { available: !taken };
 }
@@ -828,5 +839,5 @@ module.exports = {
   followersOf, followingOf, follow, unfollow,
   blockUser, unblockUser, listBlocks, muteUser, unmuteUser, listMutes,
   mutedIds, blockedIds, publicShape, ensurePlatformAccounts,
-  becomeWriter, checkUsername, exportData,
+  becomeWriter, checkUsername, isReservedUsername, exportData,
 };

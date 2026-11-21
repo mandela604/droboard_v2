@@ -395,6 +395,7 @@ async function acceptInvite({ token, password, username, fullName }) {
     const uname = String(username || String(inv.email).split('@')[0] || '')
       .toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24);
     if (!/^[a-z][a-z0-9_]{2,19}$/.test(uname)) throw err('bad_username', 400);
+    if (require('./users.service').isReservedUsername(uname)) throw err('username_reserved', 409);
     if (await User.exists({ username: uname })) throw err('username_taken', 409);
     if (await User.exists({ email: String(inv.email).toLowerCase() })) throw err('email_taken', 409);
     const name = String(fullName || inv.name || uname).trim().slice(0, 80);

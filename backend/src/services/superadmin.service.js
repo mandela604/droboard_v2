@@ -672,6 +672,8 @@ async function getUser(id) {
 }
 
 async function createUser(data, by) {
+  // Brand names are reserved even for admin-created users.
+  if (require('./users.service').isReservedUsername(data.username)) throw err(409, 'username_reserved');
   // FIX 10: never store raw passwordHash — accept `password` and argon2-hash it.
   // Legacy `passwordHash` input is rejected unless it already looks like argon2.
   let passwordHash = null;
@@ -713,7 +715,11 @@ async function updateUser(id, patch) {
   if (!u) throw err(404, 'user_not_found');
   if (patch.name !== undefined) u.fullName = patch.name;
   if (patch.email !== undefined) u.email = String(patch.email).toLowerCase();
-  if (patch.username !== undefined) u.username = String(patch.username).toLowerCase();
+  if (patch.username !== undefined) {
+    const v = String(patch.username).toLowerCase();
+    if (require('./users.service').isReservedUsername(v)) throw err(409, 'username_reserved');
+    u.username = v;
+  }
   if (patch.avatar !== undefined) u.avatar = patch.avatar;
   if (patch.phone !== undefined) u.phone = patch.phone;
   if (patch.role !== undefined) {

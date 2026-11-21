@@ -112,6 +112,7 @@ el('refInput').addEventListener('input', function(){
           if(mine !== seq) return;
           if(!r.ok) throw new Error('http');
           if(r.body && r.body.available) status('✓ Username available', true);
+          else if(r.body && r.body.reason === 'reserved') status('✗ That name is reserved for Droboard', false);
           else status('✗ That username is taken', false);
         })
         .catch(function(){ if(mine !== seq) return; status('Couldn’t check that username — we’ll verify when you submit.', null); });
@@ -201,7 +202,8 @@ document.getElementById('googleBtn').addEventListener('click', function(){
 /* ── Submit ──────────────────────────────────────────────────────── */
 function signupMessage(status, body){
   const code = body && body.error;
-  if(status === 409 || code === 'taken') return 'That email or username is already registered. Try logging in instead.';
+  if(code === 'username_reserved') return 'That name is reserved for Droboard. Please choose another username.';
+  if(status === 409 || code === 'taken' || code === 'username_taken') return 'That email or username is already registered. Try logging in instead.';
   if(status === 429) return 'Too many sign-ups from your network. Please try again later.';
   if(status === 400) return 'Check your details and try again.';
   if(status >= 500) return 'Something went wrong on our side. Please try again.';

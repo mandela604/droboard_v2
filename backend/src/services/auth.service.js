@@ -7,6 +7,7 @@ const env = require('../config/env');
 const { signAccess } = require('../middleware/auth');
 const { User, RefreshFamily, AuditLog } = require('../models/user.model');
 const referrals = require('./referrals.service');
+const { isReservedUsername } = require('./users.service');
 
 // Lean auth audit: success + lockout only — failed attempts are NOT logged
 // individually (the account lock + IP limiter already absorb brute force;
@@ -78,6 +79,7 @@ function adminNeedsMfaSetup(user) {
 async function register({ fullName, name, username, email, password, referralCode, country }) {
   const displayName = fullName || name;
   if (!displayName) { const e = new Error('invalid_input'); e.status = 400; throw e; }
+  if (isReservedUsername(username)) { const e = new Error('username_reserved'); e.status = 409; throw e; }
   const exists = await User.findOne({ $or: [
     { email: email.toLowerCase() },
     { username: username.toLowerCase() },
@@ -470,10 +472,12 @@ async function findOrCreateGoogleUser(googleInfo, { referralCode } = {}) {
     const { base } = uniqueUsernameFromEmail(email, googleInfo.name);
     let username = base;
     for (let i = 0; i < 5; i++) {
-      const clash = await User.exists({ $or: [{ username }, { previousUsernames: username }, { email }] });
+      const clash = isReservedUsername(username) || await User.exists({ $or: [{ username }, { previousUsernames: username }, { email }] });
       if (!clash) break;
       username = (base + '_' + randomSuffix(4)).toLowerCase();
     }
+    // Last resort: if every candidate was reserved/taken, force a safe one.
+    if (isReservedUsername(username)) username = 'reader_' + randomSuffix(6).toLowerCase();
     const existingCount = await User.countDocuments();
     user = await User.create({
       fullName: String(googleInfo.name || email.split('@')[0]).slice(0, 80),
