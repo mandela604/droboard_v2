@@ -420,7 +420,7 @@ function openSheet(id){
   document.getElementById('mActRead').onclick = () => {
     // Open the manuscript in read-only review mode — no edit controls and no
     // author-dashboard navigation, since the reviewer does not own this book.
-    window.location.href = '../author/book-workspace.html?id=' + encodeURIComponent(s.bookId || s.id) + '&review=1';
+    window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(s.bookId || s.id) + '&review=1';
   };
   if (s.status === 'pending') {
     let acceptStep = 0;

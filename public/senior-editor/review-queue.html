@@ -1,6 +1,6 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="light">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Review Queue â€” Droboard</title>
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Review Queue — Droboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <style>
@@ -40,7 +40,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .pill-count{font-size:9px;background:rgba(255,255,255,.25);padding:1px 5px;border-radius:10px}
 .filter-pill:not(.on) .pill-count{background:var(--table-head);color:var(--text-faint)}
 
-/* submission row â€” one per row like the Featured / Authors pattern */
+/* submission row — one per row like the Featured / Authors pattern */
 .row-item{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:9px;cursor:pointer;transition:.15s;background:var(--card)}
 .row-item:hover{border-color:var(--accent);background:var(--hover)}
 .row-cover{width:44px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0}
@@ -84,7 +84,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .page-btn:disabled{opacity:.35;cursor:not-allowed}
 
-/* â”€â”€ Slide-up detail sheet â€” centered, NOT edge-to-edge (matches Featured Stories pattern) â”€â”€ */
+/* -- Slide-up detail sheet — centered, NOT edge-to-edge (matches Featured Stories pattern) -- */
 .sheet-backdrop{position:fixed;inset:0;background:rgba(10,6,25,.6);z-index:1000;display:none;opacity:0;transition:opacity .25s}
 .sheet-backdrop.open{display:block;opacity:1}
 .detail-sheet{position:fixed;left:0;right:0;bottom:-100%;z-index:1010;background:var(--card);border-radius:20px;max-height:82vh;overflow-y:auto;transform:translateY(0);transition:bottom .32s cubic-bezier(.4,0,.2,1);box-shadow:0 -20px 60px rgba(0,0,0,.35);margin:0 auto 24px;max-width:520px}
@@ -124,7 +124,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 .modal-action-row button.danger:hover{background:var(--red);color:#fff}
 .modal-action-row button.ghost{background:transparent}
 
-/* â”€â”€ Accept confirmation modal â€” wizard â”€â”€ */
+/* -- Accept confirmation modal — wizard -- */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,6,25,.55);z-index:1100;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{opacity:1;pointer-events:auto}
 .modal-box{background:var(--card);border-radius:16px;width:100%;max-width:480px;max-height:85vh;box-shadow:0 24px 70px rgba(0,0,0,.3);transform:translateY(12px) scale(.98);opacity:0;transition:.2s;display:flex;flex-direction:column}
@@ -218,11 +218,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
   <div class="panel">
     <div class="panel-head">
       <h2><i class="fas fa-inbox" style="color:var(--accent)"></i> Book Submissions</h2>
-      <span class="count-chip" id="subCount">â€”</span>
+      <span class="count-chip" id="subCount">—</span>
     </div>
 
     <div class="add-search">
-      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by title or authorâ€¦"/></div>
+      <div class="filter-search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" placeholder="Search by title or author…"/></div>
     </div>
 
     <div class="filter-row" id="filterRow"></div>
@@ -241,14 +241,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
     <div class="sheet-banner-scrim"></div>
     <button class="sheet-close" id="sheetClose"><i class="fas fa-xmark"></i></button>
     <div class="sheet-banner-title">
-      <h2 id="sheetTitle">â€”</h2>
-      <p id="sheetAuthor">â€”</p>
+      <h2 id="sheetTitle">—</h2>
+      <p id="sheetAuthor">—</p>
     </div>
   </div>
   <div class="sheet-body" id="sheetBody"></div>
 </div>
 
-<!-- Accept for Contract â€” 3-step wizard modal -->
+<!-- Accept for Contract — 3-step wizard modal -->
 <div class="modal-overlay" id="contractModalOv">
   <div class="modal-box cwiz">
     <div class="modal-box-head">
@@ -271,7 +271,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
       <div class="cwiz-panel on" id="cwizP1">
         <div class="field-group">
           <label>Contract type</label>
-          <select id="contractType"><option value="">Loading contractsâ€¦</option></select>
+          <select id="contractType"><option value="">Loading contracts…</option></select>
           <small id="contractHint"></small>
         </div>
       </div>
@@ -307,7 +307,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#f4f4fb;color:#1a1730}
 <script src="shared/senior-editor-data.js?v=4"></script>
 <script src="shared/contract-monetization.js?v=4"></script>
 <script src="services/contract-catalog.js?v=5"></script>
-<script src="services/review-queue-service.js?v=9"></script>
+<script src="services/review-queue-service.js?v=10"></script>
 <script>ReviewQueueService.init();</script>
 <!-- page logic lives in services/review-queue-service.js -->
 </body>

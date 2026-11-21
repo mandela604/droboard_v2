@@ -408,8 +408,8 @@ function renderPagination(tp) {
 function goPage(p) { currentPage = p; refresh(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
 /* ── Actions ── */
-function viewBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id); }
-function editBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id) + '&mode=edit'; }
+function viewBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id) + '&review=1'; }
+function editBook(id) { window.location.href = '../author/book-workspace.html?book=' + encodeURIComponent(id) + '&review=1'; }
 
 /* Flag / unflag modal */
 function flagBook(id) {

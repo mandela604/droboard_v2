@@ -294,6 +294,9 @@ async function reviewDecide(req, res) {
         action, feedback, actorId: req.user.id,
       });
       if (action === 'approved') {
+        // Publish first: offerContract now requires an approved (published)
+        // book, and this also takes the manuscript's chapters live.
+        await publishBookForSubmission(submission.bookId);
         const offer = req.valid.body.contract
           ? await sidebar.offerContract(req.user, {
             bookId: submission.bookId,
@@ -301,7 +304,6 @@ async function reviewDecide(req, res) {
             terms: req.valid.body.contract,
           })
           : null;
-        await publishBookForSubmission(submission.bookId);
         await grantWriterRole(submission.authorId);
         return Object.assign({}, submission.toJSON(), offer ? { contract: offer } : {});
       }
@@ -440,11 +442,19 @@ async function grantWriterRole(authorId) {
 async function publishBookForSubmission(bookId) {
   if (!bookId) return;
   try {
-    const { Book } = require('../models/content.model');
-    await Book.updateOne(
+    const { Book, Chapter } = require('../models/content.model');
+    const res = await Book.updateOne(
       { id: String(bookId), status: { $in: ['under_review'] } },
       { $set: { status: 'published' } }
     );
+    // A published book must publish its manuscript chapters too. Without this
+    // the book shows in Discover but has zero visible chapters.
+    if (res && res.modifiedCount > 0) {
+      await Chapter.updateMany(
+        { bookId: String(bookId), status: { $in: ['draft'] } },
+        { $set: { status: 'live' } }
+      );
+    }
   } catch (e) { /* book publish is best-effort for legacy rows */ }
 }
 

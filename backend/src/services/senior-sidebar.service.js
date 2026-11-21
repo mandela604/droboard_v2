@@ -1063,11 +1063,22 @@ async function offerContract(user, { bookId, authorId, terms }) {
   const t = terms || {};
   const offer = await resolveTemplate(t.templateId);
 
+  // A contract is only for a book that has passed review. Under-review (or
+  // draft/flagged) books must be approved before an offer can be sent.
+  const { Book } = require('../models/content.model');
+  const book = await Book.findOne({ id: String(bookId) }).select('id status').lean();
+  if (!book) { const e = new Error('book_not_found'); e.status = 404; throw e; }
+  if (!['published', 'ongoing', 'completed'].includes(String(book.status))) {
+    const e = new Error('book_not_approved'); e.status = 409; throw e;
+  }
+
   const v = await AuthorVerification.findOne({ userId: String(authorId) }).lean();
   if (!v || v.status !== 'approved') { const e = new Error('identity_not_verified'); e.status = 409; throw e; }
 
   const now = new Date();
-  let app = await ContractApplication.findOne({ bookId, authorId, status: { $in: ['applied', 'review'] } });
+  // Re-issue allowed: find the latest application for this book/author
+  // regardless of status and attach the new contract to it.
+  let app = await ContractApplication.findOne({ bookId, authorId }).sort({ createdAt: -1 });
   if (app) {
     app.status = 'review';
     app.type = offer.type;
