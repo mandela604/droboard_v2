@@ -401,6 +401,14 @@
      Server-side authority stays in posts.service.isPageManager — this widget
      is visibility only; every write is re-checked on the backend. */
   (function actAsPage() {
+    // The "As me / As @droboard" identity toggle is ONLY relevant on surfaces
+    // where official-page posting is meant to happen. Keep it off every other
+    // page (readers, authors, marketing consoles, etc.).
+    var PAGES = ['feed.html','droboard-page.html','genre-hub.html','genre-stories.html','discussion.html'];
+    function isAllowedPage() {
+      var path = (location.pathname || '').split('/').pop() || 'index.html';
+      return PAGES.indexOf(path) !== -1;
+    }
     var KEY = 'dro_act_as_page';
     function enabled() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
     function set(v) { try { v ? localStorage.setItem(KEY, '1') : localStorage.removeItem(KEY); } catch (e) {} }
@@ -424,6 +432,7 @@
       el.classList.toggle('on', enabled());
     }
     function mount() {
+      if (!isAllowedPage()) return; // hide toggle everywhere except the allowed surfaces
       if (document.getElementById('droActAsPageBtn')) { paint(); return; }
       canManage().then(function(ok){
         if (!ok) return;
