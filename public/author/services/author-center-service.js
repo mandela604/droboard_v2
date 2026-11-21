@@ -171,7 +171,7 @@
           { label: 'Books', num: fmtNum(s.books), growth: g.books, note: 'all time', icon: 'fa-book-open', bg: 'rgba(99,102,241,.12)', color: '#6366f1' },
           { label: 'Reads', num: fmtNum(s.reads), growth: g.reads, icon: 'fa-eye', bg: 'rgba(16,185,129,.12)', color: '#10b981' },
           { label: 'Followers', num: fmtNum(s.followers), growth: g.followers, icon: 'fa-users', bg: 'rgba(59,130,246,.12)', color: '#3b82f6' },
-          { label: 'Earnings', num: fmtNum(s.earnings), growth: g.earnings, icon: 'fa-sack-dollar', bg: 'rgba(245,158,11,.12)', color: '#f59e0b', href: 'earnings.html' },
+          { label: 'Earnings', num: (window.AuthorFinance && AuthorFinance.fmtCurrency) ? AuthorFinance.fmtCurrency(s.earnings) : fmtNum(s.earnings), growth: g.earnings, icon: 'fa-sack-dollar', bg: 'rgba(245,158,11,.12)', color: '#f59e0b', href: 'earnings.html' },
           { label: 'Contracts', num: fmtNum(s.contracts), growth: g.contracts, note: 'all time', icon: 'fa-file-signature', bg: 'rgba(168,85,247,.12)', color: '#a855f7', href: 'apply-contract.html' },
           { label: 'Completion rate', num: fmtNum(s.completionRate) + '%', growth: g.completionRate, note: 'published ÷ total', icon: 'fa-circle-check', bg: 'rgba(20,184,166,.12)', color: '#14b8a6' }
         );
