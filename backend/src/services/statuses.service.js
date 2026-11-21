@@ -446,10 +446,13 @@ async function toggleLike({ status, userId }) {
 async function expireStatusSummaries(limit = 50) {
   const { Notification } = require('../models/social.model');
   const cap = Math.min(200, Math.max(1, Number(limit) || 50));
-  // Mongo's TTL monitor deletes expired statuses on its own schedule, which
-  // can be up to 60s late; look back a little so nothing is missed.
-  const due = await Status.find({ expiresAt: { $lte: new Date(Date.now() - 60000) } })
-    .sort({ expiresAt: -1 }).limit(cap * 4).lean().catch(() => []);
+  // Status rows now linger 1h after expiresAt (TTL grace) precisely so this
+  // digest can see them. Find rows whose expiry passed — up to the grace
+  // window — so a just-closed status is reported on the next 10-min run.
+  const graceMs = 60 * 60 * 1000; // matches the TTL grace below
+  const due = await Status.find({
+    expiresAt: { $lte: new Date(), $gte: new Date(Date.now() - graceMs) },
+  }).sort({ expiresAt: -1 }).limit(cap * 4).lean().catch(() => []);
   if (!due.length) return { sent: 0 };
   const ids = due.map(s => String(s.id || s._id));
   const already = await Notification.find({ type: 'status_expired', key: { $in: ids.map(id => 'status-expired:' + id) } })

@@ -207,6 +207,9 @@ async function main() {
   // One earned badge per reader per week; the unique index is what makes a
   // rollover retry safe.
   await require('./models/marketing.model').LeagueBadge.syncIndexes();
+  // Expired statuses must linger for the end-of-life notification digest —
+  // sync drops the old TTL:0 index and applies the 1h grace window.
+  await require('./models/social.model').Status.syncIndexes();
   server.listen(env.port, () => console.log('droboard api on :' + env.port));
 }
 

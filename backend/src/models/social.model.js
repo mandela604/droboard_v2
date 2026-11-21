@@ -253,7 +253,10 @@ const statusSchema = new mongoose.Schema({
   // no index here: the TTL index below is the only one this field gets
   expiresAt: { type: Date, required: true },
 }, { timestamps: true });
-statusSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// Keep expired rows for 1h after expiresAt so the 10-minute status digest can
+// send the end-of-life notification first. With expireAfterSeconds:0 Mongo
+// deleted the row within ~60s of expiry — before the digest ever saw it.
+statusSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 3600 });
 statusSchema.index({ userId: 1, createdAt: -1 });
 
 const conversationSchema = new mongoose.Schema({
