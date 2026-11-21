@@ -253,9 +253,9 @@ const statusSchema = new mongoose.Schema({
   // no index here: the TTL index below is the only one this field gets
   expiresAt: { type: Date, required: true },
 }, { timestamps: true });
-// No TTL index on purpose: the status digest sends the end-of-life summary
-// and then deletes the expired row. A TTL timer would delete it first and the
-// notification would never go out.
+// No TTL index on purpose: an expired status is ARCHIVED, not deleted — it
+// stays in the DB so the owner's "seen by" list survives. Every feed/ring read
+// already hides it via expiresAt > now. The digest sends the one-time recap.
 statusSchema.index({ userId: 1, createdAt: -1 });
 
 const conversationSchema = new mongoose.Schema({

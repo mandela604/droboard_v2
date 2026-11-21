@@ -438,15 +438,17 @@ async function toggleLike({ status, userId }) {
 }
 
 /**
- * When a status expires: send the owner its summary, then delete the row.
- * Idempotent via a `key` per status id, so a retry never sends the recap twice.
- * Metrics are REAL counts from the stored row (no invented numbers).
+ * When a status expires: send the owner its summary ONCE, and keep the row.
+ * Like Facebook/Instagram stories, an expired status is archived — not deleted:
+ * its "seen by" list and metrics stay available (every feed/ring read already
+ * hides it via expiresAt > now). Idempotent via a `key` per status id, so a
+ * retry never sends the recap twice. Metrics are REAL counts from the row.
  */
 async function expireStatusSummaries(limit = 50) {
   const { Notification } = require('../models/social.model');
   const cap = Math.min(200, Math.max(1, Number(limit) || 50));
-  // No TTL anymore — expired rows stay until this notify+delete pass handles
-  // them, so the summary can never be swallowed by a background delete.
+  // Find expired rows. Already-notified ones are skipped by `done` below, so
+  // the same status is never reported twice even though its row is kept.
   const due = await Status.find({ expiresAt: { $lte: new Date() } })
     .sort({ expiresAt: -1 }).limit(cap * 4).lean().catch(() => []);
   if (!due.length) return { sent: 0 };
@@ -459,30 +461,28 @@ async function expireStatusSummaries(limit = 50) {
   for (const s of due) {
     const id = String(s.id || s._id);
     const key = 'status-expired:' + id;
-    if (!done.has(key)) {
-      const owner = String(s.userId);
-      const records = (s.viewerRecords || []).filter(r => !(r.user && String(r.user) === owner));
-      const views = Math.max(records.length, (s.viewedBy || []).map(String).filter(v => v !== owner).length);
-      const reactions = Number(s.likes) || 0;
-      try {
-        await notify({
-          recipientId: owner, type: 'status_expired',
-          title: 'Your status expired — here is how it did',
-          desc: (s.caption || s.quote || 'Your status') + ' · closed ' + new Date(s.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          link: 'feed.html', linkLabel: 'See who viewed', key,
-          metrics: [
-            { label: 'Views', value: String(views) },
-            { label: 'Reactions', value: String(reactions) },
-          ],
-          chips: [views + ' view' + (views === 1 ? '' : 's') + ', ' + reactions + ' reaction' + (reactions === 1 ? '' : 's')],
-        });
-        sent++;
-        if (sent >= cap) break;
-      } catch (e) { /* non-fatal — keep the row so a retry can still notify */ }
-    }
-    // Summary handled (or already sent) — now remove the expired status.
-    await Status.deleteOne({ id }).catch(() => {});
+    if (done.has(key)) continue;
+    const owner = String(s.userId);
+    const records = (s.viewerRecords || []).filter(r => !(r.user && String(r.user) === owner));
+    const views = Math.max(records.length, (s.viewedBy || []).map(String).filter(v => v !== owner).length);
+    const reactions = Number(s.likes) || 0;
+    try {
+      await notify({
+        recipientId: owner, type: 'status_expired',
+        title: 'Your status expired — here is how it did',
+        desc: (s.caption || s.quote || 'Your status') + ' · closed ' + new Date(s.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        link: 'feed.html', linkLabel: 'See who viewed', key,
+        metrics: [
+          { label: 'Views', value: String(views) },
+          { label: 'Reactions', value: String(reactions) },
+        ],
+        chips: [views + ' view' + (views === 1 ? '' : 's') + ', ' + reactions + ' reaction' + (reactions === 1 ? '' : 's')],
+      });
+      sent++;
+      if (sent >= cap) break;
+    } catch (e) { /* non-fatal — row is kept, so a retry can still notify */ }
   }
+  // Do NOT delete: the status is archived so "seen by" stays available.
   return { sent };
 }
 
