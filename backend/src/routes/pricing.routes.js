@@ -58,7 +58,17 @@ router.get('/platform-settings/currency', generalLimiter,
     const r = await CoinRate.findOne({ key: 'live' }).lean().catch(() => null);
     const baseCur = r && VALID.includes(String(r.base || '').toUpperCase()) ? String(r.base).toUpperCase() : 'NGN';
     const locked = r && r.locked != null ? String(r.locked).toUpperCase() : null;
-    return { base: baseCur, locked: VALID.includes(locked) ? locked : null };
+    // Live reporting FX (NGN per unit) from the CoinRate console. The client
+    // uses this to restate stored naira earnings in USD instead of a hardcoded
+    // rate; it falls back to a conservative 1300 if absent.
+    const fx = {};
+    if (r && r.fx && typeof r.fx === 'object') {
+      ['USD', 'GBP'].forEach(function (c) {
+        const v = r.fx[c] != null ? r.fx[c] : r.fx[c.toLowerCase()];
+        if (Number(v) > 0) fx[c] = Number(v);
+      });
+    }
+    return { base: baseCur, locked: VALID.includes(locked) ? locked : null, fx: fx };
   }));
 
 module.exports = router;

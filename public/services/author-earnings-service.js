@@ -19,12 +19,15 @@
   /* Author earnings settle in dollars, so this page never restates into the
      admin-set staff currency — dollars() is the fixed-USD formatter. The sign
      is kept out of the formatter so a debit still reads as negative. */
+  /* Earnings amounts are stored in NGN on the backend. Show them in USD by
+     CONVERTING (ngnToUsd), never by stamping a '$' on the naira figure. */
   function fmtCurrency(n) {
-    var v = Number(n) || 0;
-    var s = (window.DroboardCurrency && DroboardCurrency.dollars)
-      ? DroboardCurrency.dollars(Math.abs(v))
-      : '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return (v < 0 ? '-' : '') + s;
+    var v = Math.abs(Number(n) || 0);
+    var s;
+    if (window.DroboardCurrency && DroboardCurrency.dollarsFromNgn) s = DroboardCurrency.dollarsFromNgn(v);
+    else if (window.DroboardCurrency && DroboardCurrency.ngnToUsd) s = '$' + DroboardCurrency.ngnToUsd(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    else s = '$' + (v / 1538).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (Number(n) < 0 ? '-' : '') + s;
   }
   function fmtDate(d) {
     if (!d) return '—';

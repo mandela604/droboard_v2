@@ -64,7 +64,11 @@
 
   // Display-only conversion (admin/editor reporting — NEVER pricing).
   // Ladders stay explicit; these only restate stored NGN/USD amounts.
-  var REPORT_RATES = { NGN: 1, USD: 1538, GBP: 1940 }; // NGN per unit
+  // USD = NGN per 1 USD: default to a CONSERVATIVE 1300 so reporting never
+  // understates earnings when the real naira rate rises. The live rate from
+  // the Super Admin CoinRate console overrides it when available.
+  var USD_FX_FALLBACK = 1300;
+  var REPORT_RATES = { NGN: 1, USD: USD_FX_FALLBACK, GBP: 1700 }; // NGN per unit
   var SYMBOLS = { NGN: '₦', USD: '$', GBP: '£' };
   function num(n, dec) {
     n = +n || 0;
@@ -98,8 +102,14 @@
     }
     return ngnToMoney((+usd || 0) * REPORT_RATES.USD);
   }
-  // Author earnings settle in dollars, so they show in dollars whatever the
-  // staff display says. No conversion, and the admin lock does not reach it.
+  // Author earnings are stored in NGN on the backend, so a fixed-USD display
+  // must CONVERT naira to dollars at the reporting rate — never just stamp a
+  // '$' on a naira number (that showed ₦33.60 as "$33.60").
+  function ngnToUsd(ngn) {
+    var rate = REPORT_RATES.USD || 1538; // NGN per 1 USD
+    return (+ngn || 0) / rate;
+  }
+  function dollarsFromNgn(ngn) { return '$' + num(ngnToUsd(ngn), 2); }
   function dollars(usd) { return '$' + num(+usd || 0, 2); }
 
   // USD -> value in the staff currency, unformatted.
@@ -208,10 +218,14 @@
       if (c && typeof c === 'object') {
         if (VALID.indexOf(c.base) !== -1) _config.base = c.base;
         _config.locked = VALID.indexOf(c.locked) !== -1 ? c.locked : null;
+        // Reporting FX rate saved by finance: ngnPerUsd. Keep the conservative
+        // fallback if absent or invalid.
+        if (c.ngnPerUsd && Number(c.ngnPerUsd) > 0) REPORT_RATES.USD = Number(c.ngnPerUsd);
       }
     } catch (e) {}
     _retarget();
   }
+
   function _retarget() {
     // Staff reporting follows the admin's setting and nothing else: an
     // explicit lock when one is set, otherwise the settlement base. It never
@@ -321,6 +335,12 @@
           if (c && typeof c === 'object') {
             if (VALID.indexOf(c.base) !== -1) _config.base = c.base;
             _config.locked = VALID.indexOf(c.locked) !== -1 ? c.locked : null;
+            // Live reporting FX from CoinRate (public endpoint) overrides the
+            // conservative 1300 fallback so dashboards never under-report.
+            if (c.fx && typeof c.fx === 'object') {
+              if (Number(c.fx.USD) > 0) REPORT_RATES.USD = Number(c.fx.USD);
+              if (Number(c.fx.GBP) > 0) REPORT_RATES.GBP = Number(c.fx.GBP);
+            }
             _retarget();
             _notify();
           }
@@ -353,6 +373,8 @@
     readerSymbol: function () { return SYMBOLS[_readerCur()] || ''; },
     coins: coinsShort,
     ngnToMoney: ngnToMoney,
+    ngnToUsd: ngnToUsd,
+    dollarsFromNgn: dollarsFromNgn,
     usdToMoney: usdToMoney,
     usdToMoneyShort: usdToMoneyShort,
     usdAmount: usdAmount,

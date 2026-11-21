@@ -17,8 +17,11 @@ async function callBackend(path, options) {
 }
 
 function money(n) {
-  if (window.DroboardCurrency && DroboardCurrency.usdToMoney) return DroboardCurrency.usdToMoney(n);
-  return typeof n === 'string' ? n : '$' + Number(n || 0).toLocaleString('en-US');
+  // Amounts from the backend are NGN (earnings/payouts are booked in naira).
+  // Restate into the staff's chosen reporting currency via ngnToMoney(), which
+  // uses the configured base/lock; never treat a naira number as dollars.
+  if (window.DroboardCurrency && DroboardCurrency.ngnToMoney) return DroboardCurrency.ngnToMoney(n);
+  return typeof n === 'string' ? n : '₦' + Number(n || 0).toLocaleString('en-US');
 }
 function num(n) { return Number(n) || 0; }
 
