@@ -74,6 +74,11 @@ body{display:flex;justify-content:center}
 .crown-banner .cb-ic{font-size:22px}
 .crown-banner .cb-t{font-size:12px;font-weight:800;color:var(--tx-high)}
 .crown-banner .cb-s{font-size:10px;color:var(--tx-muted);margin-top:1px}
+.lb-more,.lb-jump{display:block;width:calc(100% - 28px);margin:12px 14px 0;padding:12px;border-radius:12px;cursor:pointer;text-align:center;font-size:12px;font-weight:800}
+.lb-more{border:1px dashed rgba(255,0,80,.38);background:rgba(255,0,80,.05);color:var(--acc)}
+.lb-more span{display:block;font-size:10px;font-weight:600;color:var(--tx-muted);margin-top:3px}
+.lb-jump{border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.09);color:var(--tx-high);font-size:11px}
+.lb-jump i{color:#f59e0b;margin-right:5px}
 </style>
 <script>(function(){var t;try{t=localStorage.getItem('droboardTheme')||'light';}catch(e){t='light';}document.documentElement.setAttribute('data-theme',t);})();</script>
 <script src="../component/app-nav.js?v=7"></script>
@@ -143,6 +148,10 @@ body{display:flex;justify-content:center}
   'use strict';
   var scope = 'weekly';
   var LAST_BOARD = null;
+  // The board can hold up to 100 readers. Paint only a slice at a time so the
+  // page stays a sane length, with a "Show more" control for the rest.
+  var ROWS_STEP = 20;
+  var ROWS_SHOWN = ROWS_STEP;
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function toast(m) {
     var t = document.getElementById('toast');
@@ -176,15 +185,47 @@ body{display:flex;justify-content:center}
         '<div class="pod-pts">' + (e.points || 0).toLocaleString() + ' pts</div></div>';
     }).join('');
     var max = Math.max.apply(null, b.entries.map(function (e) { return e.points || 0; }).concat([1]));
-    document.getElementById('rows').innerHTML = rest.map(function (e) {
-      return '<div class="row' + (e.isMe ? ' me' : '') + '"' + (isChamp(e) ? ' style="border-color:var(--gold,#f59e0b)"' : '') + '>' +
-        '<div class="row-rank">' + e.rank + '</div>' + av(e, 'row-av') +
-        '<div class="row-body"><div class="row-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
-        '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round((e.points || 0) / max * 100)) + '%"></div></div></div>' +
-        '<div class="row-pts"><b>' + (e.points || 0).toLocaleString() + '</b><span>' + (e.gap ? '+' + e.gap + ' to pass' : 'leader') + '</span></div></div>';
-    }).join('');
     var mine = null;
     b.entries.forEach(function (e) { if (e.isMe) mine = e; });
+
+    // Reveal the long tail in batches instead of rendering 100 rows at once.
+    function renderRows() {
+      var host = document.getElementById('rows');
+      host.innerHTML = rest.slice(0, ROWS_SHOWN).map(function (e) {
+        return '<div class="row' + (e.isMe ? ' me' : '') + '" data-rank="' + e.rank + '"' + (isChamp(e) ? ' style="border-color:var(--gold,#f59e0b)"' : '') + '>' +
+          '<div class="row-rank">' + e.rank + '</div>' + av(e, 'row-av') +
+          '<div class="row-body"><div class="row-name">' + esc(e.name) + (e.isMe ? ' · you' : '') + (isChamp(e) ? ' 👑' : '') + '</div>' +
+          '<div class="row-bar"><div class="row-fill" style="width:' + Math.max(4, Math.round((e.points || 0) / max * 100)) + '%"></div></div></div>' +
+          '<div class="row-pts"><b>' + (e.points || 0).toLocaleString() + '</b><span>' + (e.gap ? '+' + e.gap + ' to pass' : 'leader') + '</span></div></div>';
+      }).join('');
+
+      if (rest.length > ROWS_SHOWN) {
+        var more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'lb-more';
+        more.innerHTML = 'Show more readers <span>' + (rest.length - ROWS_SHOWN) + ' more on this board</span>';
+        more.addEventListener('click', function () {
+          ROWS_SHOWN += ROWS_STEP;
+          renderRows();
+        });
+        host.appendChild(more);
+      }
+      // If the reader sits past the visible slice, offer a one-tap jump.
+      if (mine && mine.rank > 3 + ROWS_SHOWN) {
+        var jump = document.createElement('button');
+        jump.type = 'button';
+        jump.className = 'lb-jump';
+        jump.innerHTML = '<i class="fas fa-star"></i> Your rank #' + mine.rank + ' — jump to it';
+        jump.addEventListener('click', function () {
+          ROWS_SHOWN = Math.min(rest.length, (mine.rank - 3) + 5);
+          renderRows();
+          var target = host.querySelector('[data-rank="' + mine.rank + '"]');
+          if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+        host.insertBefore(jump, host.firstChild);
+      }
+    }
+    renderRows();
     if (!mine) {
       // Not on the board yet (no tracked activity this season).
       document.getElementById('myRankLbl').textContent = '#–';
@@ -350,6 +391,7 @@ body{display:flex;justify-content:center}
       var b = await ReaderLeague.board(scope);
       LAST_BOARD = b;
       if (b.enabled === false) { renderPaused(); return; }
+      ROWS_SHOWN = ROWS_STEP;
       render();
       renderStatic(b);
     } catch (e) {
