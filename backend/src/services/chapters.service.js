@@ -120,6 +120,19 @@ async function createChapter({ bookId, data }) {
   if (kind === 'short' && n > SHORT_MAX) { const e = new Error('short_max_25'); e.status = 400; throw e; }
   const exists = await Chapter.exists({ bookId, n });
   if (exists) { const e = new Error('chapter_n_taken'); e.status = 409; throw e; }
+  // Signed books with already-locked chapters: a new chapter inherits the
+  // price of the last chapter by default. Editors can still override by
+  // passing data.price explicitly. Only applies when the previous chapter is
+  // actually locked (price > 0), so free books stay free.
+  let inheritPrice = 0;
+  if (data.price === undefined) {
+    const { Contract } = require('../models/contract.model');
+    const signed = await Contract.exists({ bookId: String(bookId), status: { $in: ['approved', 'signed', 'active'] } });
+    if (signed) {
+      const last = await Chapter.findOne({ bookId }).sort({ n: -1 }).select('price').lean();
+      if (last && Number(last.price) > 0) inheritPrice = Math.floor(Number(last.price));
+    }
+  }
   let scheduledAt = null;
   if (data.scheduledAt !== undefined && data.scheduledAt !== null) {
     scheduledAt = new Date(data.scheduledAt);
@@ -143,7 +156,9 @@ async function createChapter({ bookId, data }) {
     status,
     scheduledAt,
     authorNote: data.authorNote || '',
-    price: Number.isFinite(Number(data.price)) && Number(data.price) >= 0 ? Math.floor(Number(data.price)) : 0,
+    price: data.price !== undefined
+      ? (Number.isFinite(Number(data.price)) && Number(data.price) >= 0 ? Math.floor(Number(data.price)) : 0)
+      : inheritPrice,
     poll: normPollLike(data.poll), prediction: normPollLike(data.prediction), debate: normPollLike(data.debate),
   });
   await Book.updateOne({ id: bookId }, { $inc: { chapterCount: 1, wordCount: ch.words || 0 } });

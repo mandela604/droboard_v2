@@ -201,16 +201,24 @@ async function unlockChapter({ userId, bookId, chapterId, priceCoins, coinFaceNG
     wallet.bonusBalance -= bonusDraw;
     await wallet.save({ session });
     if (authorId && s.writer > 0) {
+      const delayH = (require('../config/env').authorEarningsPostDelay) || 0;
+      const availableAt = delayH > 0 ? new Date(Date.now() + delayH * 3600000) : null;
       const [earned] = await AuthorTransaction.create([{
         authorId, type: 'earned', desc: 'Chapter unlock' + (book ? ' — ' + book.title : ''),
-        amount: s.writer, bookId, status: 'completed',
+        amount: s.writer, bookId, status: delayH > 0 ? 'pending' : 'completed',
+        availableAt,
       }], txn.withSession(session));
-      // Editor commission rides on the same credit; sales fund the editors pool.
+      // Editor commission rides on the same credit immediately; sales fund the
+      // editors pool regardless of when the author's wallet is credited.
       await editorEarnings.accrueSafe({
         authorId, authorTxnId: earned.id, amount: s.writer, kind: 'sale', bookId, session,
       });
-      await Wallet.updateOne({ userId: authorId, kind: 'author' },
-        { $inc: { fiatAvail: s.writer, lifetimeEarned: s.writer } }, txn.withSession(session, { upsert: true }));
+      // With no delay, credit the author wallet now (current behavior). With a
+      // delay, the scheduler releases it once availableAt passes.
+      if (delayH === 0) {
+        await Wallet.updateOne({ userId: authorId, kind: 'author' },
+          { $inc: { fiatAvail: s.writer, lifetimeEarned: s.writer } }, txn.withSession(session, { upsert: true }));
+      }
     }
     await bumpPool('marketing', s.marketing, session);
     await bumpPool('editors', s.editors, session);
@@ -621,4 +629,31 @@ async function entitlements(userId) {
   };
 }
 
-module.exports = { getOrCreateWallet, readerBalance, creditPurchase, unlockChapter, adUnlockStart, unlockByAd, sendTip, tipsFor, earnStart, earnClaim, history, entitlements };
+/* Mature delayed author earnings: pending 'earned' rows whose availableAt has
+   passed become completed and credit the author wallet. Idempotent — a row is
+   completed at most once. Called by the scheduler; harmless when no delay is
+   configured (no pending rows with availableAt exist). */
+async function releaseMatchedEarnings() {
+  const { AuthorTransaction } = require('../models/money.model');
+  const due = await AuthorTransaction.find({
+    type: 'earned', status: 'pending', availableAt: { $ne: null, $lte: new Date() },
+  }).lean();
+  let released = 0;
+  for (const t of due) {
+    const res = await txn.run(async (session) => {
+      const claimed = await AuthorTransaction.findOneAndUpdate(
+        { id: t.id, status: 'pending', availableAt: { $ne: null, $lte: new Date() } },
+        { $set: { status: 'completed' } },
+        { new: true, session }
+      ).lean();
+      if (!claimed) return false;
+      await Wallet.updateOne({ userId: t.authorId, kind: 'author' },
+        { $inc: { fiatAvail: t.amount, lifetimeEarned: t.amount } }, txn.withSession(session, { upsert: true }));
+      return true;
+    });
+    if (res) released++;
+  }
+  return { released };
+}
+
+module.exports = { getOrCreateWallet, readerBalance, creditPurchase, unlockChapter, releaseMatchedEarnings, adUnlockStart, unlockByAd, sendTip, tipsFor, earnStart, earnClaim, history, entitlements };

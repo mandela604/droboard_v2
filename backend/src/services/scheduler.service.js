@@ -9,12 +9,14 @@ const FX_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const LEAGUE_INTERVAL_MS = 60 * 60 * 1000;
 const STATUS_DIGEST_INTERVAL_MS = 10 * 60 * 1000;
 const ENGAGEMENT_SETTLE_INTERVAL_MS = 5 * 60 * 1000;
+const EARNINGS_RELEASE_INTERVAL_MS = 10 * 60 * 1000;
 let _timer = null;
 let _lastBillRun = 0;
 let _lastFxRun = 0;
 let _lastLeagueRun = 0;
 let _lastStatusDigestRun = 0;
 let _lastEngagementSettleRun = 0;
+let _lastEarningsReleaseRun = 0;
 
 // A scheduled chapter only goes live with its book: scheduling must never be
 // a way around review, so a manuscript still in draft/under_review stays put.
@@ -73,12 +75,17 @@ async function settleExpiredEngagement() {
   return require('./engagement.service').notifyExpiredEngagement().catch(() => null);
 }
 
+async function releaseEarnedEarnings() {
+  return require('./wallet.service').releaseMatchedEarnings().catch(() => null);
+}
+
 function start() {
   if (_timer) return _timer;
   refreshFx().catch(() => {}); // seed on boot when stale/missing
   leagueRollover().catch(() => {}); // settle the week that just ended
   expireStatusSummaries().catch(() => {}); // recap statuses that just closed
   settleExpiredEngagement().catch(() => {}); // results for polls/predictions whose timer ended
+  releaseEarnedEarnings().catch(() => {}); // mature delayed author earnings
   _timer = setInterval(() => {
     publishDue().catch(() => {});
     const now = Date.now();
@@ -102,9 +109,13 @@ function start() {
       _lastEngagementSettleRun = now;
       settleExpiredEngagement().catch(() => {});
     }
+    if (now - _lastEarningsReleaseRun >= EARNINGS_RELEASE_INTERVAL_MS) {
+      _lastEarningsReleaseRun = now;
+      releaseEarnedEarnings().catch(() => {});
+    }
   }, INTERVAL_MS);
   if (_timer.unref) _timer.unref();
   return _timer;
 }
 
-module.exports = { start, publishDue, editorFixedBills, refreshFx, leagueRollover, expireStatusSummaries, settleExpiredEngagement, INTERVAL_MS, FX_INTERVAL_MS, LEAGUE_INTERVAL_MS, STATUS_DIGEST_INTERVAL_MS, ENGAGEMENT_SETTLE_INTERVAL_MS };
+module.exports = { start, publishDue, editorFixedBills, refreshFx, leagueRollover, expireStatusSummaries, settleExpiredEngagement, releaseEarnedEarnings, INTERVAL_MS, FX_INTERVAL_MS, LEAGUE_INTERVAL_MS, STATUS_DIGEST_INTERVAL_MS, ENGAGEMENT_SETTLE_INTERVAL_MS, EARNINGS_RELEASE_INTERVAL_MS };

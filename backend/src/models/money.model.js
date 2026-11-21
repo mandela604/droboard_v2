@@ -210,6 +210,9 @@ const authorTransactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true }, // +credit / -debit, base currency
   bookId: { type: String, ref: 'Book' },
   status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending', index: true },
+  // Delayed earnings (AUTHOR_EARNINGS_POST_DELAY): when a pending 'earned' row
+  // matures and may be credited to the author wallet / shown on dashboards.
+  availableAt: { type: Date, default: null, index: true },
 }, { timestamps: true });
 authorTransactionSchema.index({ authorId: 1, type: 1 });
 

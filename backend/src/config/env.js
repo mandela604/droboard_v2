@@ -60,5 +60,16 @@ module.exports = {
   // Bootstrap: comma-separated account emails promoted to the admin role at
   // boot. Lets a fresh production database reach the Super Admin console
   // without hand-editing Mongo. Safe to keep set; only listed emails match.
+  // Author earnings posting: 'unlock' (default) credits the author wallet the
+  // moment a chapter is unlocked. Set '24h', '3d', '7d' (or a number of hours)
+  // to hold the earning as pending until it matures. The dashboard only counts
+  // completed transactions, so delayed earnings appear once released.
+  authorEarningsPostDelay: (function () {
+    const raw = String(process.env.AUTHOR_EARNINGS_POST_DELAY || 'unlock').trim().toLowerCase();
+    const map = { unlock: 0, '0': 0, immediate: 0, '24h': 24, '1d': 24, '3d': 72, '7d': 168, '14d': 336, '30d': 720 };
+    if (map[raw] != null) return Math.max(0, map[raw]);
+    const n = parseInt(raw, 10); // raw hours as a number
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  })(),
   adminEmails: (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
 };
