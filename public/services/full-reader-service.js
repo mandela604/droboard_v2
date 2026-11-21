@@ -566,6 +566,8 @@
       let wordCount = 0;
       let adIdx = 0;
       const gap = readerWords();
+      const mid = Math.floor(paras.length / 2);
+      let centerInjected = false;
       paras.forEach(p => {
         htmlParas += "<p>" + p + "</p>";
         wordCount += countWords(p);
