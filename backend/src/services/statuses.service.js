@@ -438,21 +438,17 @@ async function toggleLike({ status, userId }) {
 }
 
 /**
- * Send the end-of-life summary for statuses that just expired. Called by the
- * scheduler; idempotent via a `key` per status id, so an hourly retry never
- * sends the same recap twice. Reports REAL view + reaction counts from the
- * stored rows (no invented numbers).
+ * When a status expires: send the owner its summary, then delete the row.
+ * Idempotent via a `key` per status id, so a retry never sends the recap twice.
+ * Metrics are REAL counts from the stored row (no invented numbers).
  */
 async function expireStatusSummaries(limit = 50) {
   const { Notification } = require('../models/social.model');
   const cap = Math.min(200, Math.max(1, Number(limit) || 50));
-  // Status rows now linger 1h after expiresAt (TTL grace) precisely so this
-  // digest can see them. Find rows whose expiry passed — up to the grace
-  // window — so a just-closed status is reported on the next 10-min run.
-  const graceMs = 60 * 60 * 1000; // matches the TTL grace below
-  const due = await Status.find({
-    expiresAt: { $lte: new Date(), $gte: new Date(Date.now() - graceMs) },
-  }).sort({ expiresAt: -1 }).limit(cap * 4).lean().catch(() => []);
+  // No TTL anymore — expired rows stay until this notify+delete pass handles
+  // them, so the summary can never be swallowed by a background delete.
+  const due = await Status.find({ expiresAt: { $lte: new Date() } })
+    .sort({ expiresAt: -1 }).limit(cap * 4).lean().catch(() => []);
   if (!due.length) return { sent: 0 };
   const ids = due.map(s => String(s.id || s._id));
   const already = await Notification.find({ type: 'status_expired', key: { $in: ids.map(id => 'status-expired:' + id) } })
@@ -463,26 +459,29 @@ async function expireStatusSummaries(limit = 50) {
   for (const s of due) {
     const id = String(s.id || s._id);
     const key = 'status-expired:' + id;
-    if (done.has(key)) continue;
-    const owner = String(s.userId);
-    const records = (s.viewerRecords || []).filter(r => !(r.user && String(r.user) === owner));
-    const views = Math.max(records.length, (s.viewedBy || []).map(String).filter(v => v !== owner).length);
-    const reactions = Number(s.likes) || 0;
-    try {
-      await notify({
-        recipientId: owner, type: 'status_expired',
-        title: 'Your status expired — here is how it did',
-        desc: (s.caption || s.quote || 'Your status') + ' · closed ' + new Date(s.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        link: 'feed.html', linkLabel: 'See who viewed', key,
-        metrics: [
-          { label: 'Views', value: String(views) },
-          { label: 'Reactions', value: String(reactions) },
-        ],
-        chips: [views + ' view' + (views === 1 ? '' : 's') + ', ' + reactions + ' reaction' + (reactions === 1 ? '' : 's')],
-      });
-      sent++;
-      if (sent >= cap) break;
-    } catch (e) { /* non-fatal */ }
+    if (!done.has(key)) {
+      const owner = String(s.userId);
+      const records = (s.viewerRecords || []).filter(r => !(r.user && String(r.user) === owner));
+      const views = Math.max(records.length, (s.viewedBy || []).map(String).filter(v => v !== owner).length);
+      const reactions = Number(s.likes) || 0;
+      try {
+        await notify({
+          recipientId: owner, type: 'status_expired',
+          title: 'Your status expired — here is how it did',
+          desc: (s.caption || s.quote || 'Your status') + ' · closed ' + new Date(s.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          link: 'feed.html', linkLabel: 'See who viewed', key,
+          metrics: [
+            { label: 'Views', value: String(views) },
+            { label: 'Reactions', value: String(reactions) },
+          ],
+          chips: [views + ' view' + (views === 1 ? '' : 's') + ', ' + reactions + ' reaction' + (reactions === 1 ? '' : 's')],
+        });
+        sent++;
+        if (sent >= cap) break;
+      } catch (e) { /* non-fatal — keep the row so a retry can still notify */ }
+    }
+    // Summary handled (or already sent) — now remove the expired status.
+    await Status.deleteOne({ id }).catch(() => {});
   }
   return { sent };
 }
