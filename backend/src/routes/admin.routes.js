@@ -17,7 +17,7 @@ router.post('/qa/seed-paid-coins', requireAuth, requireRole('admin'), audit('adm
       const wallet = require('../services/wallet.service');
       const out = await wallet.creditPurchase({
         userId: String(req.user.id), coins: 100, paidCoins: 100, bonusCoins: 0,
-        fiatAmount: 1500, fiatCurrency: 'NGN', channel: 'qa_seed',
+        fiatAmount: 1500, fiatCurrency: 'NGN', channel: 'web',
         storeRef: 'qa_seed_paid_' + Date.now(), packCode: 'QA_SEED', kind: 'pack',
       });
       return res.json({ ok: true, out: out });
