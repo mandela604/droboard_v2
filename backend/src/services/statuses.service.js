@@ -471,7 +471,7 @@ async function expireStatusSummaries(limit = 50) {
         recipientId: owner, type: 'status_expired',
         title: 'Your status expired — here is how it did',
         desc: (s.caption || s.quote || 'Your status') + ' · closed ' + new Date(s.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        link: 'feed.html', linkLabel: 'See who viewed', key,
+        link: 'status-viewers.html?id=' + encodeURIComponent(id), linkLabel: 'See who viewed', key,
         metrics: [
           { label: 'Views', value: String(views) },
           { label: 'Reactions', value: String(reactions) },
