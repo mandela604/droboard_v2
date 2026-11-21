@@ -49,6 +49,8 @@
     BOOKS.forEach(function (b) { b.onEngage = true; });
     DroboardBookCard.renderList('#bookList', BOOKS, {
       onOpen: function (b) { location.href = 'book-workspace.html?book=' + b.id; },
+      // The "+ New Book" card is clickable only when onNew is supplied.
+      onNew: function () { location.href = '../Pages/create.html'; },
       showNew: true
     });
   }
@@ -430,7 +432,7 @@
       document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
     }
     var nb = document.getElementById('newBookBtn');
-    if (nb) nb.addEventListener('click', function () { /* hook up to your "create book" flow */ });
+    if (nb) nb.addEventListener('click', function () { location.href = '../Pages/create.html'; });
     if (window.DroboardNav) window.DroboardNav.configure({ active: 'profile' });
   }
 
