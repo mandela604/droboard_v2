@@ -160,14 +160,18 @@ async function unlockChapter({ userId, bookId, chapterId, priceCoins, coinFaceNG
     const bonusDraw = Math.min(Math.max(0, Number(wallet.bonusBalance) || 0), priceCoins);
     const paidDraw = priceCoins - bonusDraw;
     const gross = paidDraw * coinFaceNGN; // fiat-equivalent of the spend
-    const cfg = await revenue.activeConfig();
-    // The store cut was booked at purchase per channel, so the full face value
-    // is distributed here and platform takes the store share.
-    const s = revenue.splitSale(gross, cfg);
     const { Book } = require('../models/content.model');
     const { AuthorTransaction } = require('../models/money.model');
     const book = await Book.findOne({ id: bookId }).select('authorId title').session(session).lean();
     const authorId = book ? String(book.authorId) : null;
+    const cfg = await revenue.activeConfig();
+    // The author's % of net comes from their SIGNED contract (revenueSplit),
+    // never a global guess. Exclusive/no-percentage contracts fall back to cfg.
+    const signedPct = await revenue.signedWriterShare({ bookId, authorId });
+    if (signedPct != null) cfg.writerShareOfNetPct = signedPct;
+    // The store cut was booked at purchase per channel, so the full face value
+    // is distributed here and platform takes the store share.
+    const s = revenue.splitSale(gross, cfg);
     const legs = [
       { debit: 'wallet:' + userId, credit: 'pool:sales', amount: gross, coins: priceCoins },
     ];

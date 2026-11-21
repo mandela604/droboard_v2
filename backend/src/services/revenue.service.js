@@ -9,6 +9,30 @@ const { ReadingProgress } = require('../models/social.model');
 const HEX24 = /^[0-9a-fA-F]{24}$/;
 
 // Active global config, optionally overridden per author.
+/* Author's earnings percentage comes from the SIGNED contract, not the global
+   config. revenueSplit on a contract is a percentage of NET (after store fee,
+   marketing and editors are deducted). Contracts that don't deal in
+   percentages (e.g. exclusive) carry no usable value and fall back to config.
+   Returns null when there is no signed contract with a valid percentage. */
+async function signedWriterShare({ bookId, authorId }) {
+  const { Contract } = require('../models/contract.model');
+  const base = { status: { $in: ['signed', 'active'] } };
+  let doc = null;
+  if (bookId) {
+    doc = await Contract.findOne(Object.assign({}, base, { bookId: String(bookId) }))
+      .sort({ createdAt: -1 }).lean().catch(() => null);
+  }
+  if (!doc && authorId) {
+    doc = await Contract.findOne(Object.assign({}, base, { authorId: String(authorId) }))
+      .sort({ createdAt: -1 }).lean().catch(() => null);
+  }
+  if (!doc) return null;
+  const v = Number(doc.revenueSplit);
+  // Only a real 1-100 percentage counts; 0/null/undefined = no percentage
+  // (exclusive-style contract) → caller keeps the configured split.
+  return Number.isFinite(v) && v > 0 && v <= 100 ? v : null;
+}
+
 async function activeConfig(authorId) {
   let cfg = await RevenueConfig.findOne({ scope: 'global' }).sort({ version: -1 }).lean();
   if (!cfg) {
@@ -302,7 +326,7 @@ async function coinRateSave(updates) {
 }
 
 module.exports = {
-  activeConfig, splitGross, splitSale, splitGift, saveConfig,
+  activeConfig, signedWriterShare, splitGross, splitSale, splitGift, saveConfig,
   feeRateFor, storeFeeFor, DEFAULT_CHANNEL_FEE_PCT,
   toFlat, checkFlat, configHistory, authorOverrides,
   saveFlatConfig, deleteAuthorOverride, authorDirectory, poolsShape,
