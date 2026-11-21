@@ -8,6 +8,22 @@ const { validate, audit } = require('../middleware/http');
 function Router() { return require('express').Router(); }
 const router = Router();
 
+// TEMP QA: credit Paid coins to the signed-in admin's own reader wallet through
+// the real creditPurchase ledger path (not a demo write). Removed after the
+// monetization lifecycle test.
+router.post('/qa/seed-paid-coins', requireAuth, requireRole('admin'), audit('admin.qa.seedPaidCoins'),
+  async (req, res) => {
+    try {
+      const wallet = require('../services/wallet.service');
+      const out = await wallet.creditPurchase({
+        userId: String(req.user.id), coins: 100, paidCoins: 100, bonusCoins: 0,
+        fiatAmount: 1500, fiatCurrency: 'NGN', channel: 'qa_seed',
+        storeRef: 'qa_seed_paid_' + Date.now(), packCode: 'QA_SEED', kind: 'pack',
+      });
+      return res.json({ ok: true, out: out });
+    } catch (e) { return res.status(e.status || 500).json({ error: e.message }); }
+  });
+
 router.get('/revenue/config', requireAuth, requireRole('admin'),
   validate(z.object({ query: z.object({ authorId: z.string().max(40).optional() }).strict() })), ctrl.revenueConfigGet);
 
