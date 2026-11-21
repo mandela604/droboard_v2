@@ -625,12 +625,11 @@
     document.getElementById("teamSidingSection").style.display = locked ? "none" : "";
     document.getElementById("commentsSection").style.display = locked ? "none" : "";
     if (locked) {
-      // Locked chapters carry no ads anywhere.
-      document.getElementById("adSlotWrap").style.display = "none";
-      try {
-        const bh = document.getElementById('chBottomAd');
-        if (bh) bh.style.display = 'none';
-      } catch (e) {}
+      // Locked chapters carry NO ads anywhere (do not discourage unlocking).
+      try { document.getElementById("adSlotWrap").style.display = "none"; } catch (e) {}
+      try { const ch = document.getElementById('chCenterAd'); if (ch) ch.style.display = 'none'; } catch (e) {}
+      try { const bh = document.getElementById('chBottomAd'); if (bh) { bh.style.display = 'none'; bh.innerHTML = ''; } } catch (e) {}
+      try { document.querySelectorAll('#storyText [data-adid], #storyText .ad-slot').forEach(el => el.remove()); } catch (e) {}
     } else {
       try { fillTopSlot(); } catch (e) {}
       try { fillCenterSlot(); } catch (e) {}
@@ -1027,6 +1026,7 @@
   // The component is mounted explicitly (no data-ad-slot attribute) so its
   // auto-scanner never bypasses the chapter-level gates below.
   function fillCenterSlot() {
+    if (lockedChapterNow()) return;
     const host = document.getElementById('chCenterAd');
     if (!host) return;
     const allowed = ADST.adsEnabled !== false && slotOn('fullReader:center') && !chapterAdFree(curSeasonIdx, curChIdx);
@@ -1035,7 +1035,13 @@
       host.style.display = filled ? '' : 'none';
     });
   }
+    function lockedChapterNow() {
+    const chs = (SEASONS_DATA[curSeasonIdx] || {}).chs || [];
+    const ch = chs[curChIdx];
+    return !!(ch && ch.state === "locked");
+  }
   function fillTopSlot() {
+    if (lockedChapterNow()) return;
     const wrap = document.getElementById("adSlotWrap");
     const slot = document.getElementById("adSlot");
     if (!wrap || !slot) return;
@@ -1049,6 +1055,7 @@
   // Bottom edge slot, refilled for every chapter view. Same gate + mount
   // pattern as the top slot.
   function fillBottomSlot() {
+    if (lockedChapterNow()) return;
     let host = null;
     try { host = ensureBottomAd(); } catch (e) { host = null; }
     if (!host) return;
