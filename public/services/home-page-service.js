@@ -165,23 +165,31 @@
     var escAttrJson = function (o) {
       return JSON.stringify(o).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;');
     };
+    /* The home feed's hero cards carry `preview`, not `synopsis`. Interpolating
+       the missing field printed a literal "undefined" under every hero title.
+       Escape + default every value so a partial API row can never leak it. */
+    var h = function (v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
+    var author = String(s.author || '').replace(/^@/, '');
     var readerHref = 'full-reader.html?story=' + encodeURIComponent(s.id);
-    var profileHref = 'profile.html?u=' + encodeURIComponent((s.author || '').replace('@', ''));
-    return '<div class="hero-slide" style="background-image:url(\'' + s.cover + '\')" onclick="location.href=\'' + readerHref + '\'">' +
+    var profileHref = 'profile.html?u=' + encodeURIComponent(author);
+    return '<div class="hero-slide" style="background-image:url(\'' + h(s.cover) + '\')" onclick="location.href=\'' + readerHref + '\'">' +
       '<div class="hero-scrim"></div>' +
-      '<div class="hero-badges-top"><span class="badge-genre">' + s.genre + '</span></div>' +
+      '<div class="hero-badges-top"><span class="badge-genre">' + h(s.genre || s.cat) + '</span></div>' +
       '<div class="hero-content">' +
       '<div class="hero-stats-row">' +
-      '<span class="hero-stat rating"><i class="fas fa-star"></i> ' + s.rating + '</span>' +
-      '<span class="hero-stat"><i class="far fa-eye"></i> ' + s.reads + ' reads</span>' +
-      '<span class="hero-stat chapter"><i class="fas fa-bookmark"></i> ' + s.chapter + '</span>' +
+      '<span class="hero-stat rating"><i class="fas fa-star"></i> ' + h(s.rating) + '</span>' +
+      '<span class="hero-stat"><i class="far fa-eye"></i> ' + h(s.reads != null ? s.reads : 0) + ' reads</span>' +
+      '<span class="hero-stat chapter"><i class="fas fa-bookmark"></i> ' + h(s.chapter) + '</span>' +
       '</div>' +
-      '<div class="hero-title" onclick="event.stopPropagation();location.href=\'' + readerHref + '\'">' + s.title + '</div>' +
+      '<div class="hero-title" onclick="event.stopPropagation();location.href=\'' + readerHref + '\'">' + h(s.title) + '</div>' +
       '<div class="hero-author-row" onclick="event.stopPropagation();location.href=\'' + profileHref + '\'">' +
-      '<img class="hero-av" src="' + s.authorAv + '" loading="lazy" alt=""/>' +
-      '<span class="hero-author-name">@' + s.author + (s.verified ? ' <i class="fas fa-circle-check"></i>' : '') + '</span>' +
+      '<img class="hero-av" src="' + h(s.authorAv) + '" loading="lazy" alt=""/>' +
+      '<span class="hero-author-name">@' + h(author) + (s.verified ? ' <i class="fas fa-circle-check"></i>' : '') + '</span>' +
       '</div>' +
-      '<div class="hero-synopsis">' + s.synopsis + '</div>' +
+      '<div class="hero-synopsis">' + h(s.synopsis || s.preview) + '</div>' +
       '<div class="hero-cta-row">' +
       '<button class="btn-start" onclick="event.stopPropagation();location.href=\'' + readerHref + '\'"><i class="fas fa-play" style="font-size:12px"></i> Start Reading</button>' +
       '<button class="btn-icon-only' + (saved ? ' saved' : '') + '" onclick=\'handleSaveClick(this,' + escAttrJson({ id: s.id, title: s.title, cover: s.cover, author: s.author }) + ')\'><i class="' + (saved ? 'fas' : 'far') + ' fa-bookmark"></i></button>' +

@@ -242,10 +242,18 @@
     } catch (e) {}
     document.getElementById('verifiedBadge').style.display = p.verified ? 'flex' : 'none';
     refreshStoryRing(p);
-    document.getElementById('profileName').textContent = p.name;
+    var nameEl = document.getElementById('profileName');
+    nameEl.textContent = p.name;
+    nameEl.style.cursor = 'pointer';
+    nameEl.title = 'Open @' + p.handle + "'s profile";
+    nameEl.onclick = function () { location.href = profileLink(p); };
     document.getElementById('roleTag').className = 'role-tag ' + (p.isWriter ? 'writer' : 'reader');
     document.getElementById('roleTag').textContent = p.isWriter ? '✍️ Writer' : '📖 Reader';
-    document.getElementById('profileHandle').textContent = '@' + p.handle;
+    var handleEl = document.getElementById('profileHandle');
+    handleEl.textContent = '@' + p.handle;
+    handleEl.style.cursor = 'pointer';
+    handleEl.title = 'Open @' + p.handle + "'s profile";
+    handleEl.onclick = function () { location.href = profileLink(p); };
     document.getElementById('verifiedInline').style.display = p.verified ? 'inline-flex' : 'none';
     document.getElementById('profileBio').textContent = p.bio;
     ownerOnly(document.getElementById('heroEditBtn'), 'flex');
@@ -327,6 +335,58 @@
       ring: ring || 'ring-has', likes: 0, threads: slides.length,
     };
   }
+  /* Feed opens its viewer with the WHOLE live writer roster, which is what
+     makes "next" walk from one author's status to the next. The profile used
+     to pass a single [entry], so next had nowhere to go. Build the same roster
+     from /api/statuses/home and seek to the profile's author. */
+  var _viewerGroup = null;
+  function loadViewerGroup() {
+    if (_viewerGroup) return Promise.resolve(_viewerGroup);
+    return fetch('/api/statuses/home', { credentials: 'include' })
+      .then(function (r) { if (!r.ok) throw new Error('statuses'); return r.json(); })
+      .then(function (j) {
+        var byHandle = {};
+        ((j && j.items) || []).forEach(function (it) {
+          var u = it.user || {};
+          var handle = String(u.handle || '').replace(/^@/, '').toLowerCase();
+          if (!handle) return;
+          var key = 'wr:' + handle;
+          if (!byHandle[key]) byHandle[key] = {
+            id: key, handle: handle, name: u.name || handle,
+            avatar: u.avatar || '', statuses: [], ring: 'ring-has', likes: 0, threads: 0,
+          };
+          byHandle[key].statuses.push(it);
+        });
+        _viewerGroup = Object.keys(byHandle).map(function (k) {
+          var w = byHandle[k]; w.threads = w.statuses.length; return w;
+        });
+        return _viewerGroup;
+      });
+  }
+  function openProfileStatusViewer(entry) {
+    if (!entry) return;
+    var open = function (list) {
+      var target = null;
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].id) === String(entry.id)) { target = list[i]; break; }
+      }
+      if (!target) { list = [entry].concat(list); target = entry; }
+      if (window.openStatusViewer) { window.openStatusViewer(list, target.id); return; }
+      if (window.ensureStatusViewer) {
+        window.ensureStatusViewer().then(function (ok) {
+          if (ok) window.openStatusViewer(list, target.id);
+          else toast('Story viewer missing');
+        });
+        return;
+      }
+      toast('Story viewer missing');
+    };
+    loadViewerGroup().then(open).catch(function () { open([entry]); });
+  }
+  function profileLink(p) {
+    return 'profile.html?u=' + encodeURIComponent(String((p && (p.handle || p.username)) || '').replace(/^@/, ''));
+  }
+
   function refreshStoryRing(p) {
     var ring = document.getElementById('avRing');
     var plus = document.getElementById('avPlus');
@@ -348,26 +408,18 @@
        Champion keeps the gold frame. */
     var base = 'av-ring' + (isChamp ? ' champ' : (has ? (viewedAll ? ' viewed-story' : ' ' + (p.isWriter ? 'role-writer' : 'role-reader') + ' has-story') : ' no-story'));
     ring.className = base;
-    if (img) { img.style.cursor = has ? 'pointer' : ''; img.onclick = null; ring.onclick = null;
+    if (img) {
+      img.style.cursor = 'pointer'; ring.style.cursor = 'pointer';
+      img.onclick = null; ring.onclick = null;
       if (has) {
-        var open = function () {
-          if (!window.openStatusViewer) {
-            if (window.ensureStatusViewer) {
-              window.ensureStatusViewer().then(function (ok) {
-                if (ok) window.openStatusViewer([entry], wid);
-                else toast('Story viewer missing');
-              });
-              return;
-            }
-            toast('Story viewer missing');
-            return;
-          }
-          window.openStatusViewer([entry], wid);
-        };
+        /* Live status → play it inside the same multi-writer row the feed uses,
+           so tapping next moves to the next author's status. */
+        var open = function () { openProfileStatusViewer(entry); };
         img.onclick = open; ring.onclick = open;
-      } else if (isOwner) {
-        var hint = function () { toast('No story yet — tap + to post one'); };
-        img.onclick = hint; ring.onclick = hint;
+      } else {
+        /* No status → the avatar is just a link back to this profile. */
+        var goProfile = function () { location.href = profileLink(p); };
+        img.onclick = goProfile; ring.onclick = goProfile;
       }
     }
     if (plus) {
@@ -387,6 +439,7 @@
   var _prevStatusCb = window.onStatusViewerChange;
   window.onStatusViewerChange = function (wid, ring, name) {
     if (typeof _prevStatusCb === 'function') { try { _prevStatusCb(wid, ring, name); } catch (e) {} }
+    _viewerGroup = null; // roster may have changed while the viewer was open
     if (!PROFILE) return;
     var entry = null;
     try { entry = storyEntryFor(PROFILE); } catch (e) {}
@@ -835,11 +888,8 @@
         onAvatarClick: () => {
           var entry = null;
           try { entry = storyEntryFor(PROFILE); } catch (e) {}
-          if (entry && window.openStatusViewer) {
-            openStatusViewer([entry], entry.id);
-            return;
-          }
-          location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle);
+          if (entry) { openProfileStatusViewer(entry); return; }
+          location.href = profileLink(PROFILE);
         },
         onNameClick: () => { location.href = 'profile.html?u=' + encodeURIComponent(PROFILE.handle); },
         onComment: (post) => {

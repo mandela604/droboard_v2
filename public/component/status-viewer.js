@@ -1207,11 +1207,15 @@
     const barsEl = document.getElementById('dsv2Bars');
     barsEl.innerHTML = `<div class="dsv2-bar"><div class="dsv2-bar-fill" id="dsv2FillAd"></div></div>`;
 
-    // Header carries the sponsor
-    document.getElementById('dsv2WriterName').textContent = 'Sponsored';
+    // Header carries the sponsor. Clear the previous status author's link so a
+    // sponsored slide never navigates to somebody's profile.
+    var sponsorName = document.getElementById('dsv2WriterName');
+    sponsorName.textContent = 'Sponsored';
+    sponsorName.onclick = null;
     document.getElementById('dsv2WriterTime').textContent = ad.brand || '';
     const avWrap = document.getElementById('dsv2AvWrap');
     avWrap.innerHTML = ad.logo ? `<img class="dsv2-writer-av" src="${ad.logo}" alt=""/>` : '';
+    if (avWrap.firstElementChild) avWrap.firstElementChild.onclick = null;
 
     // Full-bleed creative from the shared ad-card component (same visual
     // language as index fullscreen ads): story → cover slide, else brand.

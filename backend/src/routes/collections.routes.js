@@ -1,29 +1,17 @@
 'use strict';
-const jwt = require('jsonwebtoken');
 const { z } = require('zod');
 const ctrl = require('../controllers/collections.controller');
-const { requireAuth } = require('../middleware/auth');
-const env = require('../config/env');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
 const { validate, audit, generalLimiter, writeLimiter } = require('../middleware/http');
 
 function Router() { return require('express').Router(); }
 const router = Router();
 
-/* optional auth: personalized (following/isOwner/private) when logged in,
-   public view when anonymous */
-function softAuth(req, _res, next) {
-  const hdr = req.headers.authorization || '';
-  const token = hdr.startsWith('Bearer ')
-    ? hdr.slice(7)
-    : (req.cookies && req.cookies.dro_access) || null;
-  if (token) {
-    try {
-      const p = jwt.verify(token, env.jwtAccessSecret);
-      req.user = { id: p.sub, roles: p.roles || [] };
-    } catch (e) { /* anonymous */ }
-  }
-  return next();
-}
+/* Personalized reads (following/isOwner/private) must use the shared
+   optionalAuth: it also renews an expired dro_access from the refresh cookie.
+   The old local softAuth only decoded a live cookie, so after 15 minutes the
+   collection detail came back anonymous and the Follow button looked lost
+   even though the CollectionFollow row had been persisted. */
 
 const id = z.string().min(1).max(120);
 const storyRef = z.string().min(1).max(120);
@@ -51,7 +39,7 @@ const colPatch = z.object({
   stories: z.array(storyRef).max(200).optional(),
 }).strict();
 
-router.get('/', generalLimiter, softAuth, validate(z.object({ query: z.object({
+router.get('/', generalLimiter, optionalAuth, validate(z.object({ query: z.object({
   q: z.string().max(80).optional(), ownerId: z.string().max(120).optional(),
   owner: z.string().max(120).optional(), followed: z.string().max(5).optional(),
   privacy: z.union([privacy, z.enum(['Public', 'Private', 'Followers'])]).optional(),
@@ -64,14 +52,14 @@ router.post('/', requireAuth, writeLimiter, audit('collections.create'),
 
 router.get('/eligible-stories', requireAuth, generalLimiter, ctrl.eligible);
 
-router.get('/:id', generalLimiter, softAuth, validate(z.object({ params: z.object({ id }) })), ctrl.get);
+router.get('/:id', generalLimiter, optionalAuth, validate(z.object({ params: z.object({ id }) })), ctrl.get);
 router.patch('/:id', requireAuth, writeLimiter, audit('collections.update'),
   validate(z.object({ params: z.object({ id }), body: colPatch })), ctrl.update);
 router.delete('/:id', requireAuth, writeLimiter, audit('collections.delete'),
   validate(z.object({ params: z.object({ id }) })), ctrl.remove);
 
 // frontend collection-service contract
-router.get('/:id/stories', generalLimiter, softAuth, validate(z.object({ params: z.object({ id }) })), ctrl.stories);
+router.get('/:id/stories', generalLimiter, optionalAuth, validate(z.object({ params: z.object({ id }) })), ctrl.stories);
 router.post('/:id/stories', requireAuth, writeLimiter, audit('collections.addStory'),
   validate(z.object({ params: z.object({ id }), body: z.object({ storyId: z.string().min(1).max(120) }).strict() })), ctrl.addStory);
 router.delete('/:id/stories/:storyId', requireAuth, writeLimiter, audit('collections.removeStory'),
