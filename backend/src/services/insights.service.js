@@ -387,13 +387,16 @@ async function getDroboardStats({ period, viewer }) {
   const { User } = require('../models/user.model');
   const pageUser = await User.findOne({ username: 'droboard' }).select('id').lean().catch(() => null);
   const pageId = pageUser ? String(pageUser.id) : '';
-  const pageFilter = pageId ? { authorId: pageId } : { page: 'droboard' };
+  // The page feed includes every post with page:'droboard' — including posts
+  // a manager authored. Use the SAME filter the page uses (POSTS on the page),
+  // not just authorId, or the counts disagree with what the page shows.
+  const pageFilter = { page: 'droboard' };
   const pagePosts = await Post.find(pageFilter).select('id storyRef chapterRef').lean();
   const pagePostIds = pagePosts.map(x => String(x.id));
   const linkedStoryIds = pagePosts
     .map(x => x.storyRef && x.storyRef.id)
     .filter(Boolean);
-  const [vis, posts, postsPrev, comments, followers, followersPrev, readers] = await Promise.all([
+  const [vis, posts, postsPrev, comments, followers, followersPrev, storyReaders, commenters, reactors, likers] = await Promise.all([
     visits({ surface: 'droboard', targetIds: null, period: p }),
     Post.countDocuments(Object.assign({}, cur, pageFilter)),
     Post.countDocuments(Object.assign({}, prev, pageFilter)),
@@ -402,12 +405,27 @@ async function getDroboardStats({ period, viewer }) {
       : 0,
     Follow.countDocuments(Object.assign({ followingId: pageId }, cur)),
     Follow.countDocuments(Object.assign({ followingId: pageId }, prev)),
-    // "Active readers" on the page = distinct users who opened a story the
-    // page promoted. Falls back to the page's own audience when none linked.
+    // "Active readers" = anyone who interacted with ANYTHING on this page:
+    // a promoted story (book), a page post (debate/poll/post), a comment, a
+    // reaction or a like. Deduped to distinct users — one person who did all
+    // four still counts once.
     linkedStoryIds.length
       ? ReadingProgress.distinct('userId', { storyId: { $in: linkedStoryIds } })
       : [],
+    pagePostIds.length
+      ? Comment.distinct('userId', { scope: 'post', postId: { $in: pagePostIds } })
+      : [],
+    pagePostIds.length
+      ? Reaction.distinct('userId', { targetId: { $in: pagePostIds } })
+      : [],
+    pagePostIds.length
+      ? Post.distinct('likedBy', { id: { $in: pagePostIds } }).catch(() => [])
+      : [],
   ]);
+  const activeReaders = new Set([]
+    .concat(storyReaders || [], commenters || [], reactors || [], likers || [])
+    .map(String).filter(Boolean));
+  const readers = [...activeReaders];
   const topPosts = await Post.find(Object.assign({}, cur, pageFilter)).sort({ likesCount: -1, createdAt: -1 }).limit(5).select('id title heading text note quote caption type likesCount authorId').lean();
   const authors = await usersByIds(topPosts.map(p2 => p2.authorId), 'id username fullName');
 
