@@ -45,12 +45,12 @@ const PAGE_SLOTS = {
   // strip = the in-layout house card; popup = the network overlay zone, which
   // paints over the page wherever its own script decides, so it needs a slot of
   // its own instead of stealing the golden book card from the strip.
-  genreHub: ['genreHub:strip', 'genreHub:popup', 'genreHub:vignette'],
+  genreHub: ['genreHub:strip', 'genreHub:popup'],
   library: ['library:slider'],
   store: ['store:below-packs'],
   droboardPage: ['droboardPage:feed', 'droboardPage:vignette'],
   collection: ['collection:top'],
-  discussion: ['discussion:inline', 'discussion:vignette'],
+  discussion: ['discussion:inline'],
   debate: ['debate:top', 'debate:inline', 'debate:thread-top'],
   home: ['home:swipe-card'],
   story: ['story:main'],
