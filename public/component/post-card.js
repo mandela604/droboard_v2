@@ -155,6 +155,44 @@
     .pcc-share-card.collection{background:#0e2a1c}
     .pcc-share-card.collection .pcc-share-badge{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.5);color:#6ee7b7}
 
+    /* Reader League rank card — a trophy-lit board so the card never reads as
+       an empty dark rectangle, even when a share carries no cover image. */
+    .pcc-share-card.league{
+      min-height:232px;
+      background:
+        radial-gradient(circle at 84% 8%, rgba(255,199,74,.42), transparent 44%),
+        radial-gradient(circle at 6% 96%, rgba(255,0,80,.30), transparent 48%),
+        linear-gradient(135deg,#1d0a2c 0%,#3b0b40 48%,#5c1a0a 100%);
+    }
+    .pcc-share-card.league::before{
+      content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+      background-image:radial-gradient(rgba(255,255,255,.14) 1px, transparent 1px),radial-gradient(rgba(255,205,90,.13) 1px, transparent 1px);
+      background-size:22px 22px,36px 36px;background-position:0 0,11px 15px;opacity:.75;
+    }
+    .pcc-share-card.league .pcc-share-cover{opacity:.2;mix-blend-mode:screen;filter:blur(1px) saturate(1.25)}
+    .pcc-share-card.league .pcc-share-fade{background:linear-gradient(90deg,rgba(18,5,26,.94) 0%,rgba(18,5,26,.62) 58%,rgba(18,5,26,.2) 100%)}
+    .pcc-league-trophy{position:absolute;z-index:1;right:-10px;top:16px;font-size:148px;line-height:1;opacity:.16;transform:rotate(-13deg);filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));pointer-events:none}
+    .pcc-league-sparks{position:absolute;inset:0;z-index:2;pointer-events:none}
+    .pcc-league-sparks i{position:absolute;width:5px;height:5px;border-radius:50%;background:#ffd873;box-shadow:0 0 9px #ffd873;opacity:.55}
+    .pcc-league-sparks i:nth-child(1){left:18%;top:22%}
+    .pcc-league-sparks i:nth-child(2){left:63%;top:18%;width:3px;height:3px}
+    .pcc-league-sparks i:nth-child(3){left:38%;top:40%;width:4px;height:4px;background:#fff;box-shadow:0 0 8px #fff}
+    .pcc-league-sparks i:nth-child(4){left:78%;top:56%;width:3px;height:3px}
+    .pcc-league-sparks i:nth-child(5){left:26%;top:70%;width:4px;height:4px}
+    .pcc-share-card.league .pcc-share-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .pcc-league-week{font-size:9px;font-weight:800;letter-spacing:.12em;color:rgba(255,216,115,.92);border:1px solid rgba(255,216,115,.45);padding:4px 9px;border-radius:999px;background:rgba(0,0,0,.22)}
+    .pcc-league-rankrow{display:flex;align-items:center;gap:14px}
+    .pcc-share-card.league .pcc-share-rank{
+      font-family:'Playfair Display',serif;font-size:78px;font-weight:900;line-height:.9;letter-spacing:-.04em;
+      background:linear-gradient(180deg,#fff9e4 0%,#ffd873 55%,#ff9b2f 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      filter:drop-shadow(0 6px 12px rgba(0,0,0,.5));
+    }
+    .pcc-league-meta{display:flex;flex-direction:column;gap:3px;min-width:0}
+    .pcc-league-kicker{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.72)}
+    .pcc-league-who{font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pcc-share-card.league .pcc-share-pts{font-size:13px;font-weight:800;color:#ffd873;margin-top:0}
+
     /* Chapter drop — now uses shared story-card shape */
     /* Quote */
     .pcc-quote{background:linear-gradient(135deg,rgba(255,0,80,.05),rgba(167,139,250,.05));border:1px solid var(--bd-acc);border-radius:14px;padding:20px 16px 16px;margin-bottom:11px;position:relative}
@@ -429,22 +467,45 @@
       const url = String(o.url || o.link || '');
       const isLeague = kind === 'league' || (!kind && /leaderboard\.html/i.test(url));
       const isCollection = kind === 'collection' || (!kind && /collection\.html/i.test(url));
-      if (isLeague || isCollection) {
-        const escC = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-        var rank = String(o.title || '').match(/#(\d+)/);
-        var pts = String(o.text || o.title || '').match(/([\d,]+)\s*pts/i);
+      const escC = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+      if (isLeague) {
+        const rank = String(o.title || '').match(/#(\d+)/);
+        const pts = String(o.text || o.title || '').match(/([\d,]+)\s*pts/i);
+        const who = String(o.name || '').replace(/^@/, '');
         return `${_pill('repost')}
           ${post.note ? `<div class="pcc-text" data-pcc-openpost>${esc(post.note)}</div>` : ''}
-          <div class="pcc-share-card ${isLeague ? 'league' : 'collection'}" data-pcc-open>
+          <div class="pcc-share-card league" data-pcc-open>
             ${coverSrc ? `<img class="pcc-share-cover" src="${esc(coverSrc)}" alt="">` : ''}
             <div class="pcc-share-fade"></div>
-            <div class="pcc-share-top"><span class="pcc-share-badge">${isLeague ? '&#127942; Reader League' : '&#128193; Collection'}</span></div>
+            <span class="pcc-league-trophy" aria-hidden="true">&#127942;</span>
+            <div class="pcc-league-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="pcc-share-top">
+              <span class="pcc-share-badge">&#127942; Reader League</span>
+              <span class="pcc-league-week">WEEKLY</span>
+            </div>
             <div class="pcc-share-bottom">
-              ${isLeague
-                ? (rank ? `<div class="pcc-share-rank">#${escC(rank[1])}</div>` : '')
-                  + (pts ? `<div class="pcc-share-pts">${escC(pts[1])} pts</div>` : '')
-                : `<div class="pcc-share-title">${escC(o.title || 'Collection')}</div>`}
-              <span class="pcc-share-cta">${isLeague ? 'View leaderboard' : 'Open collection'} &rsaquo;</span>
+              <div class="pcc-league-rankrow">
+                ${rank ? `<div class="pcc-share-rank">#${escC(rank[1])}</div>` : ''}
+                <div class="pcc-league-meta">
+                  <span class="pcc-league-kicker">${rank ? 'Your rank this week' : 'Join the weekly league'}</span>
+                  ${who ? `<span class="pcc-league-who">@${escC(who)}</span>` : ''}
+                  ${pts ? `<span class="pcc-share-pts">${escC(pts[1])} pts</span>` : ''}
+                </div>
+              </div>
+              <span class="pcc-share-cta">View leaderboard &rsaquo;</span>
+            </div>
+          </div>`;
+      }
+      if (isCollection) {
+        return `${_pill('repost')}
+          ${post.note ? `<div class="pcc-text" data-pcc-openpost>${esc(post.note)}</div>` : ''}
+          <div class="pcc-share-card collection" data-pcc-open>
+            ${coverSrc ? `<img class="pcc-share-cover" src="${esc(coverSrc)}" alt="">` : ''}
+            <div class="pcc-share-fade"></div>
+            <div class="pcc-share-top"><span class="pcc-share-badge">&#128193; Collection</span></div>
+            <div class="pcc-share-bottom">
+              <div class="pcc-share-title">${escC(o.title || 'Collection')}</div>
+              <span class="pcc-share-cta">Open collection &rsaquo;</span>
             </div>
           </div>`;
       }
