@@ -435,6 +435,15 @@ router.post('/contract-applications/:id/reject', writeLimiter, audit('senior.con
     params: z.object({ id }),
     body: z.object({ reason: z.string().min(5).max(500) }).strict(),
   })), ctrl.contractAppReject);
+// Offer a contract directly from a book (Book Management). offerContract()
+// creates the application if missing and enforces book-approved + KYC gates.
+router.post('/contracts/offer', writeLimiter, audit('senior.contracts.offerDirect'),
+  validate(z.object({ body: z.object({
+    bookId: z.string().min(1).max(40),
+    authorId: z.string().min(1).max(40),
+    templateId: z.string().min(1).max(120),
+  }).strict() })),
+  ctrl.contractOfferDirect);
 
 router.post('/contracts/:id/send', writeLimiter, audit('senior.contracts.send'),
   validate(z.object({

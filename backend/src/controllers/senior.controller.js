@@ -979,6 +979,20 @@ async function contractApprove(req, res) {
   });
 }
 
+// Direct offer from Book Management: offerContract enforces book-approved and
+// KYC gates and creates the application when none exists.
+async function contractOfferDirect(req, res) {
+  return base.wrap(res, async () => {
+    const { bookId, authorId, templateId } = req.valid.body;
+    // Staff may only contract authors in their assigned scope.
+    await senior.assertOwned(req.user, authorId);
+    const offer = await require('../services/senior-sidebar.service').offerContract(req.user, {
+      bookId, authorId, terms: { templateId },
+    });
+    return offer;
+  });
+}
+
 async function contractAppReject(req, res) {
   return base.wrap(res, async () => {
     const { ContractApplication } = require('../models/application.model');
@@ -1135,6 +1149,6 @@ module.exports = {
   verificationHistory: (req, res) => verificationList(req, res, 'history'),
   verificationApprove: (req, res) => verificationDecide(req, res, 'approved'),
   verificationReject: (req, res) => verificationDecide(req, res, 'rejected'),
-  contractApplications, contractApprove, contractAppReject, contractCreate,
+  contractApplications, contractApprove, contractAppReject, contractOfferDirect, contractCreate,
   contractPricing,
 };

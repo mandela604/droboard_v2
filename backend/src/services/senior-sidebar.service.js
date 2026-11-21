@@ -473,6 +473,7 @@ async function books(user, query) {
       tropes: Array.isArray(b.tropes) ? b.tropes : [],
       kind: b.kind || 'long',
       status: b.status,
+      contractStatus: b.contractStatus || 'none',
       chapterCount: b.chapterCount || 0,
       chapters: b.chapterCount || 0,
       wordCount: b.wordCount || 0,

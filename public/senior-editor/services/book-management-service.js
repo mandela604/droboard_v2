@@ -345,6 +345,7 @@ function renderTable(list) {
             '<button class="act-btn" title="View" onclick="event.stopPropagation();viewBook(\'' + esc(b.id) + '\')"><i class="fas fa-eye"></i></button>' +
             '<button class="act-btn" title="Edit" style="display:none" onclick="event.stopPropagation();editBook(\'' + esc(b.id) + '\')"><i class="fas fa-pen"></i></button>' +
             '<button class="act-btn ' + (isFlagged ? '' : 'danger') + '" title="' + (isFlagged ? 'Unflag' : 'Flag') + '" onclick="event.stopPropagation();' + (isFlagged ? 'unflagBook' : 'flagBook') + '(\'' + esc(b.id) + '\')"><i class="fas fa-flag' + (isFlagged ? '-circle-check' : '') + '"></i></button>' +
+            (b.contractStatus === 'none' ? '<button class="act-btn" title="Send Contract" style="color:var(--amber,#f59e0b)" onclick="event.stopPropagation();openBmContract(\'' + esc(b.id) + '\',\'' + esc(b.authorId) + '\')"><i class="fas fa-file-signature"></i></button>' : '') +
           '</div>' +
         '</div>' +
         '<div class="book-detail' + (isOpen ? ' show' : '') + '" id="detail-' + esc(b.id) + '"></div>' +
@@ -386,6 +387,7 @@ function renderDetailPanel(id) {
   html += '<button class="mini-btn primary" onclick="viewBook(\'' + esc(b.id) + '\')"><i class="fas fa-eye"></i> View Book</button>';
   html += '<button class="mini-btn" style="display:none" onclick="editBook(\'' + esc(b.id) + '\')"><i class="fas fa-pen"></i> Edit</button>';
   html += '<button class="mini-btn ' + (isFlagged ? '' : 'danger') + '" onclick="' + (isFlagged ? 'unflagBook' : 'flagBook') + '(\'' + esc(b.id) + '\')"><i class="fas fa-flag"></i> ' + (isFlagged ? 'Unflag' : 'Flag') + '</button>';
+  if (b.contractStatus === 'none') html += '<button class="mini-btn" style="color:var(--amber,#f59e0b)" onclick="openBmContract(\'' + esc(b.id) + '\',\'' + esc(b.authorId) + '\')"><i class="fas fa-file-signature"></i> Send Contract</button>';
   html += '</div></div>';
   panel.innerHTML = html;
 }
@@ -419,6 +421,44 @@ function flagBook(id) {
 function unflagBook(id) {
   var b = books.find(function (x) { return x.id === id; }); if (!b) return;
   openFlagModal(id, 'unflag', b);
+}
+
+/* ── Send Contract (only for books with contractStatus 'none') ── */
+var bmContractBookId = '', bmContractAuthorId = '';
+async function openBmContract(bookId, authorId) {
+  bmContractBookId = bookId; bmContractAuthorId = authorId;
+  var b = books.find(function (x) { return x.id === bookId; });
+  document.getElementById('bmContractBook').textContent = b ? b.title : bookId;
+  document.getElementById('bmContractErr').textContent = '';
+  var sel = document.getElementById('bmContractTpl');
+  sel.innerHTML = '<option value="">Loading templates…</option>';
+  openOverlay('bmContractOv');
+  try {
+    var j = await callBackend('/contract-templates?limit=100');
+    var list = Array.isArray(j) ? j : (j.items || []);
+    sel.innerHTML = '<option value="">— Choose a template —</option>' + list.map(function (t) {
+      var id = t.id || t.templateId || t.name;
+      var name = t.name || t.label || t.type || t.id;
+      return '<option value="' + esc(id) + '">' + esc(name) + '</option>';
+    }).join('');
+  } catch (e) { sel.innerHTML = '<option value="">Could not load templates</option>'; }
+}
+function closeBmContract() { closeOverlay('bmContractOv'); }
+async function submitBmContract() {
+  var tpl = document.getElementById('bmContractTpl').value;
+  var err = document.getElementById('bmContractErr');
+  var btn = document.getElementById('bmContractSubmit');
+  if (!tpl) { err.textContent = 'Choose a contract template first.'; return; }
+  err.textContent = ''; btn.disabled = true;
+  try {
+    await callBackend('/contracts/offer', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookId: bmContractBookId, authorId: bmContractAuthorId, templateId: tpl }),
+    });
+    closeBmContract();
+    toast('✅ Contract sent to author');
+    refresh();
+  } catch (e) { err.textContent = e.message || 'Could not send contract'; btn.disabled = false; }
 }
 function openFlagModal(id, mode, b) {
   modalBookId = id;
@@ -520,6 +560,23 @@ function ensureModals() {
           '<button class="bm-btn danger" id="bmFlagSubmit" onclick="submitBmFlag()"><i class="fas fa-flag"></i> Flag Book</button>' +
         '</div>' +
       '</div>' +
+    '</div>' +
+    '<div class="bm-ov" id="bmContractOv">' +
+      '<div class="bm-modal">' +
+        '<div class="bm-modal-head">' +
+          '<div class="bm-modal-ico amber" id="bmContractIco"><i class="fas fa-file-signature"></i></div>' +
+          '<div><div class="bm-modal-title">Send Contract</div><div class="bm-modal-sub" id="bmContractBook"></div></div>' +
+          '<div class="bm-x" onclick="closeBmContract()"><i class="fas fa-xmark"></i></div>' +
+        '</div>' +
+        '<div class="bm-hint">Choose the contract template to send to this author for signature.</div>' +
+        '<label class="bm-label">Contract template <span>*</span></label>' +
+        '<select class="bm-field" id="bmContractTpl"><option value="">Loading templates…</option></select>' +
+        '<div class="bm-err" id="bmContractErr"></div>' +
+        '<div class="bm-actions">' +
+          '<button class="bm-btn" onclick="closeBmContract()">Cancel</button>' +
+          '<button class="bm-btn primary" id="bmContractSubmit" onclick="submitBmContract()"><i class="fas fa-paper-plane"></i> Send Contract</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
   while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
 
@@ -592,6 +649,9 @@ function bindEvents() {
   window.editBook = editBook;          /* kept — button hidden, not removed */
   window.flagBook = flagBook;
   window.unflagBook = unflagBook;
+  window.openBmContract = openBmContract;
+  window.closeBmContract = closeBmContract;
+  window.submitBmContract = submitBmContract;
   window.closeBmFlag = closeBmFlag;
   window.submitBmFlag = submitBmFlag;
 }
