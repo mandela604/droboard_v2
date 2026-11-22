@@ -62,10 +62,10 @@ bookSchema.index({ status: 1, reads: -1 });
 bookSchema.index({ status: 1, rating: -1 });
 bookSchema.index({ status: 1, updatedAt: -1 });
 
-/* INVARIANT: a published book always has live chapters. Every publish path —
-   document.save(), findOneAndUpdate, updateOne, bulk — funnels through here, so
-   no endpoint can mark a book published and leave its chapters in draft /
-   pending_review / scheduled. Single source of truth for that rule. */
+/* INVARIANT: a published book always has live chapters. Any publish path —
+   document.save(), findOneAndUpdate, updateOne, bulk — flips draft/pending_review
+   chapters to live the moment the book becomes published/ongoing/completed.
+   This is the single source of truth; no endpoint duplicates the logic. */
 const LIVE_BOOK_STATUSES = ['published', 'ongoing', 'completed'];
 async function publishChaptersFor(bookId) {
   if (!bookId) return;

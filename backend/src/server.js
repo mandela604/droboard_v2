@@ -193,9 +193,6 @@ async function main() {
   // Every domain router is required by now, so mongoose knows every model.
   const ids = require('./models/ids');
   await ids.ensureIdIndexes();
-  // Legacy rows approved before the publish path took chapters live: repair
-  // published books whose manuscript chapters are still draft (idempotent).
-  require('./services/books.service').repairPublishedBookChapters().catch(function () {});
   // Votes key on the engagement row now, not just the kind. Without the sync the
   // old (chapterId, userId, kind) unique index stays behind and silently blocks
   // a reader's second poll on the same book.

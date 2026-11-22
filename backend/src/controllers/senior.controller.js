@@ -439,23 +439,15 @@ async function grantWriterRole(authorId) {
 }
 
 // Legacy ReviewSubmission approval: push its book live if it was still pending.
+// Chapters are published by the Book model's updateOne hook — no extra work here.
 async function publishBookForSubmission(bookId) {
   if (!bookId) return;
   try {
-    const { Book, Chapter } = require('../models/content.model');
-    const res = await Book.updateOne(
+    const { Book } = require('../models/content.model');
+    await Book.updateOne(
       { id: String(bookId), status: { $in: ['under_review'] } },
       { $set: { status: 'published' } }
     );
-    // A published book must publish its manuscript chapters too. Chapters
-    // submitted through the review queue sit in 'pending_review', not 'draft',
-    // so both must be flipped or Discover shows a book with zero chapters.
-    if (res && res.modifiedCount > 0) {
-      await Chapter.updateMany(
-        { bookId: String(bookId), status: { $in: ['draft', 'pending_review'] } },
-        { $set: { status: 'live' } }
-      );
-    }
   } catch (e) { /* book publish is best-effort for legacy rows */ }
 }
 

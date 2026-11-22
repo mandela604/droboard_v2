@@ -358,26 +358,6 @@ async function proposeBookEdit({ book, authorId, data }) {
   return doc.toJSON();
 }
 
-/* Self-heal legacy rows approved through the old publish path: a book marked
-   published with draft chapters still attached but none live. Flip those to
-   live so Discover/readers show the manuscript. Idempotent, runs at boot. */
-async function repairPublishedBookChapters() {
-  try {
-    const books = await Book.find({ status: 'published', chapterCount: { $gt: 0 } }).select('id').lean();
-    let fixed = 0;
-    for (const b of books) {
-      const live = await Chapter.countDocuments({ bookId: String(b.id), status: { $in: ['live', 'published'] } });
-      if (live > 0) continue;
-      const r = await Chapter.updateMany(
-        { bookId: String(b.id), status: { $in: ['draft', 'pending_review'] } },
-        { $set: { status: 'live' } }
-      );
-      if (r && r.modifiedCount > 0) fixed++;
-    }
-    return { fixed };
-  } catch (e) { return { fixed: 0 }; }
-}
-
 async function applyBookProposal({ proposal, reviewerId }) {
   if (!proposal || proposal.status !== 'pending') { const e = new Error('not_pending'); e.status = 409; throw e; }
   const book = await Book.findOne({ id: proposal.bookId });
@@ -416,14 +396,7 @@ async function applyBookProposal({ proposal, reviewerId }) {
   }
   if (data.title) book.slug = slugify(data.title) + '-' + String(book.id).slice(-6);
   await book.save();
-  // An approved publish takes the manuscript's draft chapters live with it.
-  if (book.status === 'published') {
-    const { Chapter } = require('../models/content.model');
-    await Chapter.updateMany(
-      { bookId: String(book.id), status: { $in: ['draft', 'pending_review'] } },
-      { $set: { status: 'live' } }
-    );
-  }
+  // Chapters are published by the Book model's save hook — no extra work here.
   proposal.status = 'approved';
   proposal.reviewerId = reviewerId || null;
   proposal.decidedAt = new Date();
@@ -533,4 +506,4 @@ async function loadBookOr404(id) {
   return book;
 }
 
-module.exports = { createBook, createBookWithChapters, listBooks, getBook, getBookDetail, similarBooks, updateBook, deleteBook, loadBookOr404, loadBookById, canWrite, isStaff, slugify, SHORT_MAX, BOOK_LIVE_MIN_WORDS, VISIBLE_BOOK_STATUS, BOOK_CONTENT_FIELDS, bookNeedsProposal, applyBookProposal, repairPublishedBookChapters };
+module.exports = { createBook, createBookWithChapters, listBooks, getBook, getBookDetail, similarBooks, updateBook, deleteBook, loadBookOr404, loadBookById, canWrite, isStaff, slugify, SHORT_MAX, BOOK_LIVE_MIN_WORDS, VISIBLE_BOOK_STATUS, BOOK_CONTENT_FIELDS, bookNeedsProposal, applyBookProposal };
