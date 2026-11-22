@@ -62,6 +62,45 @@ bookSchema.index({ status: 1, reads: -1 });
 bookSchema.index({ status: 1, rating: -1 });
 bookSchema.index({ status: 1, updatedAt: -1 });
 
+/* INVARIANT: a published book always has live chapters. Every publish path —
+   document.save(), findOneAndUpdate, updateOne, bulk — funnels through here, so
+   no endpoint can mark a book published and leave its chapters in draft /
+   pending_review / scheduled. Single source of truth for that rule. */
+const LIVE_BOOK_STATUSES = ['published', 'ongoing', 'completed'];
+async function publishChaptersFor(bookId) {
+  if (!bookId) return;
+  try {
+    const Chapter = mongoose.models.Chapter;
+    if (!Chapter) return;
+    await Chapter.updateMany(
+      { bookId: String(bookId), status: { $in: ['draft', 'pending_review'] } },
+      { $set: { status: 'live' } }
+    );
+  } catch (e) { /* never block the book write on chapter state */ }
+}
+bookSchema.post('save', async function (doc) {
+  if (doc && LIVE_BOOK_STATUSES.includes(String(doc.status))) await publishChaptersFor(doc.id || doc._id);
+});
+function _publishedInUpdate(u) {
+  if (!u) return false;
+  const set = u.$set || {};
+  if (Object.prototype.hasOwnProperty.call(set, 'status') && LIVE_BOOK_STATUSES.includes(String(set.status))) return true;
+  if (!u.$set && Object.prototype.hasOwnProperty.call(u, 'status') && LIVE_BOOK_STATUSES.includes(String(u.status))) return true;
+  return false;
+}
+bookSchema.post('findOneAndUpdate', async function (doc) {
+  if (doc && LIVE_BOOK_STATUSES.includes(String(doc.status))) await publishChaptersFor(doc.id || doc._id);
+});
+bookSchema.post('updateOne', async function () {
+  try {
+    const u = this.getUpdate();
+    if (!_publishedInUpdate(u)) return;
+    const f = this.getFilter() || {};
+    const id = f.id || (f._id && String(f._id));
+    if (id) await publishChaptersFor(id);
+  } catch (e) {}
+});
+
 const chapterSchema = new mongoose.Schema({
   bookId: { type: String, ref: 'Book', required: true, index: true },
   n: { type: Number, required: true }, // chapter number
