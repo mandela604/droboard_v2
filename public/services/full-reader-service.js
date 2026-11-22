@@ -312,7 +312,8 @@
       const key = String(c.id || c.n);
       const p = prog[key] || prog[String(c.n)] || null;
       const done = !!(p && p.finished);
-      const open = !book.vipLocked || +c.n <= 3 || unlocked.has(key) || unlocked.has(String(c.n)) || done;
+      const gate = book.freeChapters != null ? Number(book.freeChapters) : 3;
+      const open = !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
       return {
         n: c.n, title: c.title, words: c.words || 0, liveId: c.id,
         meta: Math.max(1, Math.round((c.words || 600) / 200)) + ' min',

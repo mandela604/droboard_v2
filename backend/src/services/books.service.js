@@ -213,8 +213,23 @@ async function getBookDetail(id, viewerId) {
     updatedAt: stopRow ? stopRow.lastReadAt : null,
   } : null;
 
+  // The paywall gate must be data-driven, not a hardcoded "first 3 chapters".
+  // The editor sets freeChapters in the signed contract's pricing; fall back to
+  // counting leading free-priced chapters if no pricing doc exists.
+  let freeChapters = null;
+  try {
+    const { ContractPricing } = require('../models/revenue.model');
+    const cp = await ContractPricing.findOne({ bookId: String(book.id) }).select('freeChapters').lean();
+    if (cp && cp.freeChapters != null) freeChapters = Number(cp.freeChapters) || 0;
+  } catch (e) {}
+  if (freeChapters == null) {
+    freeChapters = 0;
+    for (const c of chapters) { if ((c.price || 0) > 0) break; freeChapters++; }
+  }
+
   return Object.assign({}, book, {
     chapters,
+    freeChapters,
     writer,
     // Book-level engagement only. Chapter-level engagement (created per
     // chapter in the create wizard) belongs to the chapter reader — the two

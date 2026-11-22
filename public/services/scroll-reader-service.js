@@ -270,13 +270,15 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       board: (book.hubs && book.hubs.board) || null,
       shares: (book.stats && book.stats.shares) || book.sharesCount || 0,
       tips: book.tipCount || 0,
+      freeChapters: book.freeChapters,
       similar: (book.similar || []).map(x => ({ id: x.id, cover: x.cover, title: x.title })),
       exitAd: {},
       chapters: live.map(c => {
         const key = String(c.id || c.n);
         const p = prog[key] || prog[String(c.n)] || null;
         const done = !!(p && p.finished);
-        const open = !book.vipLocked || +c.n <= 3 || unlocked.has(key) || unlocked.has(String(c.n)) || done;
+        const gate = book.freeChapters != null ? Number(book.freeChapters) : 3;
+      const open = !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
         return {
           n: c.n, title: c.title,
           paras: htmlToParas(c.content).slice(0, 80),
