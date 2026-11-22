@@ -196,7 +196,7 @@ async function trackProgress({ bookId, chapterId, storyId, userId, secondsSpent,
   if (secs > 0) {
     try {
       const { User } = require('../models/user.model');
-      await User.updateOne({ _id: String(userId) }, { $inc: { readingSeconds: secs } });
+      await User.updateOne({ id: String(userId) }, { $inc: { readingSeconds: secs } });
     } catch (e) { /* reading time must never break progress tracking */ }
   }
   // One view per reader per chapter per window (rule in viewCreditDue).

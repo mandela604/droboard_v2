@@ -91,7 +91,9 @@ function toFollowRow(u, following) {
 async function readingStatsFor(userId) {
   try {
     const [user, agg, finished, days] = await Promise.all([
-      User.findById(String(userId)).select('readingSeconds').lean(),
+      // User ids are custom strings (000001a1-...), NOT ObjectIds — findById()
+    // throws a CastError on them, which used to zero out every reading stat.
+    User.findOne({ id: String(userId) }).select('readingSeconds').lean(),
       ReadingProgress.aggregate([
         { $match: { userId: String(userId) } },
         { $group: { _id: null, seconds: { $sum: '$secondsSpent' }, words: { $sum: '$wordsRead' } } },
@@ -107,7 +109,7 @@ async function readingStatsFor(userId) {
     let seconds = (user && Number(user.readingSeconds)) || 0;
     if (!seconds && oldSeconds) {
       seconds = oldSeconds;
-      await User.updateOne({ _id: String(userId) }, { $set: { readingSeconds: oldSeconds } });
+      await User.updateOne({ id: String(userId) }, { $set: { readingSeconds: oldSeconds } });
     }
     // One decimal: 720 seconds -> 0.2h, not a rounded 0.
     const hoursRead = Math.round(seconds / 360) / 10;
