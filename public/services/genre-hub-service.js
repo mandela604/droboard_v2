@@ -882,9 +882,8 @@
       ...(media && { media }),
       ...(storyTitle && { story: { id: storyId, title: storyTitle, writer: storyAuthor, cover: storyCover, cat: storyCat } })
     };
-    // "As @droboard" is a platform-wide toggle in app-nav. Thread creation
-    // must honour it too — the backend re-checks page-manager permission.
-    try { if (window.ActAsPage && window.ActAsPage.enabled()) payload.asPage = true; } catch (e) {}
+    // The "As @droboard" toggle is comment-only and is not shown on this
+    // board — threads always publish under the reader's own identity.
 
     const btn = document.getElementById('ghcPost');
     if (btn) { btn.style.opacity = '.45'; btn.style.pointerEvents = 'none'; }

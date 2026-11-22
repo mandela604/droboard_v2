@@ -404,7 +404,10 @@
     // The "As me / As @droboard" identity toggle is ONLY relevant on surfaces
     // where official-page posting is meant to happen. Keep it off every other
     // page (readers, authors, marketing consoles, etc.).
-    var PAGES = ['feed.html','droboard-page.html','genre-hub.html','genre-stories.html','discussion.html'];
+    // Comment-identity toggle: only the discussion and debate pages have a
+    // comment surface. Everywhere else it is hidden (and the preference still
+    // applies only to comments, never to threads/posts).
+    var PAGES = ['discussion.html','debate.html'];
     function isAllowedPage() {
       var path = (location.pathname || '').split('/').pop() || 'index.html';
       return PAGES.indexOf(path) !== -1;
