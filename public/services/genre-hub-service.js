@@ -546,7 +546,7 @@
         onShare: (post) => {
           if (window.openShareModal) {
             openShareModal({
-              title: post.title, sub: '@' + (post.name || '') + ' · ' + GENRE.name,
+              title: post.title, sub: (post.asPage ? '@droboard' : '@' + (post.name || '')) + ' · ' + GENRE.name,
               img: post.media || (post.story && post.story.cover) || '',
               url: 'https://droboard.app/hub/' + GENRE_ID + '/' + post.id,
               contentId: post.id,
@@ -563,8 +563,8 @@
           if (sid) { location.href = 'bridge.html?id=' + encodeURIComponent(sid); return; }
           toast('📖 ' + ttl);
         },
-        onAvatar: (post) => { location.href = 'profile.html?u=' + encodeURIComponent(post.name || ''); },
-        onNameClick: (post, name) => { location.href = 'profile.html?u=' + encodeURIComponent(name || (post && post.name) || ''); },
+        onAvatar: (post) => { location.href = post.asPage ? 'droboard-page.html' : 'profile.html?u=' + encodeURIComponent(post.name || ''); },
+        onNameClick: (post, name) => { location.href = post.asPage ? 'droboard-page.html' : 'profile.html?u=' + encodeURIComponent(name || (post && post.name) || ''); },
         onGenre: (post, genreId) => {
           const gid = genreSlug(genreId || GENRE_ID);
           if (!gid || gid === genreSlug(GENRE_ID) || gid === genreSlug(GENRE.name)) {
@@ -882,6 +882,9 @@
       ...(media && { media }),
       ...(storyTitle && { story: { id: storyId, title: storyTitle, writer: storyAuthor, cover: storyCover, cat: storyCat } })
     };
+    // "As @droboard" is a platform-wide toggle in app-nav. Thread creation
+    // must honour it too — the backend re-checks page-manager permission.
+    try { if (window.ActAsPage && window.ActAsPage.enabled()) payload.asPage = true; } catch (e) {}
 
     const btn = document.getElementById('ghcPost');
     if (btn) { btn.style.opacity = '.45'; btn.style.pointerEvents = 'none'; }
@@ -892,7 +895,13 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error(res.status);
+      if (!res.ok) {
+        // Surface the server's real reason instead of a useless "Failed to
+        // post" — the body is {error: 'join_board_first' | ...}.
+        let detail = null;
+        try { detail = await res.json(); } catch (e2) {}
+        throw new Error((detail && (detail.error || detail.message)) || ('HTTP ' + res.status));
+      }
       const newPost = await res.json();
       ALL_POSTS.unshift(newPost);
       closeHubComposer();
@@ -912,9 +921,22 @@
       validateHubComposer();
       try { localStorage.removeItem(ghcDraftKey()); } catch(e) {}
     } catch(e) {
-      toast('Failed to post. Please try again.');
+      toast(friendlyPostError(e && e.message));
       if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
     }
+  }
+  function friendlyPostError(code) {
+    const msg = String(code || '').toLowerCase();
+    if (msg.indexOf('join_board_first') !== -1) return 'Join this board first to start a discussion';
+    if (msg.indexOf('page_thread_forbidden') !== -1 || msg.indexOf('page_post_forbidden') !== -1)
+      return 'Only page managers can post as @droboard';
+    if (msg.indexOf('pick_board_genre') !== -1) return 'Pick a genre for this board first';
+    if (msg.indexOf('genre_not_in_board') !== -1) return 'That genre is not in this board';
+    if (msg.indexOf('genre_not_found') !== -1) return 'Board not found';
+    if (msg.indexOf('empty_board') !== -1) return 'This board has no genres yet';
+    if (msg.indexOf('bad_tag') !== -1) return 'Please pick a valid tag';
+    if (msg.indexOf('http ') === 0) return 'Failed to post (' + msg.slice(5) + '). Please try again.';
+    return 'Failed to post' + (msg ? ': ' + msg.replace(/_/g, ' ') : '. Please try again.');
   }
   function openComposer() {
     /* Posting needs an account — guests get the shared login wall. */

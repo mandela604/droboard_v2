@@ -61,6 +61,8 @@ router.post('/', requireAuth, writeLimiter, audit('discussions.create'),
     media: z.string().max(2800000).optional(),
     trope: z.string().max(60).optional(),
     story: storyIn,
+    // Page managers may publish the thread under @droboard's identity.
+    asPage: z.boolean().optional(),
   }).passthrough() })), ctrl.create);
 
 router.get('/:id', generalLimiter, optionalAuth,

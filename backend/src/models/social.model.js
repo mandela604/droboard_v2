@@ -115,6 +115,9 @@ commentSchema.index({ parentId: 1, createdAt: 1 });
 const discussionSchema = new mongoose.Schema({
   genreId: { type: String, ref: 'Genre', required: true, index: true },
   authorId: { type: String, ref: 'User', required: true },
+  // When a page manager posts a thread as @droboard, authorId is the page
+  // account so the card reads @droboard; postedBy keeps the real human.
+  postedBy: { type: String, ref: 'User', default: null, index: true },
   title: { type: String, required: true },
   body: { type: String, default: '' },
   tag: { type: String, enum: ['discussion', 'recommendation', 'theory', 'question', 'controversial'], default: 'discussion', index: true },

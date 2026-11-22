@@ -62,6 +62,7 @@
     .dgc-name{font-size:13.5px;font-weight:800;color:var(--tx-high,#161616);cursor:pointer}
     .dgc-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:8px;background:rgba(167,139,250,.12);color:var(--purple,#a78bfa);letter-spacing:.02em}
     .dgc-badge.author{background:rgba(255,0,80,.08);color:var(--acc,#ff0050)}
+    .dgc-page-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,0,80,.1);color:var(--acc,#ff0050);font-size:9px}
     .dgc-time{font-size:11px;color:var(--tx-muted,#666);font-weight:600;margin-top:1px}
     .dgc-genre{font:inherit;color:inherit;background:none;border:none;padding:0;margin:0;cursor:pointer;
       font-weight:700;transition:color .15s}
@@ -364,9 +365,11 @@
     if (p.hot || _sort === 'hot') flags.push('dgc-hot');
     if ((p.controversy || 0) >= 50 || p.tagClass === 'controversial') flags.push('dgc-controversial');
 
-    const badge = p.badge
+    const badge = (p.badge
       ? `<span class="dgc-badge ${p.badgeClass === 'author' ? 'author' : ''}">${_esc(p.badge)}</span>`
-      : '';
+      : '') + (p.asPage
+      ? '<span class="dgc-page-badge" title="Official Droboard page"><i class="fas fa-shield-halved"></i></span>'
+      : '');
 
     let tags = '';
     const tagName = String(p.tag || '').toLowerCase();

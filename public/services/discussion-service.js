@@ -108,6 +108,8 @@
       userRx: p.userRx || null,
       reactions: p.reactions || {},
       verified: !!p.verified,
+      asPage: !!p.asPage,
+      postedBy: p.postedBy || '',
     };
   }
 
@@ -164,7 +166,12 @@
     return (data && data.items) || [];
   }
   /* ── OP render ── */
-  function profileHref(name, handle) { return 'profile.html?u=' + encodeURIComponent(handle || name || ''); }
+  function profileHref(name, handle) {
+    // A thread published as @droboard belongs to the official page, not a
+    // reader profile — keep the OP's avatar/name tap on the platform page.
+    if (POST && POST.asPage) return 'droboard-page.html';
+    return 'profile.html?u=' + encodeURIComponent(handle || name || '');
+  }
 
   /* The OP's real lineup + ring come from the shared status service and
      StatusStore — same as every other avatar. No seed-derived guesses. */
@@ -187,8 +194,9 @@
     if (POST.tag) tags += `<span class="op-tag ${POST.tagClass || 'discussion'}">${esc(POST.tag)}</span>`;
     if (POST.hot) tags += `<span class="op-tag hot"><i class="fas fa-fire"></i> Hot</span>`;
     if ((POST.controversy || 0) >= 50) tags += `<span class="op-tag controversial"><i class="fas fa-bolt"></i> Controversial</span>`;
-    const badge = POST.badge
-      ? `<span class="op-badge ${POST.badgeClass === 'author' ? 'author' : ''}">${esc(POST.badge)}</span>` : '';
+    const badge = (POST.badge
+      ? `<span class="op-badge ${POST.badgeClass === 'author' ? 'author' : ''}">${esc(POST.badge)}</span>` : '')
+      + (POST.asPage ? '<i class="fas fa-shield-halved" style="font-size:10px;color:var(--acc,#ff0050);margin-left:5px" title="Official Droboard page"></i>' : '');
     const media = POST.media ? `<div class="op-media"><img src="${esc(POST.media)}" alt=""/></div>` : '';
     const story = POST.story
       ? `<div class="op-story" id="storyRef">

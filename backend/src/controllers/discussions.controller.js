@@ -24,6 +24,7 @@ async function create(req, res) {
       title: req.valid.body.title,
       body: req.valid.body.body, tag: req.valid.body.tag, media: req.valid.body.media,
       trope: req.valid.body.trope, story: req.valid.body.story,
+      asPage: req.valid.body.asPage,
     });
     res.status(201);
     return out;

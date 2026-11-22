@@ -100,6 +100,10 @@ function toFlatCard(d, viewerId, opts) {
   const feedRow = !!(opts && opts.feed);
   const tagClass = String(c.tag || 'discussion');
   const a = c.author || { name: '', handle: '', avatar: '', verified: false };
+  // A thread published under the official page identity always carries
+  // @droboard's name/avatar on every surface — mirror the feed's relabel so
+  // the hub card, the thread OP and the trending row can never disagree.
+  const asPage = !!d.postedBy;
   const out = {
     id: c.id, title: c.title, body: c.body,
     tag: tagClass.charAt(0).toUpperCase() + tagClass.slice(1), tagClass,
@@ -107,7 +111,10 @@ function toFlatCard(d, viewerId, opts) {
     badge: c.badge, badgeClass: c.badgeClass, controversy: c.controversy,
     pinned: c.pinned,
     likes: c.likes, liked: c.liked, comments: c.commentsCount,
-    name: a.name || '', avatar: a.avatar || '', handle: a.handle || '',
+    asPage, postedBy: String(d.postedBy || ''),
+    name: asPage ? 'Droboard' : (a.name || ''),
+    avatar: asPage ? '/assets/droboard-icon.png' : (a.avatar || ''),
+    handle: asPage ? 'droboard' : (a.handle || ''),
     verified: false,
     time: relTime(c.createdAt),
     createdAt: c.createdAt,
@@ -191,13 +198,26 @@ function normTag(tag) {
   return t;
 }
 
-async function createThread({ user, genre, genreId, title, body, tag, media, trope, story }) {
+async function createThread({ user, genre, genreId, title, body, tag, media, trope, story, asPage }) {
   const userId = user && user.id;
   const g = await resolveThreadGenre(genre, genreId);
   // Posting is a board action: the writer must belong to the parent board.
   await boards.assertBoardMember(user, { genreId: g.id });
+
+  // "As @droboard": a page manager may publish the thread under the platform
+  // page identity. Permission is checked against the REAL actor — never the
+  // page id — and the human is kept on postedBy for the audit trail.
+  let displayAuthorId = userId;
+  let postedBy = null;
+  if (asPage) {
+    const postsSvc = require('./posts.service');
+    if (!await postsSvc.isPageManager(userId)) err('page_thread_forbidden', 403);
+    const pageId = await postsSvc.pageAccountId();
+    if (pageId) { displayAuthorId = pageId; postedBy = String(userId); }
+  }
+
   const doc = await Discussion.create({
-    genreId: g.id, authorId: userId,
+    genreId: g.id, authorId: displayAuthorId, postedBy: postedBy || null,
     title: String(title).slice(0, 200), body: String(body || '').slice(0, 8000),
     tag: normTag(tag), media: validateMediaUrl(media, 'media'),
     trope: String(trope || '').slice(0, 60), story: story || null,
