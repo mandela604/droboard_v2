@@ -99,11 +99,17 @@ const OWNED = {
   completions: 'authorId',
 };
 
-// null ⇒ unscoped (chief/admin); [] ⇒ senior_editor with nobody assigned.
+// The senior-editor surface is ALWAYS scoped to the reviewer's own authors —
+// those who signed up with their SE invite code + those assigned by staff.
+// An admin/chief who also holds senior_editor is scoped here too; their admin
+// and chief dashboards use separate, unscoped services (superadmin.service,
+// chief-surfaces.service), so platform-wide oversight is not lost.
+// null ⇒ unscoped (non-SE staff keeping the legacy read); [] ⇒ SE with nobody.
 async function scopeAuthorIds(user) {
   const roles = (user && user.roles) || [];
-  if (roles.includes('chief_editor') || roles.includes('admin')) return null;
-  if (!roles.includes('senior_editor')) return [];
+  if (!roles.includes('senior_editor')) {
+    return (roles.includes('chief_editor') || roles.includes('admin')) ? null : [];
+  }
   const asg = await EditorAssignment.findOne({ editorId: String(user.id) }).lean();
   return (asg && asg.authorIds ? asg.authorIds : []).map(String);
 }
