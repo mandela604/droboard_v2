@@ -439,6 +439,7 @@
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
         "</div>"
       : '';
+    const adsOn = (LIVE_BOOK && LIVE_BOOK.allowAdUnlock !== false);
     var html = '<div class="unlock-card" id="unlockCard">' +
       '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
       '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
@@ -453,14 +454,16 @@
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full story</div><div class="unlock-opt-s">' + remaining + ' remaining chapter' + (remaining === 1 ? '' : 's') + '</div></div>' +
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + storyCost + '</div>' +
         "</div>" +
-        '<div class="unlock-opt" onclick="FullReader.watchAdsUnlock()">' +
-          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s" id="adprogSub">Watch short ads to unlock free</div></div>' +
-          '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprogNow">Ads</span></div>' +
-        "</div>" +
+        (adsOn
+          ? '<div class="unlock-opt" onclick="FullReader.watchAdsUnlock()">' +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s" id="adprogSub">Watch short ads to unlock free</div></div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprogNow">Ads</span></div>' +
+            "</div>"
+          : '') +
       "</div>" +
     "</div>";
     // Load the real required-ads count from the server for this chapter.
-    if (window.RewardedUnlock && ch.liveId) {
+    if (adsOn && window.RewardedUnlock && ch.liveId) {
       window.RewardedUnlock.progress(storyIdNow(), ch.liveId).then(function (p) {
         var lbl = document.getElementById("adprogNow");
         var sub = document.getElementById("adprogSub");

@@ -232,6 +232,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
      ?story=<bookId> loads the real book/chapters/read-state over the demo
      seed (demo stands on any failure). Tracking posts only for live books. */
   let LIVE = false;
+  let LIVE_BOOK = null;
   let TrackSession = null, TrackN = null;
   function htmlToParas(html) {
     const t = String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p\s*>/gi, '\n\n').replace(/<[^>]+>/g, '');
@@ -300,6 +301,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     };
     DATA.unlockedThrough = DATA.chapters.filter(c => !c.locked).length || 3;
     LIVE = true;
+    LIVE_BOOK = book;
   }
   function TrackLeave() { try { if (TrackSession) TrackSession.stop(); } catch (e) {} TrackSession = null; TrackN = null; }
   function TrackStart(el) {
@@ -386,10 +388,11 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">' + remaining + ' remaining chapter' + (remaining === 1 ? '' : 's') + '</div></div>' +
               '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + storyCost + '</div>' +
             "</div>" +
+            ((LIVE && LIVE_BOOK && LIVE_BOOK.allowAdUnlock === false) ? '' :
             '<div class="unlock-opt" onclick="ScrollReader.watchAdsUnlock(' + ch.n + ')">' +
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s" id="adsub-' + ch.n + '">Watch short ads to unlock free</div></div>' +
               '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprog-' + ch.n + '">Ads</span></div>' +
-            "</div>" +
+            "</div>") +
           "</div>" +
         "</div>" +
       "</section>";

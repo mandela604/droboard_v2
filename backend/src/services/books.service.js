@@ -217,10 +217,15 @@ async function getBookDetail(id, viewerId) {
   // The editor sets freeChapters in the signed contract's pricing; fall back to
   // counting leading free-priced chapters if no pricing doc exists.
   let freeChapters = null;
+  let allowAdUnlock = true; // default: rewarded ads on
+  let adsPerChapter = 1;
   try {
     const { ContractPricing } = require('../models/revenue.model');
-    const cp = await ContractPricing.findOne({ bookId: String(book.id) }).select('freeChapters').lean();
+    const cp = await ContractPricing.findOne({ bookId: String(book.id) })
+      .select('freeChapters allowAdUnlock adsPerChapter').lean();
     if (cp && cp.freeChapters != null) freeChapters = Number(cp.freeChapters) || 0;
+    if (cp && cp.allowAdUnlock === false) allowAdUnlock = false;
+    if (cp && cp.adsPerChapter != null) adsPerChapter = Math.max(1, Number(cp.adsPerChapter) || 1);
   } catch (e) {}
   if (freeChapters == null) {
     freeChapters = 0;
@@ -230,6 +235,8 @@ async function getBookDetail(id, viewerId) {
   return Object.assign({}, book, {
     chapters,
     freeChapters,
+    allowAdUnlock,
+    adsPerChapter,
     writer,
     // Book-level engagement only. Chapter-level engagement (created per
     // chapter in the create wizard) belongs to the chapter reader — the two
