@@ -43,6 +43,13 @@ async function createBook({ authorId, data }) {
     }
     rest.tropes = [...new Set(list)];
   }
+  // Every new book must have a cover — a book with no cover renders as a
+  // blank card on Discover. The wizard offers upload OR a stock pick (both
+  // become a valid https delivery URL), so nobody is blocked by this rule.
+  // Existing books are untouched; this only guards creation.
+  if (!rest.cover || !String(rest.cover).trim()) {
+    const e = new Error('cover_required'); e.status = 400; throw e;
+  }
   // BATCH 4: cover must be an http(s) URL or data:image (wizard uploads dataURLs).
   if (rest.cover !== undefined) rest.cover = validateMediaUrl(rest.cover, 'cover');
   const book = await Book.create(Object.assign({}, rest, { authorId, kind }));

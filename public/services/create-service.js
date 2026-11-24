@@ -348,7 +348,7 @@ function stageIsValid(key){
     if (state.isContinuing) return !!state.chosenBookId;
     return document.getElementById('bookTitleInp').value.trim().length>1;
   }
-  if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4 && (!state.extPlatform || validExtUrl(document.getElementById('extUrlInp').value.trim()));
+  if (key==='details') return getActiveTitle().trim().length>2 && !!state.category && state.genres.length>0 && document.getElementById('synopsisInput').value.trim().length>4 && !!state.coverData && (!state.extPlatform || validExtUrl(document.getElementById('extUrlInp').value.trim()));
   if (key==='plot') return plotWords()>=15;
   if (key==='chapters'){
     if (isNewChapterMode() && !state.bookMeta) return false;
@@ -370,7 +370,7 @@ function flagInvalid(key){
     link:'⚠️ Pick a book to continue, or name your new story',
     details: state.extPlatform && !validExtUrl((document.getElementById('extUrlInp')||{}).value)
       ? '⚠️ Add a valid URL for your book on the other platform'
-      : '⚠️ Add a title, category, at least one genre, and a synopsis',
+      : '⚠️ Add a title, category, at least one genre, a synopsis, and a cover image',
     plot:'⚠️ Summarise your plot across the acts (15+ words)',
     chapters: isNewChapterMode() && !state.bookMeta
       ? "⚠️ This book's details haven't loaded yet — check your connection and retry"
