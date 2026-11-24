@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <meta name="theme-color" content="#000000"/>
-<title>Droboard Â· Reader</title>
+<title>Droboard · Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="stylesheet" href="../shared/theme.css"/>
@@ -16,7 +16,7 @@
   --tx:#f0f0f0;--tx2:#a1a1aa;--muted:#71717a;
   --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.04);
   --font-story:'Lora',serif;--font-ui:'DM Sans',sans-serif;
-  --fs:14px;--lh:1.85;
+  --fs:14px;--lh:2;
   --safe-b:env(safe-area-inset-bottom,14px);
   --topbar-h:50px;--bottombar-h:62px;
   --bg3:#0a0a0d;
@@ -75,7 +75,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .ch-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ch-meta-pill{font-size:9px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;gap:4px;}
 
-/* TEAM SIDING â”€â”€ multi-team support */
+/* TEAM SIDING ── multi-team support */
 .team-siding{padding:16px 22px 0;max-width:680px;margin:0 auto;}
 .team-siding-label{font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
 .team-grid{display:grid;gap:7px;}
@@ -123,7 +123,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .story-divider span{font-size:12px;color:var(--tx2)}
 .story-text p:first-child::first-letter{font-family:var(--font-story);font-size:3.2em;font-weight:700;float:left;line-height:.82;margin-right:.08em;margin-top:.04em;color:var(--acc);}
 
-/* â”€â”€ LOCKED / PAYWALL FADE (in-place, no navigation away) â”€â”€ */
+/* ── LOCKED / PAYWALL FADE (in-place, no navigation away) ── */
 .story-text.locked-fade{max-height:260px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(to bottom, black 25%, transparent 92%);mask-image:linear-gradient(to bottom, black 25%, transparent 92%);opacity:.55;pointer-events:none;user-select:none;}
 .unlock-card{margin:-40px auto 18px;position:relative;z-index:5;max-width:420px;background:var(--bg3,#0a0a0d);border:1.5px solid var(--bd);border-radius:18px;padding:20px 18px;box-shadow:0 10px 40px rgba(0,0,0,.6);text-align:center;}
 .unlock-icon{width:46px;height:46px;border-radius:50%;background:var(--acc-dim);border:1.5px solid var(--acc-border);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--acc);margin:0 auto 12px}
@@ -139,7 +139,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .unlock-opt-price{font-size:11.5px;font-weight:900;color:var(--gold);display:flex;align-items:center;gap:4px;white-space:nowrap}
 .unlock-opt.reco .unlock-opt-price{color:var(--acc)}
 
-/* AD SLOT â”€â”€ sits right after the story, before Prev/Next chapter nav.
+/* AD SLOT ── sits right after the story, before Prev/Next chapter nav.
    NOTE: parent .story-wrap already has 22px side padding (same as
    scroll-reader .reader-col), so this wrap uses 0 side padding to match
    scroll-reader .ch-edge-ad width exactly. */
@@ -161,7 +161,7 @@ body.theme-white .topbar{background:rgba(255,255,255,.92);}
 .ch-nav-side.next-ch.locked-next .ch-nav-label{color:var(--gold)}
 .ch-nav-center{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;}
 
-/* COMMENTS â”€â”€ component (comment-section.js?v=24) renders into #commentsPlaceholder;
+/* COMMENTS ── component (comment-section.js?v=24) renders into #commentsPlaceholder;
    zero side padding here: .story-wrap already gives the column edge, same
    as the engagement accordions above and the scroll reader column. */
 .comments-section{padding:0 0 24px;max-width:680px;margin:0 auto;}
@@ -372,7 +372,7 @@ try{
       </div>
     </div>
 
-    <!-- TEAM SIDING â”€â”€ 4 teams -->
+    <!-- TEAM SIDING ── 4 teams -->
     <div class="team-siding fu" id="teamSidingSection">
       <div class="team-siding-label">Pick your side</div>
       <div class="team-grid cols-2" id="teamGrid"></div>
@@ -384,13 +384,13 @@ try{
     <div class="story-wrap fu">
       <div class="story-text" id="storyText"></div>
 
-      <!-- SPONSORED AD â”€â”€ one ad, right after the story, before Prev/Next -->
+      <!-- SPONSORED AD ── one ad, right after the story, before Prev/Next -->
       <div class="ad-slot-wrap" id="adSlotWrap">
         <div class="ad-slot-label">Sponsored</div>
         <div id="adSlot"></div>
       </div>
 
-      <!-- COMMENTS â”€â”€ rendered by DroboardComments.attach() below -->
+      <!-- COMMENTS ── rendered by DroboardComments.attach() below -->
       <div class="comments-section" id="commentsSection">
         <div id="commentsPlaceholder"></div>
       </div>
@@ -408,7 +408,7 @@ try{
         </div>
       </div>
 
-      <!-- COMMUNITIES â”€â”€ genre board + author circle via shared component -->
+      <!-- COMMUNITIES ── genre board + author circle via shared component -->
       <div class="comments-section" id="communitiesSection" style="padding-top:0">
         <div id="communitiesMount"></div>
       </div>
@@ -445,7 +445,7 @@ try{
 <div class="ch-panel" id="chPanel">
   <div class="ch-panel-hdr">
     <div class="ch-panel-title">Chapters</div>
-    <div class="ch-panel-close" data-act="close-panels">âœ•</div>
+    <div class="ch-panel-close" data-act="close-panels">×</div>
   </div>
   <div class="ch-panel-body">
     <div class="season-tabs" id="seasonTabs"></div>
@@ -460,10 +460,10 @@ try{
   <div class="sp-section">
     <div class="sp-label">Font Size</div>
     <div class="font-ctrl">
-      <div class="font-ctrl-btn" data-act="fs-dec">Aâˆ’</div>
+      <div class="font-ctrl-btn" data-act="fs-dec">A−</div>
       <div style="flex:1;text-align:center">
         <div class="font-size-display" id="fontSizeDisplay">14px</div>
-        <div class="font-preview" id="fontPreview" style="font-family:var(--font-story)">The quick brown foxâ€¦</div>
+        <div class="font-preview" id="fontPreview" style="font-family:var(--font-story)">The quick brown fox…</div>
       </div>
       <div class="font-ctrl-btn" data-act="fs-inc">A+</div>
     </div>
@@ -471,9 +471,9 @@ try{
   <div class="sp-section">
     <div class="sp-label">Line Spacing</div>
     <div class="lh-opts">
-      <div class="lh-opt" data-lh="1.55"><div class="lh-opt-icon">â‰¡</div><div class="lh-opt-label">Compact</div></div>
-      <div class="lh-opt on" data-lh="1.85"><div class="lh-opt-icon" style="letter-spacing:1px">â‰¡</div><div class="lh-opt-label">Normal</div></div>
-      <div class="lh-opt" data-lh="2.2"><div class="lh-opt-icon" style="letter-spacing:3px">â‰¡</div><div class="lh-opt-label">Relaxed</div></div>
+      <div class="lh-opt" data-lh="1.7"><div class="lh-opt-icon">≡</div><div class="lh-opt-label">Compact</div></div>
+      <div class="lh-opt on" data-lh="2"><div class="lh-opt-icon" style="letter-spacing:1px">≡</div><div class="lh-opt-label">Normal</div></div>
+      <div class="lh-opt" data-lh="2.45"><div class="lh-opt-icon" style="letter-spacing:3px">≡</div><div class="lh-opt-label">Relaxed</div></div>
     </div>
   </div>
   <div class="sp-section">
@@ -497,7 +497,7 @@ try{
 
 <div class="toast" id="toastEl"></div>
 
-<!-- â”€â”€ Components â”€â”€ -->
+<!-- ── Components ── -->
 <script src="../services/currency-service.js?v=8"></script>
 <script src="../component/reader.js?v=3"></script>
 <script src="../component/rewarded-ad.js?v=2"></script>
@@ -518,7 +518,7 @@ try{
 <script src="../component/comment-section.js?v=24"></script>
 <script src="../component/community-cards.js?v=4"></script>
 
-<!-- â”€â”€ Data â”€â”€ -->
+<!-- ── Data ── -->
 <script src="../data/comments-data.js"></script>
 <script src="../data/ad-data.js"></script>
 <script src="../services/audience-rules.js?v=2"></script>
