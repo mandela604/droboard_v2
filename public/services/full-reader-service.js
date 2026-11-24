@@ -429,7 +429,7 @@
     const oneCost = Number(ch.price) || 0;
     const bundleCost = sumFrom(chIdx, 5);
     const storyCost = sumFrom(chIdx);
-    return '<div class="unlock-card" id="unlockCard">' +
+    var html = '<div class="unlock-card" id="unlockCard">' +
       '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
       '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
       '<div class="unlock-sub">Continue with coins, or unlock the rest of the story.</div>' +
@@ -461,6 +461,7 @@
         if (sub) sub.textContent = p.owned ? "Already unlocked" : (p.required + " ad" + (p.required === 1 ? "" : "s") + " to unlock this chapter free");
       });
     }
+    return html;
   }
 
   async function attemptUnlockChapter(seasonIdx, chIdx, mode, cost) {
