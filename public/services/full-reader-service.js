@@ -427,8 +427,18 @@
         .reduce(function (s, c) { return s + (Number(c.price) || 0); }, 0);
     };
     const oneCost = Number(ch.price) || 0;
-    const bundleCost = sumFrom(chIdx, 5);
+    const remaining = chs.length - chIdx;
     const storyCost = sumFrom(chIdx);
+    // Only offer the bundle when there are MORE chapters than the bundle
+    // covers — otherwise it is identical to "Full story" at the same price.
+    const bundleCount = Math.min(5, remaining);
+    const bundleCost = sumFrom(chIdx, bundleCount);
+    const bundleOpt = remaining > 5
+      ? '<div class="unlock-opt reco" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'bundle'," + bundleCost + ")\">" +
+          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next ' + bundleCount + ' chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>' +
+          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
+        "</div>"
+      : '';
     var html = '<div class="unlock-card" id="unlockCard">' +
       '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
       '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
@@ -438,12 +448,9 @@
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + oneCost + '</div>' +
         "</div>" +
-        '<div class="unlock-opt reco" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'bundle'," + bundleCost + ")\">" +
-          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>' +
-          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
-        "</div>" +
-        '<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'story'," + storyCost + ")\">" +
-          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full story</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
+        bundleOpt +
+        '<div class="unlock-opt' + (remaining > 5 ? '' : ' reco') + '" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'story'," + storyCost + ")\">" +
+          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full story</div><div class="unlock-opt-s">' + remaining + ' remaining chapter' + (remaining === 1 ? '' : 's') + '</div></div>' +
           '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + storyCost + '</div>' +
         "</div>" +
         '<div class="unlock-opt" onclick="FullReader.watchAdsUnlock()">' +

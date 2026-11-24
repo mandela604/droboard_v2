@@ -346,8 +346,17 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           .reduce(function (s, c) { return s + (Number(c.price) || 0); }, 0);
       };
       const oneCost = Number(ch.price) || 0;
-      const bundleCost = sumFrom(idx, 5);
+      const remaining = all.length - idx;
       const storyCost = sumFrom(idx);
+      // Hide the bundle when it would duplicate "Full season" at the same price.
+      const bundleCount = Math.min(5, remaining);
+      const bundleCost = sumFrom(idx, bundleCount);
+      const bundleOpt = remaining > 5
+        ? '<div class="unlock-opt reco" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 5, " + bundleCost + ")\">" +
+            '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next ' + bundleCount + " chapters \u2B50</div><div class=\"unlock-opt-s\">Best value bundle</div></div>" +
+            '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
+          "</div>"
+        : '';
       const paras = ch.paras.map(p => "<p>" + esc(p) + "</p>").join("");
       // Replace the placeholder label with the real required-ads count.
       if (window.RewardedUnlock && ch.liveId) {
@@ -372,12 +381,9 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
               '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + oneCost + '</div>' +
             "</div>" +
-            '<div class="unlock-opt reco" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 5, " + bundleCost + ")\">" +
-              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters \u2B50</div><div class="unlock-opt-s">Best value bundle</div></div>' +
-              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
-            "</div>" +
-            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 'all', " + storyCost + ")\">" +
-              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
+            bundleOpt +
+            '<div class="unlock-opt' + (remaining > 5 ? '' : ' reco') + '" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 'all', " + storyCost + ")\">" +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">' + remaining + ' remaining chapter' + (remaining === 1 ? '' : 's') + '</div></div>' +
               '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + storyCost + '</div>' +
             "</div>" +
             '<div class="unlock-opt" onclick="ScrollReader.watchAdsUnlock(' + ch.n + ')">' +
