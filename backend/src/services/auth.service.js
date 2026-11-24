@@ -8,6 +8,7 @@ const { signAccess } = require('../middleware/auth');
 const { User, RefreshFamily, AuditLog } = require('../models/user.model');
 const referrals = require('./referrals.service');
 const { isReservedUsername } = require('./users.service');
+const { userRefFilter } = require('./user-ref');
 
 // Lean auth audit: success + lockout only — failed attempts are NOT logged
 // individually (the account lock + IP limiter already absorb brute force;
@@ -303,7 +304,8 @@ async function refresh({ token, ip }) {
   }
   if (h === fam.prevHash) {
     // benign retry (client got rotated token twice): re-issue without rotating
-    const user = await User.findOne({ id: fam.userId });
+    const user = await User.findOne(userRefFilter([fam.userId]));
+    if (!user) { fam.reused = true; await fam.save(); await RefreshFamily.deleteMany({ familyId: fam.familyId }); const e = new Error('bad_token'); e.status = 401; throw e; }
     return Object.assign({ refresh: token }, tokensFor(user, fam.mfaAt));
   }
   // rotate
@@ -315,7 +317,8 @@ async function refresh({ token, ip }) {
   // inactivity lets the session die.
   fam.expiresAt = new Date(Date.now() + 30 * 86400000);
   await fam.save();
-  const user = await User.findOne({ id: fam.userId });
+  const user = await User.findOne(userRefFilter([fam.userId]));
+  if (!user) { await RefreshFamily.deleteMany({ familyId: fam.familyId }); const e = new Error('bad_token'); e.status = 401; throw e; }
   return Object.assign({ refresh: next }, tokensFor(user, fam.mfaAt));
 }
 
@@ -515,7 +518,7 @@ async function issueSessionFor(user, { ip, ua }) {
   full.lastLoginAt = new Date();
   full.lastLoginIp = ip || '';
   await full.save();
-  const refresh = await issueFamily(full._id, { ip, ua });
+  const refresh = await issueFamily(full.id, { ip, ua });
   const out = Object.assign({ mfaRequired: false, refresh }, tokensFor(full, null));
   // DISABLED until UI ready: out.mfaSetupRequired = adminNeedsMfaSetup(full);
   out.mfaSetupRequired = false;
