@@ -57,7 +57,7 @@
         return { ok: false, message: "Purchase failed. Please try again." };
       });
     }
-    return new Promise(function (resolve) { setTimeout(function () { resolve({ ok: true }); }, 1100); });
+    return Promise.resolve({ ok: false, message: "Payments are not available on this device. Use the official app to buy coins." });
   }
 
   function updateCoinDisplays(balance) {
@@ -81,12 +81,17 @@
       if (!ch.liveId) continue;
       const r = await DroboardReader.unlockChapter(bookId, ch.liveId);
       if (!r.ok) { okAll = false; toast("Unlock failed — " + (r.error || "try again")); break; }
+      OWNED_IDS.add(String(ch.liveId));
     }
     if (!okAll) return;
     updateCoinDisplays(DroboardReader.getBalance());
     markUnlockMode(fromCh, howMany, 'coin');
     unlockChapters(fromCh, howMany);
   }
+
+  // Server-owned chapter ids from read-state (Entitlements). Extended only
+  // after a confirmed server unlock — never from localStorage.
+  const OWNED_IDS = new Set();
 
   // How each chapter was unlocked: 'free' (default), 'coin', or 'ads'.
   // Coin-unlocked chapters stay ad-free unless marketing flips the
@@ -251,7 +256,8 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
       const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
       if (sRes.ok) state = await sRes.json();
     } catch (e) {}
-    const unlocked = new Set(((state && state.unlocked) || []).map(String));
+    (((state && state.unlocked) || [])).forEach(function (id) { OWNED_IDS.add(String(id)); });
+    const unlocked = OWNED_IDS;
     const prog = (state && state.progress) || {};
     DATA = {
       id: book.id,
@@ -283,6 +289,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           n: c.n, title: c.title,
           paras: htmlToParas(c.content).slice(0, 80),
           liveId: c.id,
+          price: c.price || 0,
           words: c.words || 0,
           locked: !open,
           // Chapter-end reaction strip state (from the chapters list).
@@ -331,7 +338,28 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
 
   function renderChapterBlock(ch, locked) {
     if (locked) {
+      // Real per-chapter prices from the server — no hardcoded demo numbers.
+      const all = DATA.chapters || [];
+      const idx = all.findIndex(c => c.n === ch.n);
+      const sumFrom = function (from, count) {
+        return all.slice(from, count == null ? undefined : from + count)
+          .reduce(function (s, c) { return s + (Number(c.price) || 0); }, 0);
+      };
+      const oneCost = Number(ch.price) || 0;
+      const bundleCost = sumFrom(idx, 5);
+      const storyCost = sumFrom(idx);
       const paras = ch.paras.map(p => "<p>" + esc(p) + "</p>").join("");
+      // Replace the placeholder label with the real required-ads count.
+      if (window.RewardedUnlock && ch.liveId) {
+        setTimeout(function () {
+          RewardedUnlock.progress(DATA.id, ch.liveId).then(function (p) {
+            var lbl = document.getElementById("adprog-" + ch.n);
+            var sub = document.getElementById("adsub-" + ch.n);
+            if (lbl) lbl.textContent = p.done + "/" + p.required;
+            if (sub) sub.textContent = p.owned ? "Already unlocked" : (p.required + " ad" + (p.required === 1 ? "" : "s") + " to unlock this chapter free");
+          });
+        }, 0);
+      }
       return '<section class="chapter-block locked-wrap" data-ch="' + ch.n + '" data-cid="' + (ch.liveId || '') + '" id="chapterSec-' + ch.n + '">' +
         '<div class="chapter-heading">Chapter ' + ch.n + " \u2014 " + esc(ch.title) + "</div>" +
         '<div class="story-text locked-fade">' + paras + "</div>" +
@@ -340,21 +368,21 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
           '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
           '<div class="unlock-sub">You\'ve read through Chapter ' + ST.unlockedThrough + " free. Keep going with coins or unlock the rest of the season.</div>" +
           '<div class="unlock-opts">' +
-            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 1, 15)\">" +
+            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 1, " + oneCost + ")\">" +
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
-              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + oneCost + '</div>' +
             "</div>" +
-            '<div class="unlock-opt reco" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 5, 60)\">" +
+            '<div class="unlock-opt reco" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 5, " + bundleCost + ")\">" +
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters \u2B50</div><div class="unlock-opt-s">Best value bundle</div></div>' +
-              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
             "</div>" +
-            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 'all', 120)\">" +
+            '<div class="unlock-opt" onclick="ScrollReader.attemptUnlock(' + ch.n + ", 'all', " + storyCost + ")\">" +
               '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full season</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
-              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + storyCost + '</div>' +
             "</div>" +
             '<div class="unlock-opt" onclick="ScrollReader.watchAdsUnlock(' + ch.n + ')">' +
-              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s">2 short ads - unlocks this chapter free</div></div>' +
-              '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprog-' + ch.n + '">' + adProgress(ch.n) + "/2</span></div>" +
+              '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s" id="adsub-' + ch.n + '">Watch short ads to unlock free</div></div>' +
+              '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprog-' + ch.n + '">Ads</span></div>' +
             "</div>" +
           "</div>" +
         "</div>" +
@@ -398,33 +426,34 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     return '<div class="comment-line-wrap"><div class="comments-inline-mount" id="commentsMount-' + ch.n + '"></div></div>';
   }
 
-  /* ══ WATCH ADS TO UNLOCK — 2 full ad views unlock 1 chapter free.
-     Progress persists per story+chapter so a refresh never wipes it. ══ */
-  function adKey(chN) { return "dro_adunlock_" + STORY_ID + "_" + chN; }
-  function adProgress(chN) {
-    try { return Math.min(2, parseInt(localStorage.getItem(adKey(chN)) || "0", 10) || 0); }
-    catch (e) { return 0; }
-  }
+  /* ══ WATCH ADS TO UNLOCK — server-backed end to end. The ad views are
+     claimed through /api/wallet/unlock-ad* and the resulting server-side
+     Entitlement is what opens the chapter. ══ */
   function readerAdInventory() {
     return (READER_BANNERS || []).filter(function (b) {
       return b && (b.type === "banner" || b.type === "native") && b.ad;
     });
   }
   function watchAdsUnlock(chN) {
-    if (adProgress(chN) >= 2) { markUnlockMode(chN, 1, 'ads'); unlockChapters(chN, 1); return; }
-    if (!window.DroboardRewardedAd) { toast("Ads unavailable right now"); return; }
-    var need = 2 - adProgress(chN);
-    DroboardRewardedAd.show({
+    if (!window.RewardedUnlock) { toast("Ads unavailable right now"); return; }
+    const ch = (DATA.chapters || []).find(function (c) { return +c.n === +chN; });
+    if (!ch || !ch.liveId) { toast("This chapter cannot be unlocked with ads"); return; }
+    RewardedUnlock.watchAndUnlock({
+      bookId: DATA.id,
+      chapterId: ch.liveId,
       ads: readerAdInventory(),
-      rewardLabel: "Watch to the end (" + need + " more) to unlock Chapter " + chN + " free",
-      onComplete: function () {
-        var n = adProgress(chN) + 1;
-        try { localStorage.setItem(adKey(chN), String(n)); } catch (e) {}
+      onProgress: function (done, required) {
         var lbl = document.getElementById("adprog-" + chN);
-        if (lbl) lbl.textContent = Math.min(2, n) + "/2";
-        if (n >= 2) { toast("Chapter " + chN + " unlocked - enjoy!"); markUnlockMode(chN, 1, 'ads'); unlockChapters(chN, 1); }
-        else toast("1 more ad to unlock Chapter " + chN);
+        var sub = document.getElementById("adsub-" + chN);
+        if (lbl) lbl.textContent = done + "/" + required;
+        if (sub) sub.textContent = done + " of " + required + " ads watched";
       },
+      onUnlocked: function () {
+        OWNED_IDS.add(String(ch.liveId));
+        markUnlockMode(chN, 1, 'ads');
+        unlockChapters(chN, 1);
+      },
+      onError: function (msg) { toast(msg); },
     });
   }
 

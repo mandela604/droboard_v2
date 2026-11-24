@@ -684,8 +684,8 @@ function _renderRxSlot(story) {
       }).catch(() => { _setBuyLoading(false); _toast('❌ Purchase failed'); });
       return;
     }
-    _setBuyLoading(true);
-    setTimeout(() => _grantCoins(p.coins + (p.bonus || 0)), 1000);
+    _setBuyLoading(false);
+    _toast('❌ Payments are not available here. Use the official app to buy coins.');
   }
   /* ── Per-CHAPTER unlock (not per-scene): one decision unlocks every
      scene in this story/chapter at once. ── */
@@ -694,13 +694,9 @@ function _renderRxSlot(story) {
       _hooks.onUnlockAttempt(story, 0, story.scenes.length, cost, (ok) => { if (ok) _applyChapterUnlock(story); });
       return;
     }
-    if (_wallet.balance < cost) {
-      _openInsufficientBalance(cost, _wallet.balance, () => _attemptUnlockChapter(story, cost));
-      return;
-    }
-    _wallet.balance -= cost;
-    _syncWalletUI();
-    _applyChapterUnlock(story);
+    // No host hook means there is no server-backed unlock path. Never grant
+    // access locally — that was the demo behaviour and is unsafe on live.
+    _toast('Unlock is unavailable here. Open the story in the official reader.');
   }
   function _applyChapterUnlock(story) {
     story.locked = false;

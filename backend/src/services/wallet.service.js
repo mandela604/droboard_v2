@@ -256,11 +256,23 @@ async function adTarget(bookId, chapterId) {
   const cid = String(ch.id || chapterId);
   const price = Math.max(0, Math.floor(Number(ch.price) || 0));
   if (price <= 0) { const e = new Error('free_chapter'); e.status = 400; throw e; }
-  const terms = await ContractPricing.findOne({ bookId: String(bookId) }).select('allowAdUnlock').lean();
+  const terms = await ContractPricing.findOne({ bookId: String(bookId) }).select('allowAdUnlock adsPerChapter').lean();
   if (terms && terms.allowAdUnlock === false) { const e = new Error('ad_unlock_disabled'); e.status = 403; throw e; }
+  // The editor saves the number of ads a reader must watch per paid chapter.
+  // Treat 0/unset as one ad so an enabled ad-unlock never becomes a free pass.
+  const required = Math.max(1, Number(terms && terms.adsPerChapter) || 1);
   const { Book } = require('../models/content.model');
   const book = await Book.findOne({ id: String(bookId) }).select('authorId title').lean();
-  return { chapterId: cid, price, authorId: book ? String(book.authorId) : '', title: (book && book.title) || '' };
+  return { chapterId: cid, price, required, authorId: book ? String(book.authorId) : '', title: (book && book.title) || '' };
+}
+
+// How many rewarded views this reader has already completed for a chapter.
+// This is the server's progress counter — the client never gets to say "3/2".
+async function adProgressOf(userId, bookId, chapterId, session) {
+  return AdImpression.countDocuments({
+    userId: String(userId), bookId: String(bookId),
+    chapterId: String(chapterId), kind: 'rewarded_unlock',
+  }).session(session || null);
 }
 
 async function adUnlockStart({ userId, bookId, chapterId }) {
@@ -268,11 +280,16 @@ async function adUnlockStart({ userId, bookId, chapterId }) {
   const owned = await Entitlement.findOne({
     userId: String(userId), bookId: String(bookId), chapterId: t.chapterId,
   }).lean();
-  if (owned) return { ok: true, alreadyOwned: true, token: null, price: 0, chapterId: t.chapterId };
+  if (owned) return {
+    ok: true, alreadyOwned: true, token: null, price: 0,
+    chapterId: t.chapterId, required: t.required, progress: t.required,
+  };
   const nonce = crypto.randomBytes(16).toString('hex');
   return {
     ok: true, alreadyOwned: false, token: signTask(userId, adCode(bookId, t.chapterId), nonce),
-    minWatchSec: Math.round(AD_UNLOCK_MIN_MS / 1000), price: t.price, chapterId: t.chapterId,
+    minWatchSec: Math.round(AD_UNLOCK_MIN_MS / 1000), price: t.price,
+    chapterId: t.chapterId, required: t.required,
+    progress: await adProgressOf(userId, bookId, t.chapterId),
   };
 }
 
@@ -289,20 +306,51 @@ async function unlockByAd({ userId, bookId, chapterId, token }) {
   }
   return txn.run(async (session) => {
     // The unique entitlement row is the gate: two devices claiming the same
-    // token cannot both book a completion.
+    // chapter cannot both book an unlock.
     const owned = await Entitlement.findOne({
       userId: String(userId), bookId: String(bookId), chapterId: t.chapterId,
     }).session(session).lean();
-    if (owned) return { ok: true, alreadyOwned: true, price: 0, chapterId: t.chapterId, balance: await balanceOf(userId, session) };
-    await recordEntitlement(session, {
-      userId, bookId, chapterId: t.chapterId, priceCoins: t.price, kind: 'ad',
-    });
+    if (owned) return {
+      ok: true, alreadyOwned: true, unlocked: true, price: 0,
+      chapterId: t.chapterId, progress: t.required, required: t.required,
+      balance: await balanceOf(userId, session),
+    };
+
+    // A replayed token must never count as another watched ad.
+    const replay = await AdImpression.findOne({
+      userId: String(userId), bookId: String(bookId), chapterId: t.chapterId,
+      kind: 'rewarded_unlock', nonce: String(tok.n || ''),
+    }).session(session).lean();
+    const before = await adProgressOf(userId, bookId, t.chapterId, session);
+    if (replay) return {
+      ok: true, unlocked: false, alreadyCounted: true, progress: before,
+      required: t.required, chapterId: t.chapterId, balance: await balanceOf(userId, session),
+    };
+
+    // Book one completed view for this token.
     await AdImpression.create([{
       userId: String(userId), bookId: String(bookId), chapterId: t.chapterId,
       authorId: t.authorId, network: 'direct', adUnitId: 'rewarded:overlay',
-      kind: 'rewarded_unlock', verified: false, settled: false, completedAt: new Date(),
+      kind: 'rewarded_unlock', nonce: String(tok.n || ''),
+      verified: false, settled: false, completedAt: new Date(),
     }], txn.withSession(session));
-    return { ok: true, alreadyOwned: false, price: t.price, chapterId: t.chapterId, balance: await balanceOf(userId, session) };
+
+    const progress = before + 1;
+    if (progress < t.required) {
+      return {
+        ok: true, unlocked: false, progress, required: t.required,
+        chapterId: t.chapterId, balance: await balanceOf(userId, session),
+      };
+    }
+
+    // Required views reached — the video(s) are the payment, no coins spent.
+    await recordEntitlement(session, {
+      userId, bookId, chapterId: t.chapterId, priceCoins: t.price, kind: 'ad',
+    });
+    return {
+      ok: true, unlocked: true, alreadyOwned: false, progress, required: t.required,
+      price: t.price, chapterId: t.chapterId, balance: await balanceOf(userId, session),
+    };
   });
 }
 

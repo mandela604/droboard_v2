@@ -51,11 +51,17 @@ const adImpressionSchema = new mongoose.Schema({
   network: { type: String, default: 'admob' }, // admob|adsense|direct
   adUnitId: { type: String, default: '' },
   kind: { type: String, enum: ['rewarded_unlock', 'page', 'banner'], default: 'page', index: true },
+  // Single-use nonce from the signed unlock token. Stops a replayed token from
+  // counting as a second watched ad toward the same chapter.
+  nonce: { type: String, default: '', index: true },
   verified: { type: Boolean, default: false }, // SSV verified (rewarded)
   settled: { type: Boolean, default: false, index: true },
   completedAt: { type: Date, default: Date.now },
 }, { timestamps: false });
 adImpressionSchema.index({ bookId: 1, kind: 1, completedAt: -1 });
+adImpressionSchema.index({ userId: 1, chapterId: 1, nonce: 1 }, {
+  unique: true, partialFilterExpression: { kind: 'rewarded_unlock', nonce: { $gt: '' } },
+});
 
 // Ad revenue ledger (super-admin ad-earnings + marketing analytics console).
 // One row per (date, storyId, adId, slot, page) — POST /api/ads/track upserts.

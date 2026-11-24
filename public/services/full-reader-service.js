@@ -55,6 +55,9 @@
      Coin-unlocked chapters stay ad-free unless marketing flips
      fullReader.paidUnlockAds. ══ */
   const ADST = { unlockMode: {}, paidUnlockAdsOn: false, adsEnabled: true, slots: {} };
+  // Server-owned chapter ids. Seeded from read-state (Entitlements) and only
+  // extended after a successful server unlock — never from localStorage.
+  const OWNED_IDS = new Set();
   function chKey(si, ci) {
     const chs = (SEASONS_DATA[si] || {}).chs || [];
     return si + ':' + ((chs[ci] || {}).n || ci);
@@ -101,7 +104,7 @@
         return { ok: false, message: "Purchase failed. Please try again." };
       });
     }
-    return new Promise(function (resolve) { setTimeout(function () { resolve({ ok: true }); }, 1100); });
+    return Promise.resolve({ ok: false, message: "Payments are not available on this device. Use the official app to buy coins." });
   }
 
   /* ══ TEAMS (from central data) ══ */
@@ -306,7 +309,8 @@
     AUTHOR.handle = w.handle || ('@' + (w.username || 'writer'));
     AUTHOR.avatar = w.avatar || '';
 
-    const unlocked = new Set((state.unlocked || []).map(String));
+    (state.unlocked || []).forEach(function (id) { OWNED_IDS.add(String(id)); });
+    const unlocked = OWNED_IDS;
     const prog = state.progress || {};
     const chs = live.map(c => {
       const key = String(c.id || c.n);
@@ -315,7 +319,7 @@
       const gate = book.freeChapters != null ? Number(book.freeChapters) : 3;
       const open = !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
       return {
-        n: c.n, title: c.title, words: c.words || 0, liveId: c.id,
+        n: c.n, title: c.title, words: c.words || 0, liveId: c.id, price: c.price || 0,
         meta: Math.max(1, Math.round((c.words || 600) / 200)) + ' min',
         state: done ? 'done' : (open ? 'current' : 'locked'),
         // Chapter-end reaction strip: counts + this reader's active rid come
@@ -414,30 +418,49 @@
 
   /* ══ UNLOCK CARD + CHAPTER NAVIGATION ══ */
   function renderUnlockCard(seasonIdx, chIdx) {
-    const ch = SEASONS_DATA[seasonIdx].chs[chIdx];
+    const chs = SEASONS_DATA[seasonIdx].chs;
+    const ch = chs[chIdx];
+    // Prices come from the chapter rows the server sent — no hardcoded demo
+    // numbers. The server re-reads each chapter's price when we deduct.
+    const sumFrom = function (from, count) {
+      return chs.slice(from, count == null ? undefined : from + count)
+        .reduce(function (s, c) { return s + (Number(c.price) || 0); }, 0);
+    };
+    const oneCost = Number(ch.price) || 0;
+    const bundleCost = sumFrom(chIdx, 5);
+    const storyCost = sumFrom(chIdx);
     return '<div class="unlock-card" id="unlockCard">' +
       '<div class="unlock-icon"><i class="fas fa-lock"></i></div>' +
       '<div class="unlock-title">Unlock Chapter ' + ch.n + "</div>" +
       '<div class="unlock-sub">Continue with coins, or unlock the rest of the story.</div>' +
       '<div class="unlock-opts">' +
-        '<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'one',15)\">" +
+        '<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'one'," + oneCost + ")\">" +
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">This chapter only</div><div class="unlock-opt-s">Chapter ' + ch.n + "</div></div>" +
-          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 15</div>' +
+          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + oneCost + '</div>' +
         "</div>" +
-        '<div class="unlock-opt reco" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'bundle',60)\">" +
+        '<div class="unlock-opt reco" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'bundle'," + bundleCost + ")\">" +
           '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Next 5 chapters ⭐</div><div class="unlock-opt-s">Best value bundle</div></div>' +
-          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 60</div>' +
+          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + bundleCost + '</div>' +
         "</div>" +
-'<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'story',120)\">" +
-'<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full story</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
-          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> 120</div>' +
+        '<div class="unlock-opt" onclick="FullReader.attemptUnlockChapter(' + seasonIdx + "," + chIdx + ",'story'," + storyCost + ")\">" +
+          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Full story</div><div class="unlock-opt-s">Every remaining chapter</div></div>' +
+          '<div class="unlock-opt-price"><i class="fas fa-coins" style="font-size:10px"></i> ' + storyCost + '</div>' +
         "</div>" +
         '<div class="unlock-opt" onclick="FullReader.watchAdsUnlock()">' +
-          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s">2 short ads - unlocks this chapter free</div></div>' +
-          '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprogNow">' + adProgressNow() + "/2</span></div>" +
+          '<div class="unlock-opt-lbl"><div class="unlock-opt-t">Watch ads</div><div class="unlock-opt-s" id="adprogSub">Watch short ads to unlock free</div></div>' +
+          '<div class="unlock-opt-price"><i class="fas fa-play" style="font-size:10px"></i> <span id="adprogNow">Ads</span></div>' +
         "</div>" +
       "</div>" +
     "</div>";
+    // Load the real required-ads count from the server for this chapter.
+    if (window.RewardedUnlock && ch.liveId) {
+      window.RewardedUnlock.progress(storyIdNow(), ch.liveId).then(function (p) {
+        var lbl = document.getElementById("adprogNow");
+        var sub = document.getElementById("adprogSub");
+        if (lbl) lbl.textContent = p.done + "/" + p.required;
+        if (sub) sub.textContent = p.owned ? "Already unlocked" : (p.required + " ad" + (p.required === 1 ? "" : "s") + " to unlock this chapter free");
+      });
+    }
   }
 
   async function attemptUnlockChapter(seasonIdx, chIdx, mode, cost) {
@@ -459,6 +482,7 @@
       if (!ch.liveId) continue;
       const r = await DroboardReader.unlockChapter(bookId, ch.liveId);
       if (!r.ok) { okAll = false; toast("Unlock failed — " + (r.error || "try again")); break; }
+      OWNED_IDS.add(String(ch.liveId));
     }
     if (!okAll) return;
     updateCoinPill(DroboardReader.getBalance());
@@ -685,46 +709,39 @@
     } catch (e) {}
   }
 
-  /* ══ WATCH ADS TO UNLOCK — 2 full ad views unlock 1 chapter free.
-     Progress persists per story+chapter so a refresh never wipes it. ══ */
-  function adKeyNow() {
-    var chs = SEASONS_DATA[curSeasonIdx].chs;
-    return "dro_adunlock_full_" + currentStoryId + "_s" + curSeasonIdx + "c" + chs[curChIdx].n;
-  }
-  function adProgressNow() {
-    try { return Math.min(2, parseInt(localStorage.getItem(adKeyNow()) || "0", 10) || 0); }
-    catch (e) { return 0; }
-  }
+  /* ══ WATCH ADS TO UNLOCK — server-backed. Every ad is started and
+     claimed through /api/wallet/unlock-ad*; the Entitlement the server
+     books is the only thing that opens the chapter. ══ */
   function fullAdInventory() {
     return (window._fullReaderBanners || []).filter(function (b) {
       return b && (b.type === "banner" || b.type === "native") && b.ad;
     });
   }
   function watchAdsUnlock() {
-    var chN = SEASONS_DATA[curSeasonIdx].chs[curChIdx].n;
-    if (adProgressNow() >= 2) { unlockCurrentFree(); return; }
-    if (!window.DroboardRewardedAd) { toast("Ads unavailable right now"); return; }
-    var need = 2 - adProgressNow();
-    DroboardRewardedAd.show({
+    if (!window.RewardedUnlock) { toast("Ads unavailable right now"); return; }
+    const chs = SEASONS_DATA[curSeasonIdx].chs;
+    const ch = chs[curChIdx];
+    if (!ch || !ch.liveId) { toast("This chapter cannot be unlocked with ads"); return; }
+    RewardedUnlock.watchAndUnlock({
+      bookId: storyIdNow(),
+      chapterId: ch.liveId,
       ads: fullAdInventory(),
-      rewardLabel: "Watch to the end (" + need + " more) to unlock Chapter " + chN + " free",
-      onComplete: function () {
-        var n = adProgressNow() + 1;
-        try { localStorage.setItem(adKeyNow(), String(n)); } catch (e) {}
+      onProgress: function (done, required) {
         var lbl = document.getElementById("adprogNow");
-        if (lbl) lbl.textContent = Math.min(2, n) + "/2";
-        if (n >= 2) { unlockCurrentFree(); }
-        else toast("1 more ad to unlock Chapter " + chN);
+        var sub = document.getElementById("adprogSub");
+        if (lbl) lbl.textContent = done + "/" + required;
+        if (sub) sub.textContent = done + " of " + required + " ads watched";
       },
+      onUnlocked: function () {
+        OWNED_IDS.add(String(ch.liveId));
+        markUnlockRange(curSeasonIdx, curChIdx, 1, 'ads');
+        ch.state = "current";
+        toast("Unlocked!");
+        renderChapterView(curSeasonIdx, curChIdx);
+        renderChList();
+      },
+      onError: function (msg) { toast(msg); },
     });
-  }
-  function unlockCurrentFree() {
-    var chs = SEASONS_DATA[curSeasonIdx].chs;
-    markUnlockRange(curSeasonIdx, curChIdx, 1, 'ads');
-    chs[curChIdx].state = "current";
-    toast("Unlocked!");
-    renderChapterView(curSeasonIdx, curChIdx);
-    renderChList();
   }
 
   /* Chapter navigation = real navigation (?story=&ch=): a fresh page load
