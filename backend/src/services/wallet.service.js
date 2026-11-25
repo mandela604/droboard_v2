@@ -119,13 +119,15 @@ async function creditPurchase({ userId, coins, paidCoins, bonusCoins, fiatAmount
     const legs = [{ debit: 'store:' + ch, credit: 'wallet:' + userId, amount: liability, coins: total }];
     // Fee and premium both run through the store clearing account, so its
     // balance always equals the cash the channel will actually settle.
-    if (feeNGN > 0) {
-      legs.push({ debit: 'pool:platform', credit: 'store:' + ch, amount: feeNGN, coins: 0 });
+    // A negative surplus is the same pool>store direction as the fee; posting
+    // both as separate legs gives them the SAME idempotency key, so the second
+    // insert collides with the first and aborts the transaction. Merge them.
+    const platformToStore = round2(feeNGN + (surplusNGN < 0 ? -surplusNGN : 0));
+    if (platformToStore > 0) {
+      legs.push({ debit: 'pool:platform', credit: 'store:' + ch, amount: platformToStore, coins: 0 });
     }
     if (surplusNGN > 0) {
       legs.push({ debit: 'store:' + ch, credit: 'pool:platform', amount: surplusNGN, coins: 0 });
-    } else if (surplusNGN < 0) {
-      legs.push({ debit: 'pool:platform', credit: 'store:' + ch, amount: -surplusNGN, coins: 0 });
     }
     const posted = await ledger.post({
       legs,
