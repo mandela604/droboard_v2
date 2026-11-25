@@ -45,6 +45,66 @@ async function apiFetch(path, options){
   }
 }
 
+/* State + helpers. These declarations were lost in a prior edit, which made
+   the whole page throw on load (init/ALL/money were undefined). Restored here
+   without the old demo fixtures — all data comes from the API. */
+let ALL = [];
+let PACKAGES = [], GIFTS = [], SUBSCRIPTIONS = [], EARN = [], BUNDLES = [], HISTORY = [];
+let activeTab = 'transactions', activeType = 'all';
+let searchTerm = '', statusTerm = '', sortMode = 'recent';
+let page = 1, pkgPage = 1, bundlePage = 1, giftPage = 1, subPage = 1, earnPage = 1, histPage = 1;
+let activeHistFilter = 'all';
+
+function money(n){
+  const v = Number(n || 0);
+  if (window.DroboardCurrency && DroboardCurrency.usdToMoney) return (v < 0 ? '-' : '') + DroboardCurrency.usdToMoney(Math.abs(v));
+  return (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function coinsFmt(n){ const v = Number(n || 0); return (v > 0 ? '+' : '') + v.toLocaleString('en-US'); }
+function fmtDateTime(iso){ const d = new Date(iso); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+function fmtDate(d){ if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function isToday(iso){ const d = new Date(iso), t = new Date(); return d.toDateString() === t.toDateString(); }
+function extractYTId(u){
+  try{
+    if (!u || !u.includes('http')) return u;
+    const url = new URL(u);
+    if (url.searchParams.get('v')) return url.searchParams.get('v');
+    return url.pathname.split('/').filter(Boolean).pop() || u;
+  }catch(e){ return u; }
+}
+function toast(msg){
+  if (window.toast && window.toast !== toast) { window.toast(msg); return; }
+  var t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1a1730;color:#fff;padding:10px 18px;border-radius:24px;font-size:12.5px;font-weight:600;z-index:2000;opacity:0;transition:.25s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity = '0'; }, 2500);
+}
+
+async function init(){
+  if (window.FinanceSidebar && FinanceSidebar.attach) {
+    FinanceSidebar.attach('#pageRoot', {
+      activeItem: 'coin-transactions', title: 'Coin Transactions', subtitle: 'Monitor coin purchases, usage & balances',
+      user: { name: 'Ngozi Falade', role: 'Finance Lead', avatar: 'https://i.pravatar.cc/100?img=47' }, notifCount: 4,
+      searchPlaceholder: 'Search anything…',
+    });
+  }
+  if (typeof window.toast !== 'function') window.toast = toast;
+  PACKAGES = []; GIFTS = []; SUBSCRIPTIONS = []; HISTORY = []; EARN = []; BUNDLES = [];
+  try { ALL = await FinanceData.getCoinTransactions() || []; } catch (e) { ALL = []; }
+  try { await loadConfig(); } catch (e) { /* keep empty catalogs; never show stale demo rows */ }
+  renderStatCards();
+  renderFilterPills();
+  render();
+  renderPricing();
+  renderHistFilterPills();
+  renderHistory();
+}
+
 async function loadConfig(){
   const [p, g, s, h] = await Promise.all([
     apiFetch('/coin-packages'),
@@ -569,14 +629,15 @@ async function submitForm(){
 
   // Strict ladders: every purchasable item needs all three legs, otherwise
   // readers in a missing region would hit NO_LOCAL_PRICE at checkout.
+  // The finance API validates prices as numbers, and the checkout charges from
+  // basePriceNGN while verification reads prices.NGN — so both must be posted
+  // together from one parsed value. Display formatting is added by the server.
   function readLadder(usdNum, usdText, ngnText, gbpText) {
-    var usd = usdNum != null ? usdNum : parseFloat((usdText || '').replace(/[$,\s]/g, ''));
-    var ladder = {};
-    if (usd > 0) ladder.USD = '$' + usd.toFixed(2);
-    if ((ngnText || '').trim()) ladder.NGN = ngnText.trim();
-    if ((gbpText || '').trim()) ladder.GBP = gbpText.trim();
-    if (!ladder.USD || !ladder.NGN || !ladder.GBP) return null;
-    return ladder;
+    var usd = usdNum != null ? Number(usdNum) : parseFloat((usdText || '').replace(/[^0-9.]/g, ''));
+    var ngn = parseFloat((ngnText || '').replace(/[^0-9.]/g, ''));
+    var gbp = parseFloat((gbpText || '').replace(/[^0-9.]/g, ''));
+    if (!(usd > 0) || !(ngn > 0) || !(gbp > 0)) return null;
+    return { USD: usd, NGN: ngn, GBP: gbp };
   }
 
   let payload;
@@ -591,7 +652,7 @@ async function submitForm(){
     // picker still posts an explicit value instead of relying on defaults.
     const icon = document.getElementById('pkgIcon').value.trim() || 'fa-coins';
     const color = document.getElementById('pkgColor').value || '#FF2D6A';
-    payload = { name, coins, priceUsd, prices, bonusPercent, icon, color, status };
+    payload = { name, coins, priceUsd, prices, basePriceNGN: prices.NGN, bonusPercent, icon, color, status };
   }else if(formKind==='bundle'){
     const coins = parseInt(document.getElementById('bundleCoins').value,10) || 0;
     const bonus = parseInt(document.getElementById('bundleBonus').value,10) || 0;
@@ -601,7 +662,7 @@ async function submitForm(){
     const prices = readLadder(null, price, document.getElementById('bundlePriceNgn').value, document.getElementById('bundlePriceGbp').value);
     if(coins<=0){ errBox.textContent='Please enter coins.'; errBox.classList.add('show'); return; }
     if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
-    payload = { name, coins, bonus, price, prices, icon, color, status };
+    payload = { name, coins, bonus, price, prices, basePriceNGN: prices.NGN, icon, color, status };
   }else if(formKind==='gift'){
     const icon = document.getElementById('giftIcon').value.trim() || '🎁';
     const costCoins = parseInt(document.getElementById('giftCost').value,10) || 0;
@@ -651,7 +712,7 @@ async function submitForm(){
     const prices = readLadder(priceUsd, null, document.getElementById('subPriceNgn').value, document.getElementById('subPriceGbp').value);
     if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
     if(!features.length){ errBox.textContent='Add at least one feature (one per line) — this is what the store card displays.'; errBox.classList.add('show'); return; }
-    payload = { name, priceUsd, prices, period, features, badge, color, icon, status };
+    payload = { name, priceUsd, prices, basePriceNGN: prices.NGN, period, features, badge, color, icon, status };
   }
   errBox.classList.remove('show');
 

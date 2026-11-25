@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Manual Credit — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+.page-head{margin-bottom:18px}.page-head h1{font-size:19px;font-weight:800}.page-head p{font-size:12px;color:var(--text-muted);margin-top:4px}
+.cols{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+.panel h2{font-size:13px;font-weight:800;margin-bottom:14px}
+label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin:12px 0 5px}
+input,textarea,select{width:100%;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{min-height:76px;resize:vertical}
+.search-box{display:flex;align-items:center;gap:9px;border:1px solid var(--input-border);background:var(--input-bg);border-radius:10px;padding:10px 12px}
+.search-box input{border:none;background:none;padding:0}
+.user-list{margin-top:8px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.user-row{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;gap:10px}
+.user-row:last-child{border-bottom:none}.user-row:hover{background:var(--accent-soft)}
+.user-row.sel{background:var(--accent-soft);font-weight:700}
+.user-row small{color:var(--text-muted)}
+.picked{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--accent-soft);font-size:12px;font-weight:700}
+.check{display:flex;align-items:center;gap:9px;font-size:12px;margin-top:14px;cursor:pointer}
+.check input{width:auto}
+button.primary{margin-top:16px;width:100%;border:none;border-radius:10px;background:var(--accent);color:#fff;font-weight:800;font-size:13px;padding:12px;cursor:pointer;font-family:inherit}
+button.primary:disabled{opacity:.55;cursor:not-allowed}
+.note{font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:12px}
+.list-row{padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.list-row:last-child{border-bottom:none}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--card);padding:10px 20px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:999;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <h1>Manual Credit</h1>
+    <p>Audited, idempotent recovery for a verified failed payment. Requires a reason.</p>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>1. Find the reader</h2>
+        <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="mcSearch" placeholder="Type username, email or name (min 2 chars)…"/></div>
+        <div class="user-list" id="mcUsers"></div>
+        <div class="picked" id="mcPicked" style="display:none"></div>
+      </div>
+      <div class="panel">
+        <h2>2. Credit details</h2>
+        <label for="mcCoins">Coins to credit</label>
+        <input id="mcCoins" type="number" min="1" max="1000000" placeholder="e.g. 25"/>
+        <label for="mcReason">Reason (required, min 5 characters)</label>
+        <textarea id="mcReason" placeholder="e.g. Flutterwave txn 10634698 succeeded but callback was lost"></textarea>
+        <label for="mcRef">Provider reference (optional — reuse to prevent double credit)</label>
+        <input id="mcRef" placeholder="e.g. flutterwave:10634698"/>
+        <label class="check"><input type="checkbox" id="mcConfirm"/> I have verified this reader was charged and not credited.</label>
+        <button class="primary" id="mcSubmit" disabled>Credit coins</button>
+        <div class="note">Every credit is written to the immutable payment activity log with your session recorded in the audit trail. Reusing the same reference is always safe — it will not credit twice.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Recent manual credits</h2>
+      <div id="mcRecent"><div class="note">Loading…</div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="mcToast"></div>
+<script src="shared/finance-sidebar.js?v=3"></script>
+<script src="services/manual-credit-service.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Activity — Droboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+.page-head{margin-bottom:18px}.page-head h1{font-size:19px;font-weight:800}.page-head p{font-size:12px;color:var(--text-muted);margin-top:4px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search-box{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:11px;padding:10px 14px}
+.search-box input{border:none;background:none;outline:none;color:var(--text);font-size:13px;flex:1;font-family:inherit}
+.select-box{border:1px solid var(--input-border);background:var(--input-bg);border-radius:11px;padding:10px 14px;font-size:12.5px;font-family:inherit;color:var(--text);cursor:pointer}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:11px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.chip{font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;background:var(--accent-soft);color:var(--accent)}
+.ref{font-family:ui-monospace,monospace;font-size:11px;color:var(--text-muted)}
+.pos{color:#16a34a;font-weight:700}
+.legs{margin-top:5px;font-size:10.5px;color:var(--text-muted);line-height:1.6}
+.empty{padding:40px;text-align:center;color:var(--text-muted);font-size:13px}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--card);padding:10px 20px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:999;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:800px){th:nth-child(5),td:nth-child(5),th:nth-child(7),td:nth-child(7){display:none}}
+</style>
+</head>
+<body>
+<div id="pageRoot">
+  <div class="page-head">
+    <h1>Payment Activity</h1>
+    <p>Every coin credit and its ledger legs — read-only, append-only.</p>
+  </div>
+  <div class="toolbar">
+    <div class="search-box"><i class="fas fa-magnifying-glass"></i><input id="paSearch" placeholder="Search user, reference or note…"/></div>
+    <select class="select-box" id="paChannel">
+      <option value="all">All channels</option>
+      <option value="flutterwave">Flutterwave</option>
+      <option value="paystack">Paystack</option>
+      <option value="web">Web</option>
+      <option value="reward">Reward</option>
+      <option value="manual">Manual</option>
+    </select>
+    <select class="select-box" id="paLimit">
+      <option value="100">Last 100</option><option value="200">Last 200</option><option value="500">Last 500</option>
+    </select>
+  </div>
+  <div class="panel" id="paTable"><div class="empty"><i class="fas fa-spinner fa-spin"></i> Loading activity…</div></div>
+</div>
+<div class="toast" id="paToast"></div>
+<script src="shared/finance-sidebar.js?v=3"></script>
+<script src="services/payment-activity-service.js?v=1"></script>
+</body>
+</html>

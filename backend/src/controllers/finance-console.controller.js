@@ -60,6 +60,15 @@ async function replyDispute(req, res) {
 async function coinTransactions(req, res) {
   return base.wrap(res, async () => svc.coinTransactions());
 }
+async function paymentActivity(req, res) {
+  return base.wrap(res, async () => svc.paymentActivity(req.valid.query));
+}
+async function lookupFinanceUsers(req, res) {
+  return base.wrap(res, async () => svc.lookupFinanceUsers(req.valid.query.q));
+}
+async function manualCredit(req, res) {
+  return base.wrap(res, async () => svc.manualCredit(req.valid.body, req.user.id));
+}
 async function financialReports(req, res) {
   return base.wrap(res, async () => svc.financialReports(req.valid.query));
 }
@@ -137,7 +146,8 @@ module.exports = {
   dashboard, withdrawals, approveWithdrawal, declineWithdrawal, payWithdrawal,
   authorPayments, paymentHistory, schedulePayout, processPayment,
   paymentDisputes, resolveDispute, rejectDispute, replyDispute,
-  coinTransactions, financialReports, coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions,
+  coinTransactions, paymentActivity, lookupFinanceUsers, manualCredit,
+  financialReports, coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions,
   coinConfigHistory, logConfig,
   savePackage: save('package'), putPackage: put('package'), statusPackage: patchStatus('package'), deletePackage: remove('package'),
   saveBundle: save('bundle'), putBundle: put('bundle'), statusBundle: patchStatus('bundle'), deleteBundle: remove('bundle'),

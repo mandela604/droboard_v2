@@ -35,6 +35,8 @@
     { key: 'dashboard',           label: 'Dashboard',           icon: 'fa-house',            href: 'dashboard.html' },
     { key: 'withdrawals',         label: 'Withdrawals',         icon: 'fa-building-columns',  href: 'withdrawals.html' },
     { key: 'coin-transactions',   label: 'Coin Transactions',   icon: 'fa-coins',             href: 'coin-transactions.html' },
+    { key: 'payment-activity',    label: 'Payment Activity',    icon: 'fa-receipt',           href: 'payment-activity.html' },
+    { key: 'manual-credit',       label: 'Manual Credit',       icon: 'fa-hand-holding-dollar', href: 'manual-credit.html' },
     { key: 'payment-disputes',    label: 'Payment Disputes',    icon: 'fa-scale-balanced',    href: 'payment-disputes.html' },
     { key: 'financial-reports',   label: 'Financial Reports',   icon: 'fa-chart-pie',         href: 'financial-reports.html' },
   ];

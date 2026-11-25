@@ -268,6 +268,25 @@ router.post('/payment-disputes/:id/reply', ...STAFF, writeLimiter, audit('financ
 
 router.get('/coin-transactions', ...STAFF, generalLimiter, fctrl.coinTransactions);
 
+// Read-only, append-only visibility over every coin credit and its ledger legs.
+router.get('/payment-activity', ...STAFF, generalLimiter,
+  validate(z.object({ query: z.object({
+    q: z.string().max(120).optional(),
+    channel: z.string().max(40).optional(),
+    limit: z.string().max(4).optional(),
+  }).strict() })), fctrl.paymentActivity);
+// Small staff-only lookup for the manual-credit form (no admin role required).
+router.get('/users/search', ...STAFF, generalLimiter,
+  validate(z.object({ query: z.object({ q: z.string().min(2).max(120) }).strict() })), fctrl.lookupFinanceUsers);
+// Money write: audited, reason-bearing and idempotent by reference.
+router.post('/manual-credit', ...STAFF, writeLimiter, audit('finance.manualCredit'),
+  validate(z.object({ body: z.object({
+    userId: z.string().min(1).max(120),
+    coins: z.number().int().min(1).max(1000000),
+    reason: z.string().min(5).max(500),
+    reference: z.string().min(1).max(120).optional(),
+  }).strict() })), fctrl.manualCredit);
+
 // Catalog config — GET lists are bare arrays (coin-transactions-service.js:160-163);
 // writes are per-kind so a bad payload only affects one collection.
 function cfgRoutes(kind, listFn, saveFn, putFn, statusFn, delFn) {

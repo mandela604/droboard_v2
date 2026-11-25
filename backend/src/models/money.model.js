@@ -140,7 +140,7 @@ const coinTransactionSchema = new mongoose.Schema({
   userId: { type: String, ref: 'User', required: true, index: true },
   // purchase/subscription = money in, spend/gift/tip = coins out,
   // earn = reward claim, refund = reversal.
-  type: { type: String, enum: ['purchase', 'gift', 'tip', 'spend', 'earn', 'subscription', 'refund'], required: true, index: true },
+  type: { type: String, enum: ['purchase', 'gift', 'tip', 'spend', 'earn', 'subscription', 'refund', 'manual_adjustment'], required: true, index: true },
   coins: { type: Number, required: true },
   // Who the tip/gift was aimed at. Author tips feed the split waterfall;
   // platform tips are pure platform revenue and never touch author earnings.
@@ -154,7 +154,7 @@ const coinTransactionSchema = new mongoose.Schema({
   fiatAmount: { type: Number, required: true },
   fiatCurrency: { type: String, default: 'NGN' },
   // Web channels are recorded as the provider that actually took the money.
-  channel: { type: String, enum: ['play', 'appstore', 'web', 'paystack', 'flutterwave', 'reward'], default: 'web' },
+  channel: { type: String, enum: ['play', 'appstore', 'web', 'paystack', 'flutterwave', 'reward', 'manual'], default: 'web' },
   storeRef: { type: String, default: '' }, // Play/AppStore purchase token (verified)
   // Store commission withheld at purchase, per channel, and the cash the
   // channel actually settles. 0 for spends/earn; both are purchase-only.

@@ -1204,12 +1204,98 @@ async function financialReports(q) {
   };
 }
 
+/* ── Payment activity + audited manual credit (finance console) ─────────
+ * Read-only visibility over every coin credit (purchases, rewards, manual
+ * adjustments) plus the double-entry legs behind it. Nothing here changes
+ * money; manualCredit is the only write and is idempotent + reason-bearing.
+ */
+function escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+async function paymentActivity(query) {
+  const q = String((query && query.q) || '').trim().toLowerCase();
+  const channel = String((query && query.channel) || '').trim().toLowerCase();
+  const limit = Math.min(500, Math.max(1, parseInt((query && query.limit) || '200', 10) || 200));
+  const filter = {};
+  if (channel && channel !== 'all') filter.channel = channel;
+  if (q) {
+    const rx = new RegExp(escapeRe(q), 'i');
+    const users = await User.find({ $or: [{ username: rx }, { email: rx }, { fullName: rx }] }).select('id').limit(50).lean();
+    filter.$or = [
+      { storeRef: rx }, { note: rx }, { userId: { $in: users.map(u => u.id) } },
+    ];
+  }
+  const docs = await CoinTransaction.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
+  const umap = await usersById(docs.map(t => t.userId));
+  const refs = docs.map(t => t.storeRef).filter(Boolean);
+  const legs = refs.length ? await LedgerEntry.find({ saleId: { $in: refs } }).lean() : [];
+  const byRef = new Map();
+  legs.forEach(l => {
+    const k = String(l.saleId || '');
+    if (!byRef.has(k)) byRef.set(k, []);
+    byRef.get(k).push({ debit: l.debitAcct, credit: l.creditAcct, amount: Number(l.amount) || 0, coins: Number(l.coins) || 0, at: l.createdAt });
+  });
+  return docs.map(t => ({
+    id: t.id, user: nameOf(umap, t.userId), userId: t.userId, avatar: avatarOf(umap, t.userId),
+    type: t.type, coins: Number(t.coins) || 0,
+    paidCoins: Number(t.paidCoins) || 0, bonusCoins: Number(t.bonusCoins) || 0,
+    fiatAmount: Number(t.fiatAmount) || 0, fiatCurrency: String(t.fiatCurrency || 'NGN').toUpperCase(),
+    channel: t.channel || 'web', storeRef: t.storeRef || '', status: t.status || 'completed',
+    fee: Number(t.feeAmount) || 0, net: Number(t.netAmount) || 0,
+    note: t.note || '', date: new Date(t.createdAt || Date.now()).toISOString(),
+    legs: byRef.get(String(t.storeRef || '')) || [],
+  }));
+}
+
+async function lookupFinanceUsers(q) {
+  const s = String(q || '').trim();
+  if (s.length < 2) return [];
+  const rx = new RegExp(escapeRe(s), 'i');
+  const rows = await User.find({ $or: [{ username: rx }, { email: rx }, { fullName: rx }] })
+    .select('id username email fullName').limit(10).lean();
+  return rows.map(u => ({ id: u.id, username: u.username, email: u.email, name: u.fullName || u.username }));
+}
+
+async function manualCredit(body, actorId) {
+  const userId = String((body && body.userId) || '').trim();
+  const coins = Number(body && body.coins);
+  const reason = String((body && body.reason) || '').trim();
+  const reference = String((body && body.reference) || '').trim();
+  if (!userId || !Number.isInteger(coins) || coins <= 0 || coins > 1000000 || reason.length < 5) bad('invalid_manual_credit', 400);
+  const u = await User.findOne({ id: userId }).select('id username email fullName').lean();
+  if (!u) bad('user_not_found', 404);
+  const ref = reference || ('MC-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase());
+  const storeRef = 'manual:' + ref;
+  const prior = await CoinTransaction.findOne({ storeRef, channel: 'manual' }).lean();
+  const balanceOf = async () => {
+    const w = await Wallet.findOne({ userId, kind: 'reader' }).lean();
+    return (w && w.coinBalance) || 0;
+  };
+  if (prior) return { duplicate: true, ref, coins: Number(prior.coins) || 0, balance: await balanceOf() };
+  const rate = await CoinRate.findOne({ key: 'live' }).lean();
+  const face = r2(((rate && rate.coinFaceNGN) || 15) * coins);
+  await txn.run(async session => {
+    await ledger.post({
+      legs: [{ debit: 'pool:platform', credit: 'wallet:' + userId, amount: face, coins }],
+      saleId: storeRef, kind: 'manual', memo: 'manual credit: ' + reason + ' by ' + String(actorId || 'staff'),
+      idempotencyKey: storeRef, session,
+    });
+    await CoinTransaction.create([{
+      userId, type: 'manual_adjustment', coins, paidCoins: coins, bonusCoins: 0,
+      fiatAmount: 0, fiatCurrency: 'NGN', channel: 'manual', storeRef, status: 'completed',
+      feeAmount: 0, netAmount: 0, faceAmount: face, surplusAmount: -face,
+      note: 'Manual credit — ' + reason,
+    }], txn.withSession(session));
+    await Wallet.updateOne({ userId, kind: 'reader' }, { $inc: { coinBalance: coins } }, txn.withSession(session, { upsert: true }));
+  });
+  return { duplicate: false, ref, coins, balance: await balanceOf(), user: u.username || u.email };
+}
+
 module.exports = {
   dashboard,
   withdrawals, approveWithdrawal, declineWithdrawal, payWithdrawal, authorCashOn,
   authorPayments, paymentHistory, schedulePayout, processPayment,
   paymentDisputes, resolveDispute, rejectDispute, replyDispute,
-  coinTransactions, financialReports,
+  coinTransactions, paymentActivity, lookupFinanceUsers, manualCredit, financialReports,
   coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions, coinConfigHistory,
   saveConfig, updateConfigStatus, removeConfig,
   priceUsdOf, toUsd, ngnPerUsd, revenueMonths,
