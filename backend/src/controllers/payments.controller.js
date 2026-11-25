@@ -127,12 +127,19 @@ async function flutterwaveWebhook(req, res) {
       try { event = JSON.parse(event.toString('utf8')); } catch (e) { throw Object.assign(new Error('bad_webhook_body'), { status: 400 }); }
     }
     if (!event || event.event !== 'charge.completed' || !event.data) return { ok: true, ignored: true };
-    const meta = event.data.meta || event.data.metadata || {};
-    if (!meta.userId || !meta.packCode) throw Object.assign(new Error('webhook_missing_metadata'), { status: 400 });
     const txId = event.data.id || event.data.tx_ref;
     const v = await verify.verifyFlutterwave({ transactionId: txId });
-    const pack = await verify.lookupPack(meta.packCode);
-    return creditVerified({ userId: String(meta.userId), pack, verified: v, channel: 'flutterwave', packCode: pack.code });
+    // Flutterwave's charge.completed payload is normally lean and omits the
+    // custom `meta`; our userId/packCode live on the verified transaction.
+    // Accept either source so a paid charge is never dropped over the shape
+    // of the notification body.
+    const bodyMeta = event.data.meta || event.data.metadata || {};
+    const txMeta = (v.raw && (v.raw.meta || v.raw.metadata)) || {};
+    const userId = bodyMeta.userId || txMeta.userId;
+    const packCode = bodyMeta.packCode || txMeta.packCode;
+    if (!userId || !packCode) throw Object.assign(new Error('webhook_missing_metadata'), { status: 400 });
+    const pack = await verify.lookupPack(packCode);
+    return creditVerified({ userId: String(userId), pack, verified: v, channel: 'flutterwave', packCode: pack.code });
   });
 }
 

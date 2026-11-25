@@ -98,6 +98,22 @@ async function creditPurchase({ userId, coins, paidCoins, bonusCoins, fiatAmount
   const liability = paid > 0 ? coinFace : grossNGN;
   const surplusNGN = round2(grossNGN - liability);
 
+  // A replayed receipt (webhook retry, client retry after a lost callback) must
+  // not enter the transaction at all. A duplicate ledger key inside a MongoDB
+  // transaction aborts the session, and commitTransaction then fails with
+  // NoSuchTransaction — turning an idempotent replay into a 500. The unique
+  // idempotencyKey index stays the real guard; this check is just the fast path.
+  if (storeRef) {
+    const firstLegKey = key + ':store:' + ch + '>wallet:' + userId;
+    if (await LedgerEntry.exists({ idempotencyKey: firstLegKey })) {
+      const w = await Wallet.findOne({ userId, kind: 'reader' }).lean();
+      return {
+        coins: (w && w.coinBalance) || 0, duplicate: true,
+        fee: storeFee, net, face: liability, surplus: surplusNGN,
+      };
+    }
+  }
+
   let fresh = false;
   await txn.run(async (session) => {
     const legs = [{ debit: 'store:' + ch, credit: 'wallet:' + userId, amount: liability, coins: total }];

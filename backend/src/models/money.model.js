@@ -303,7 +303,7 @@ storeConfigLogSchema.index({ at: -1 });
 // Public ids (models/ids.js): the finance and author consoles address these
 // rows by a stored uuidv7 `id`, never by Mongo `_id`. Without the path, every
 // {id: …} lookup silently matched nothing and every row key read back undefined.
-[coinTransactionSchema, authorTransactionSchema, withdrawalSchema, payoutSchema,
+[ledgerEntrySchema, coinTransactionSchema, authorTransactionSchema, withdrawalSchema, payoutSchema,
   paymentMethodSchema, paymentDisputeSchema, storeConfigLogSchema, bonusSchema].forEach(ids.plugin);
 
 module.exports = {
