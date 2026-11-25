@@ -7,7 +7,10 @@
 //            npm i nodemailer, then set SMTP_HOST/PORT/USER/PASS.
 // Templates: EmailTemplate docs keyed by `key` (welcome|contract|payout|flag...)
 // with {{var}} interpolation. Falls back to explicit subject/html.
-const { Template } = require('../models/template.model');
+// Admin-created email templates live in the platform EmailTemplate collection,
+// keyed by `key` (e.g. 'reset-password'). The old lookup used the system
+// Template model keyed by `name`, so admin templates were never found.
+const { EmailTemplate } = require('../models/platform.model');
 
 function cfg() {
   return {
@@ -29,7 +32,8 @@ function cfg() {
 }
 
 function renderVars(text, vars) {
-  return String(text == null ? '' : text).replace(/\{\{\s*([\w.]+)\s*\}\}/g, (m, k) => {
+  // Accept both {{var}} (service style) and {var} (admin template builder style).
+  return String(text == null ? '' : text).replace(/\{\{?\s*([\w.]+)\s*\}\}?/g, (m, k) => {
     const v = k.split('.').reduce((o, p) => (o == null ? o : o[p]), vars || {});
     return v == null ? '' : String(v);
   });
@@ -44,7 +48,7 @@ function renderVars(text, vars) {
 async function loadTemplate(key) {
   if (!key) return null;
   try {
-    const t = await Template.findOne({ name: key }).lean();
+    const t = await EmailTemplate.findOne({ key: String(key) }).lean();
     return t || null;
   } catch (e) { return null; }
 }
@@ -95,9 +99,9 @@ async function sendMail({ to, subject, html, text, templateKey, vars, from, repl
   if (templateKey && !tpl) throw Object.assign(new Error('missing_template:' + templateKey), { status: 500 });
   const finalSubject = subject || (tpl ? renderVars(tpl.subject, vars) : '');
   // Use bodyHtml as primary rich HTML fallback to body
-  const finalHtml = html || (tpl ? renderVars(tpl.bodyHtml || tpl.body, vars) : '');
-  // Use bodyText if provided, otherwise strip tags from HTML
-  const finalText = text || (tpl ? renderVars(tpl.bodyText || '', vars) : String(html || '').replace(/<[^>]+>/g, ' '));
+  const finalHtml = html || (tpl ? renderVars(tpl.bodyHTML || tpl.bodyHtml || tpl.body || '', vars) : '');
+  // Use plain body as text fallback, otherwise strip tags from HTML
+  const finalText = text || (tpl ? renderVars(tpl.bodyText || tpl.body || '', vars) : String(html || '').replace(/<[^>]+>/g, ' '));
   if (!finalSubject || !finalHtml) throw Object.assign(new Error('missing_content'), { status: 400 });
   const out = await deliver({
     to, subject: finalSubject, html: finalHtml, text: finalText,
