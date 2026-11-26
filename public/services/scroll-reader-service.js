@@ -260,6 +260,15 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
     (((state && state.unlocked) || [])).forEach(function (id) { OWNED_IDS.add(String(id)); });
     const unlocked = OWNED_IDS;
     const prog = (state && state.progress) || {};
+    // An active subscription (any plan, including Merge) opens every chapter.
+    // Fetched before the chapter map so the first paint has no locked flash.
+    let subscribed = false;
+    try {
+      if (window.ReaderTrack && ReaderTrack.entitlements) {
+        const ent = await ReaderTrack.entitlements();
+        subscribed = !!(ent && ent.plan);
+      }
+    } catch (e) {}
     DATA = {
       id: book.id,
       title: book.title || 'Untitled',
@@ -285,7 +294,7 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
         const p = prog[key] || prog[String(c.n)] || null;
         const done = !!(p && p.finished);
         const gate = book.freeChapters != null ? Number(book.freeChapters) : 3;
-      const open = !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
+      const open = subscribed || !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
         return {
           n: c.n, title: c.title,
           paras: htmlToParas(c.content).slice(0, 80),

@@ -285,10 +285,10 @@
       const sRes = await fetch('/api/stories/' + encodeURIComponent(book.id) + '/read-state', { credentials: 'include' });
       if (sRes.ok) state = await sRes.json();
     } catch (e) {}
-    applyLiveBook(book, live, state);
+    await applyLiveBook(book, live, state);
     LIVE_BOOK = book;
   }
-  function applyLiveBook(book, live, state) {
+  async function applyLiveBook(book, live, state) {
     // Populate FS + AUTHOR from real backend data
     currentStoryId = book.id;
     FS.id = book.id;
@@ -312,12 +312,20 @@
     (state.unlocked || []).forEach(function (id) { OWNED_IDS.add(String(id)); });
     const unlocked = OWNED_IDS;
     const prog = state.progress || {};
+    // Subscribers (including Merge Pass) get every chapter open — no coin lock.
+    let subscribed = false;
+    try {
+      if (window.ReaderTrack && ReaderTrack.entitlements) {
+        const ent = await ReaderTrack.entitlements();
+        subscribed = !!(ent && ent.plan);
+      }
+    } catch (e) {}
     const chs = live.map(c => {
       const key = String(c.id || c.n);
       const p = prog[key] || prog[String(c.n)] || null;
       const done = !!(p && p.finished);
       const gate = book.freeChapters != null ? Number(book.freeChapters) : 3;
-      const open = !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
+      const open = subscribed || !book.vipLocked || +c.n <= gate || unlocked.has(key) || unlocked.has(String(c.n)) || done;
       return {
         n: c.n, title: c.title, words: c.words || 0, liveId: c.id, price: c.price || 0,
         meta: Math.max(1, Math.round((c.words || 600) / 200)) + ' min',

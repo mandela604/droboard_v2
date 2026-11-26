@@ -73,12 +73,14 @@
   async function getAds(opts) {
     const page = opts && opts.page;
     const slot = opts && opts.slot;
-    // Merge Pass: ad-free everywhere except Discover.
+    // Merge Pass: ad-free everywhere, Discover included.
     try {
-      if (!window.DroboardAdsFreeEverywhere) {
+      let free = !!window.DroboardAdsFreeEverywhere;
+      if (!free) {
         const ent = await myEntitlements();
-        if (ent && ent.adsFreeEverywhere && page !== 'discover') return {};
-      } else if (page !== 'discover') return {};
+        free = !!(ent && ent.adsFreeEverywhere);
+      }
+      if (free) return {};
     } catch (e) { throw e; }
     const inv = await getInventory(page, slot);
     // backend kill switch (marketing toggle) empties pools in any mode
