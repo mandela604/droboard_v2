@@ -1231,7 +1231,9 @@ function apiGenre(g){ return String(g||'').replace(/^[^\p{L}\p{N}]+/u,'').trim()
 // Live swap: fetch GET /api/categories and map display→id. Omitted until then
 // (backend categoryId is optional; unknown keys must NOT be sent — strict mode).
 function buildBookPayload(){
-  const kind = state.type === 'short' ? 'short' : 'long';
+  // The type stage requires an explicit choice (stageIsValid). Never default
+  // to 'long' — a book with no chosen kind must not silently become one.
+  const kind = state.type === 'short' || state.type === 'long' ? state.type : '';
   const book = {
     title: getActiveTitle(),
     synopsis: document.getElementById('synopsisInput').value.trim(),

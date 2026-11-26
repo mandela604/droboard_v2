@@ -18,8 +18,10 @@ const BOOK_LIVE_MIN_WORDS = 5000;
 const VISIBLE_BOOK_STATUS = ['ongoing', 'published', 'completed'];
 
 async function createBook({ authorId, data }) {
-  const kind = data.kind || 'long';
-  if (!['short', 'long'].includes(kind)) { const e = new Error('bad_kind'); e.status = 400; throw e; }
+  // Type is an explicit author choice — no silent default. A book created
+  // without a valid kind is rejected so readers never see a guessed label.
+  const kind = data.kind;
+  if (!['short', 'long'].includes(kind)) { const e = new Error('kind_required'); e.status = 400; throw e; }
   const { season, seriesId, ...rest } = data;
   void season; void seriesId;
   // Validate genre/category exist when supplied (genre matched by name).

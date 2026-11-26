@@ -100,8 +100,9 @@ function normalizeLive(b) {
   const avgMin = rows.length && wordTotal ? Math.max(1, Math.round(wordTotal / rows.length / 200)) : 0;
   return {
     id: b.id, title: b.title, cover: b.cover || '',
-    // Authoritative type from storage. Fallback only when the field is absent.
-    kind: (b.kind === 'short' || b.kind === 'long') ? b.kind : (totalCh > 1 ? 'long' : 'short'),
+    // Authoritative type from storage only. Missing → '' → the UI shows a dash;
+    // never guess from chapter count.
+    kind: (b.kind === 'short' || b.kind === 'long') ? b.kind : '',
     cat: b.genre || '', status: b.status === 'completed' ? 'completed' : 'ongoing',
     isContest: false, synopsis: b.synopsis || '',
     writer: {
@@ -356,7 +357,7 @@ async function init() {
   // Top bar — only short story / long story types (no seasons)
   document.getElementById('tbStoryName').textContent = STORY.title;
   var _chTotal = STORY.totalChapters || 0;
-  var _storyType = STORY.kind === 'short' ? 'Short story' : 'Long story';
+  var _storyType = STORY.kind === 'short' ? 'Short story' : (STORY.kind === 'long' ? 'Long story' : '—');
   document.getElementById('tbStorySub').textContent = `@${STORY.writer.name} · ${_storyType} · ${_chTotal} chapter${_chTotal === 1 ? '' : 's'}`;
 
   // Hero
@@ -822,12 +823,12 @@ function renderChapterList(chapters) {
 function renderOverview() {
   document.getElementById('synopsisText').textContent = STORY.synopsis;
 
-  const _isLong = STORY.kind === 'long';
+  const _kindLabel = STORY.kind === 'short' ? 'Short story' : (STORY.kind === 'long' ? 'Long story' : '—');
   const infoRows = [
     { icon: '✍️', label: 'Author', val: `@${STORY.writer.name} · ${STORY.writer.followers} followers` },
     { icon: '📅', label: 'Started', val: STORY.startDate },
     { icon: '🔄', label: 'Last updated', val: STORY.lastUpdated },
-    { icon: '📖', label: 'Type', val: _isLong ? 'Long story' : 'Short story' },
+    { icon: '📖', label: 'Type', val: _kindLabel },
     { icon: '📖', label: 'Chapters', val: `${allChaptersFlat().length} published` },
     { icon: '⏱', label: 'Read time', val: STORY.avgReadTime },
     { icon: '📝', label: 'Word count', val: STORY.wordCount },

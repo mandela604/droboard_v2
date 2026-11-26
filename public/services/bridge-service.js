@@ -82,9 +82,11 @@
   // One label from the stored kind — shared by the chapter-count strip and
   // the Details table so the bridge cannot contradict itself.
   function DATA_KIND_LABEL(s) {
-    const k = (s && (s.kind === 'short' || s.kind === 'long')) ? s.kind
-      : (((Array.isArray(s && s.chapters) ? s.chapters.length : (s && s.chapterCount) || 0)) <= 25 ? 'short' : 'long');
-    return k === 'short' ? 'Short story' : 'Long story';
+    // Only the stored kind is authoritative. No chapter-count guessing —
+    // a book whose kind is missing shows a dash, never a fabricated type.
+    if (s && s.kind === 'short') return 'Short story';
+    if (s && s.kind === 'long') return 'Long story';
+    return '—';
   }
 
   // Maps GET /api/books/:id response → bridge DATA shape. No synthesis:
@@ -142,10 +144,8 @@
       id: s.id, title: s.title || 'Untitled', cover: s.cover || '',
       category: cat, genre: genre,
       tropes: (Array.isArray(s.tropes) ? s.tropes : []).slice(0, 3),
-      // The author/storage owns this classification (book.kind). Never derive
-      // it from chapter count — the book reader used a different threshold and
-      // the two pages disagreed on the same story.
-      length: (s.kind === 'short' || s.kind === 'long') ? s.kind : (totalCh <= 25 ? 'short' : 'long'),
+      // The stored kind is the only truth. Missing → '' so the UI shows a dash.
+      length: (s.kind === 'short' || s.kind === 'long') ? s.kind : '',
       chapterLabel: s.lastChapterN ? 'Ch ' + s.lastChapterN : (totalCh ? 'Ch ' + totalCh : 'Ch 1'),
       writer: {
         id: w.id, name: w.name || w.username || 'Unknown',
@@ -563,7 +563,7 @@
   }
   function renderChapterCount() {
     const totalCh = chapterCountTotal();
-    const kind = DATA.length === 'short' ? 'Short story' : 'Long story';
+    const kind = DATA.length === 'short' ? 'Short story' : (DATA.length === 'long' ? 'Long story' : '—');
     document.getElementById('chCountN').textContent = totalCh > 0 ? totalCh + ' Chapters' : 'No chapters yet';
     document.getElementById('chCountSub').textContent = totalCh > 0 ? totalCh + ' chapters · ' + kind : kind;
   }
