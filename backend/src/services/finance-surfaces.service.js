@@ -1323,7 +1323,7 @@ async function manualDebit(body, actorId) {
       idempotencyKey: storeRef, session,
     });
     await CoinTransaction.create([{
-      userId, type: 'manual_debit', coins, paidCoins: paidCut, bonusCoins: bonusCut,
+      userId, type: 'manual_adjustment', coins, paidCoins: paidCut, bonusCoins: bonusCut,
       fiatAmount: 0, fiatCurrency: 'NGN', channel: 'manual', storeRef, status: 'completed',
       feeAmount: 0, netAmount: 0, faceAmount: face, surplusAmount: face,
       note: 'Manual debit — ' + reason,
