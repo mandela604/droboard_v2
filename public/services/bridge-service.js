@@ -79,6 +79,14 @@
     return { emoji: (board && board.icon) || '📖', name: name };
   }
 
+  // One label from the stored kind — shared by the chapter-count strip and
+  // the Details table so the bridge cannot contradict itself.
+  function DATA_KIND_LABEL(s) {
+    const k = (s && (s.kind === 'short' || s.kind === 'long')) ? s.kind
+      : (((Array.isArray(s && s.chapters) ? s.chapters.length : (s && s.chapterCount) || 0)) <= 25 ? 'short' : 'long');
+    return k === 'short' ? 'Short story' : 'Long story';
+  }
+
   // Maps GET /api/books/:id response → bridge DATA shape. No synthesis:
   // missing fields stay empty and the renderers show honest empty states.
   function normalizeStory(s) {
@@ -134,7 +142,10 @@
       id: s.id, title: s.title || 'Untitled', cover: s.cover || '',
       category: cat, genre: genre,
       tropes: (Array.isArray(s.tropes) ? s.tropes : []).slice(0, 3),
-      length: totalCh <= 25 ? 'short' : 'long',
+      // The author/storage owns this classification (book.kind). Never derive
+      // it from chapter count — the book reader used a different threshold and
+      // the two pages disagreed on the same story.
+      length: (s.kind === 'short' || s.kind === 'long') ? s.kind : (totalCh <= 25 ? 'short' : 'long'),
       chapterLabel: s.lastChapterN ? 'Ch ' + s.lastChapterN : (totalCh ? 'Ch ' + totalCh : 'Ch 1'),
       writer: {
         id: w.id, name: w.name || w.username || 'Unknown',
@@ -199,7 +210,7 @@
         circle: null,
       },
       details: [
-        { icon: '📚', lbl: 'Type', val: (totalCh <= 25 ? 'Short' : 'Long') + ' story · ' + (s.status === 'completed' ? 'Completed' : 'Ongoing') },
+        { icon: '📚', lbl: 'Type', val: (DATA_KIND_LABEL(s)) + ' · ' + (s.status === 'completed' ? 'Completed' : 'Ongoing') },
         { icon: '🏷️', lbl: 'Category', val: cat.emoji + ' ' + cat.name, acc: true },
         { icon: '🎭', lbl: 'Genre', val: genre, acc: true },
         ...(totalCh ? [{ icon: '📅', lbl: 'Chapters', val: totalCh + ' Chapter' + (totalCh === 1 ? '' : 's') }] : []),

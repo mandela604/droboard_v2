@@ -100,6 +100,8 @@ function normalizeLive(b) {
   const avgMin = rows.length && wordTotal ? Math.max(1, Math.round(wordTotal / rows.length / 200)) : 0;
   return {
     id: b.id, title: b.title, cover: b.cover || '',
+    // Authoritative type from storage. Fallback only when the field is absent.
+    kind: (b.kind === 'short' || b.kind === 'long') ? b.kind : (totalCh > 1 ? 'long' : 'short'),
     cat: b.genre || '', status: b.status === 'completed' ? 'completed' : 'ongoing',
     isContest: false, synopsis: b.synopsis || '',
     writer: {
@@ -354,7 +356,7 @@ async function init() {
   // Top bar — only short story / long story types (no seasons)
   document.getElementById('tbStoryName').textContent = STORY.title;
   var _chTotal = STORY.totalChapters || 0;
-  var _storyType = _chTotal > 1 ? 'Long story' : 'Short story';
+  var _storyType = STORY.kind === 'short' ? 'Short story' : 'Long story';
   document.getElementById('tbStorySub').textContent = `@${STORY.writer.name} · ${_storyType} · ${_chTotal} chapter${_chTotal === 1 ? '' : 's'}`;
 
   // Hero
@@ -820,7 +822,7 @@ function renderChapterList(chapters) {
 function renderOverview() {
   document.getElementById('synopsisText').textContent = STORY.synopsis;
 
-  const _isLong = (STORY.totalChapters || 0) > 1;
+  const _isLong = STORY.kind === 'long';
   const infoRows = [
     { icon: '✍️', label: 'Author', val: `@${STORY.writer.name} · ${STORY.writer.followers} followers` },
     { icon: '📅', label: 'Started', val: STORY.startDate },
