@@ -72,7 +72,7 @@ router.post('/batch', requireAuth, writeLimiter, audit('books.createBatch'),
   validate(z.object({
     body: z.object({
       book: bookBody,
-      chapters: z.array(chBody).min(1).max(25),
+      chapters: z.array(chBody).min(1).max(50),
     }).strict(),
   })), ctrl.createBatch);
 

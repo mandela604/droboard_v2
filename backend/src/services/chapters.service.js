@@ -2,7 +2,7 @@
 const { Chapter, Book } = require('../models/content.model');
 const books = require('./books.service');
 
-const SHORT_MAX = 25;
+const SHORT_MAX = 50;
 
 // poll/prediction arrive as { q, opts: [string] } from the API — normalize
 // to the model's { t, v } subdocs (objects pass through untouched).
@@ -77,7 +77,7 @@ async function applyChapterProposal({ proposal, reviewerId }) {
     const nn = parseInt(data.n, 10);
     if (!Number.isInteger(nn) || nn < 1) { const e = new Error('bad_n'); e.status = 400; throw e; }
     const book = await Book.findOne({ id: ch.bookId }).select('kind').lean();
-    if ((book ? book.kind : 'long') === 'short' && nn > SHORT_MAX) { const e = new Error('short_max_25'); e.status = 400; throw e; }
+    if ((book ? book.kind : 'long') === 'short' && nn > SHORT_MAX) { const e = new Error('short_max_50'); e.status = 400; throw e; }
     ch.n = nn;
   }
   if (ch.n !== oldN) {
@@ -109,15 +109,15 @@ async function nextN(bookId) {
 async function createChapter({ bookId, data }) {
   const book = await Book.findOne({ id: bookId }).select('id kind status').lean();
   if (!book) { const e = new Error('not_found'); e.status = 404; throw e; }
-  // short: max 25 chapters. long: unlimited.
+  // short: max 50 chapters. long: unlimited.
   const kind = book.kind || 'long';
   if (kind === 'short') {
     const count = await Chapter.countDocuments({ bookId });
-    if (count >= SHORT_MAX) { const e = new Error('short_max_25'); e.status = 400; throw e; }
+    if (count >= SHORT_MAX) { const e = new Error('short_max_50'); e.status = 400; throw e; }
   }
   const n = data.n != null ? parseInt(data.n, 10) : await nextN(bookId);
   if (!Number.isInteger(n) || n < 1) { const e = new Error('bad_n'); e.status = 400; throw e; }
-  if (kind === 'short' && n > SHORT_MAX) { const e = new Error('short_max_25'); e.status = 400; throw e; }
+  if (kind === 'short' && n > SHORT_MAX) { const e = new Error('short_max_50'); e.status = 400; throw e; }
   const exists = await Chapter.exists({ bookId, n });
   if (exists) { const e = new Error('chapter_n_taken'); e.status = 409; throw e; }
   // Signed books with already-locked chapters: a new chapter inherits the
@@ -252,7 +252,7 @@ async function updateChapter({ ch, data }) {
   if (ch.n > SHORT_MAX) {
     const book = await Book.findOne({ id: ch.bookId }).select('kind').lean();
     const kind = (book && book.kind) || 'long';
-    if (kind === 'short') { const e = new Error('short_max_25'); e.status = 400; throw e; }
+    if (kind === 'short') { const e = new Error('short_max_50'); e.status = 400; throw e; }
   }
   if (ch.n !== oldN) {
     const dupe = await Chapter.exists({ bookId: ch.bookId, n: ch.n });

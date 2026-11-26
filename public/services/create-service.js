@@ -11,7 +11,7 @@
 /* Live: uses /api/author/books for author's books, /api/books/batch for creation */
 const API_BASE = '/api';
 let USE_API = true;
-const SHORT_MAX = 25; // must match backend books.service SHORT_MAX
+const SHORT_MAX = 50; // must match backend books.service SHORT_MAX
 
 /* ══════════════════════════════════════════════════════
    CONFIG

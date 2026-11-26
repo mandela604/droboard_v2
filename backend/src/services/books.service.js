@@ -6,7 +6,7 @@ function slugify(t) {
   return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80) || 'untitled';
 }
 
-const SHORT_MAX = 25;
+const SHORT_MAX = 50;
 
 // New books go live ONLY after editor approval, and only at 5k+ words.
 // After the book is live, new chapters publish directly (no approval);
@@ -445,10 +445,10 @@ async function updateBook({ book, data }) {
   const norm = Object.assign({}, data);
   if (norm.kind !== undefined) {
     if (!['short', 'long'].includes(norm.kind)) { const e = new Error('bad_kind'); e.status = 400; throw e; }
-    // long -> short with >25 chapters is rejected.
+    // long -> short with >50 chapters is rejected.
     if (norm.kind === 'short' && book.kind !== 'short') {
       const count = await require('../models/content.model').Chapter.countDocuments({ bookId: book.id });
-      if (count > SHORT_MAX) { const e = new Error('short_max_25'); e.status = 400; throw e; }
+      if (count > SHORT_MAX) { const e = new Error('short_max_50'); e.status = 400; throw e; }
     }
   }
   delete norm.season;

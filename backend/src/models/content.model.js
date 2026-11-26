@@ -8,7 +8,7 @@ const bookSchema = new mongoose.Schema({
   slug: { type: String, unique: true, sparse: true, index: true },
   authorId: { type: String, ref: 'User', required: true, index: true },
   cover: { type: String, default: '' },
-  // short: 1-25 chapters. long: unlimited chapters. No seasons, no series.
+  // short: 1-50 chapters. long: unlimited chapters. No seasons, no series.
   kind: { type: String, enum: ['short', 'long'], default: 'long', index: true },
   genre: { type: String, default: '', index: true },
   categoryId: { type: String, ref: 'Category', default: null },
