@@ -286,6 +286,13 @@ router.post('/manual-credit', ...STAFF, writeLimiter, audit('finance.manualCredi
     reason: z.string().min(5).max(500),
     reference: z.string().min(1).max(120).optional(),
   }).strict() })), fctrl.manualCredit);
+router.post('/manual-debit', ...STAFF, writeLimiter, audit('finance.manualDebit'),
+  validate(z.object({ body: z.object({
+    userId: z.string().min(1).max(120),
+    coins: z.number().int().min(1).max(1000000),
+    reason: z.string().min(5).max(500),
+    reference: z.string().min(1).max(120).optional(),
+  }).strict() })), fctrl.manualDebit);
 
 // Catalog config — GET lists are bare arrays (coin-transactions-service.js:160-163);
 // writes are per-kind so a bad payload only affects one collection.

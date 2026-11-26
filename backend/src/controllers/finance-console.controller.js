@@ -69,6 +69,9 @@ async function lookupFinanceUsers(req, res) {
 async function manualCredit(req, res) {
   return base.wrap(res, async () => svc.manualCredit(req.valid.body, req.user.id));
 }
+async function manualDebit(req, res) {
+  return base.wrap(res, async () => svc.manualDebit(req.valid.body, req.user.id));
+}
 async function financialReports(req, res) {
   return base.wrap(res, async () => svc.financialReports(req.valid.query));
 }
@@ -146,7 +149,7 @@ module.exports = {
   dashboard, withdrawals, approveWithdrawal, declineWithdrawal, payWithdrawal,
   authorPayments, paymentHistory, schedulePayout, processPayment,
   paymentDisputes, resolveDispute, rejectDispute, replyDispute,
-  coinTransactions, paymentActivity, lookupFinanceUsers, manualCredit,
+  coinTransactions, paymentActivity, lookupFinanceUsers, manualCredit, manualDebit,
   financialReports, coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions,
   coinConfigHistory, logConfig,
   savePackage: save('package'), putPackage: put('package'), statusPackage: patchStatus('package'), deletePackage: remove('package'),

@@ -1290,12 +1290,58 @@ async function manualCredit(body, actorId) {
   return { duplicate: false, ref, coins, balance: await balanceOf(), user: u.username || u.email };
 }
 
+// Reversal of a manual credit — removes test/promo coins from a reader wallet
+// without touching real paid coin legs. Idempotent by reference and audited in
+// the ledger as the mirror image of manualCredit.
+async function manualDebit(body, actorId) {
+  const userId = String((body && body.userId) || '').trim();
+  const coins = Number(body && body.coins);
+  const reason = String((body && body.reason) || '').trim();
+  const reference = String((body && body.reference) || '').trim();
+  if (!userId || !Number.isInteger(coins) || coins <= 0 || coins > 1000000 || reason.length < 5) bad('invalid_manual_debit', 400);
+  const u = await User.findOne({ id: userId }).select('id username email fullName').lean();
+  if (!u) bad('user_not_found', 404);
+  const ref = reference || ('MD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase());
+  const storeRef = 'manual-debit:' + ref;
+  const prior = await CoinTransaction.findOne({ storeRef, channel: 'manual' }).lean();
+  const balanceOf = async () => {
+    const w = await Wallet.findOne({ userId, kind: 'reader' }).lean();
+    return (w && w.coinBalance) || 0;
+  };
+  if (prior) return { duplicate: true, ref, coins: Number(prior.coins) || 0, balance: await balanceOf() };
+  const current = await balanceOf();
+  if (coins > current) bad('insufficient_balance', 400);
+  const rate = await CoinRate.findOne({ key: 'live' }).lean();
+  const face = r2(((rate && rate.coinFaceNGN) || 15) * coins);
+  const w = await Wallet.findOne({ userId, kind: 'reader' }).lean();
+  const bonusCut = Math.min(coins, (w && w.bonusBalance) || 0);
+  const paidCut = coins - bonusCut;
+  await txn.run(async session => {
+    await ledger.post({
+      legs: [{ debit: 'wallet:' + userId, credit: 'pool:platform', amount: face, coins }],
+      saleId: storeRef, kind: 'manual', memo: 'manual debit: ' + reason + ' by ' + String(actorId || 'staff'),
+      idempotencyKey: storeRef, session,
+    });
+    await CoinTransaction.create([{
+      userId, type: 'manual_debit', coins, paidCoins: paidCut, bonusCoins: bonusCut,
+      fiatAmount: 0, fiatCurrency: 'NGN', channel: 'manual', storeRef, status: 'completed',
+      feeAmount: 0, netAmount: 0, faceAmount: face, surplusAmount: face,
+      note: 'Manual debit — ' + reason,
+    }], txn.withSession(session));
+    await Wallet.updateOne(
+      { userId, kind: 'reader' },
+      { $inc: { coinBalance: -coins, bonusBalance: -bonusCut } },
+      txn.withSession(session));
+  });
+  return { duplicate: false, ref, coins, balance: await balanceOf(), user: u.username || u.email };
+}
+
 module.exports = {
   dashboard,
   withdrawals, approveWithdrawal, declineWithdrawal, payWithdrawal, authorCashOn,
   authorPayments, paymentHistory, schedulePayout, processPayment,
   paymentDisputes, resolveDispute, rejectDispute, replyDispute,
-  coinTransactions, paymentActivity, lookupFinanceUsers, manualCredit, financialReports,
+  coinTransactions, paymentActivity, lookupFinanceUsers, manualCredit, manualDebit, financialReports,
   coinPackages, coinBundles, coinGifts, coinEarn, coinSubscriptions, coinConfigHistory,
   saveConfig, updateConfigStatus, removeConfig,
   priceUsdOf, toUsd, ngnPerUsd, revenueMonths,
