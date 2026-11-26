@@ -344,8 +344,12 @@ body{font-family:'Inter',system-ui,sans-serif}
           <div class="field-group"><label>Price GBP (e.g. £17.09)</label><input type="text" id="subPriceGbp" placeholder="£17.09"/></div>
         </div>
         <div class="field-row-2">
-          <div class="field-group"><label>Badge (optional)</label><input type="text" id="subBadge" placeholder="e.g. Best Value"/></div>
+          <div class="field-group"><label>Was price NGN (optional — struck through)</label><input type="text" id="subWasNgn" placeholder="₦3,000"/></div>
+          <div class="field-group"><label>Badge (optional)</label><input type="text" id="subBadge" placeholder="e.g. Save 17%"/></div>
+        </div>
+        <div class="field-row-2">
           <div class="field-group"><label>Icon (fa-*)</label><input type="text" id="subIcon" placeholder="fa-calendar"/></div>
+          <div class="field-group"><label>&nbsp;</label></div>
         </div>
         <div class="field-group"><label>Color</label><input type="color" id="subColor" value="#FF2D6A"/></div>
         <div class="field-group"><label>Features <span style="text-transform:none;color:var(--text-faint);font-weight:500">One per line — shown on the store card. "Unlimited reading for N days" and "Save X% vs daily" are calculated automatically from the price + period, don't type them.</span></label><textarea id="subFeatures" rows="4" placeholder="Access all stories&#10;Offline downloads"></textarea></div>
@@ -417,7 +421,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 <script src="shared/finance-sidebar.js?v=3"></script>
 <script src="../services/currency-service.js?v=8"></script>
 <script src="shared/finance-data.js?v=2"></script>
-<script src="services/coin-transactions-service.js?v=8"></script>
+<script src="services/coin-transactions-service.js?v=9"></script>
 <div class="toast" id="toast"></div>
 <script>CoinTransactionsService.init();</script>
 </body>

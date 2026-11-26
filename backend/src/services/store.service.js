@@ -182,6 +182,7 @@ function subOut(s) {
     features: s.features || [], badge: m.badge || s.badge || '', icon: m.icon || s.icon || 'fa-crown',
     color: m.color || s.color || '#FF2D6A',
     basePriceNGN: baseNGNOf(s, prices),
+    originalPriceNGN: Number(s.originalPriceNGN) || 0,
     price: m.price || priceLine(prices, s), priceUSD: usdOf(prices), prices,
     coinsPerDay: s.coinsPerDay, bonusPercent: s.bonusPercent,
   };

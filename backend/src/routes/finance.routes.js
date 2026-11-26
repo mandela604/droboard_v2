@@ -188,6 +188,7 @@ const cfgBody = z.object({
   priceUsd: money0.optional(),
   price: z.string().max(40).optional(),
   basePriceNGN: money0.optional(),
+  originalPriceNGN: money0.optional(),
   prices: priceLadder.optional(),
   status: z.string().max(20).optional(),
   meta: z.any().optional(),

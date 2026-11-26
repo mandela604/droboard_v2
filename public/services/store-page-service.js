@@ -192,6 +192,19 @@
     }).join('');
   }
 
+  function wasPrice(s) {
+    const n = Number(s && s.originalPriceNGN) || 0;
+    if (!(n > 0)) return '';
+    let cur = 'NGN';
+    try {
+      const g = window.DroboardCurrency && typeof DroboardCurrency.get === 'function' && DroboardCurrency.get();
+      if (g && g.reader) cur = String(g.reader).toUpperCase();
+    } catch (e) {}
+    if (cur !== 'NGN') return ''; // we only store an NGN "was" price — never invent other FX
+    return '<s style="color:var(--muted,#999);font-weight:500;font-size:.85em;margin-right:6px">₦'
+      + n.toLocaleString('en-US') + '</s> ';
+  }
+
   function renderSubscriptions(subs) {
     document.getElementById('subsList').innerHTML = (subs || []).map((s) => `
       <div class="sub-card" data-sub-id="${esc(s.id)}" onclick="selectSub('${esc(s.id)}')">
@@ -200,7 +213,7 @@
           <div class="sub-icon" style="background:${esc(s.color || '#FF2D6A')}"><i class="fas ${esc(s.icon || 'fa-crown')}"></i></div>
           <div>
             <div class="sub-name">${esc(s.name)}</div>
-            <div class="sub-price">${esc(readerPrice(s))}</div>
+            <div class="sub-price">${wasPrice(s)}${esc(readerPrice(s))}</div>
             <div class="sub-period">per ${esc(s.period)}</div>
           </div>
         </div>

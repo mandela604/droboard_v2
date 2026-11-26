@@ -80,6 +80,8 @@ const subscriptionPlanSchema = new mongoose.Schema({
   period: { type: String, enum: ['day', 'week', 'month', 'year'], required: true },
   durationDays: { type: Number, required: true },
   basePriceNGN: { type: Number, required: true },
+  // Optional "was" price shown struck through on the store card (NGN only).
+  originalPriceNGN: { type: Number, default: 0 },
   prices: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} }, // ISO currency -> display leg (Mixed: see CoinPack)
   features: { type: [String], default: [] },
   badge: { type: String, default: '' },

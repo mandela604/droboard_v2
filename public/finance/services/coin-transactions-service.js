@@ -511,6 +511,7 @@ function openCreateModal(kind){
   document.getElementById('subPrice').value = '';
   document.getElementById('subPriceNgn').value = '';
   document.getElementById('subPriceGbp').value = '';
+  document.getElementById('subWasNgn').value = '';
   document.getElementById('subPeriod').value = 'month';
   document.getElementById('subBadge').value = '';
   document.getElementById('subIcon').value = '';
@@ -583,6 +584,7 @@ function openEditModal(kind, id){
     document.getElementById('subPrice').value = item.priceUsd;
     document.getElementById('subPriceNgn').value = (item.prices && item.prices.NGN) || '';
     document.getElementById('subPriceGbp').value = (item.prices && item.prices.GBP) || '';
+    document.getElementById('subWasNgn').value = item.originalPriceNGN ? ('₦' + Number(item.originalPriceNGN).toLocaleString('en-US')) : '';
     document.getElementById('subPeriod').value = item.period || 'month';
     document.getElementById('subBadge').value = item.badge || '';
     document.getElementById('subIcon').value = item.icon || '';
@@ -712,7 +714,8 @@ async function submitForm(){
     const prices = readLadder(priceUsd, null, document.getElementById('subPriceNgn').value, document.getElementById('subPriceGbp').value);
     if(!prices){ errBox.textContent='Enter all three prices: USD, NGN and GBP.'; errBox.classList.add('show'); return; }
     if(!features.length){ errBox.textContent='Add at least one feature (one per line) — this is what the store card displays.'; errBox.classList.add('show'); return; }
-    payload = { name, priceUsd, prices, basePriceNGN: prices.NGN, period, features, badge, color, icon, status };
+    const was = parseFloat((document.getElementById('subWasNgn').value || '').replace(/[^0-9.]/g, '')) || 0;
+    payload = { name, priceUsd, prices, basePriceNGN: prices.NGN, originalPriceNGN: was, period, features, badge, color, icon, status };
   }
   errBox.classList.remove('show');
 

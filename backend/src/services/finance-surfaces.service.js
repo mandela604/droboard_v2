@@ -777,6 +777,7 @@ async function coinSubscriptions() {
     id: d.code, code: d.code, name: d.name, period: d.period,
     priceUsd: await priceUsdOf(d),
     durationDays: Number(d.durationDays) || 0,
+    originalPriceNGN: Number(d.originalPriceNGN) || 0,
     coinsPerDay: Number(d.coinsPerDay) || 0,
     bonusPercent: Number(d.bonusPercent) || 0,
     prices: pricesOut(d),
@@ -846,7 +847,7 @@ const PACK_FIELDS = ['code', 'coins', 'bonusPct', 'basePriceNGN', 'prices', 'sta
 const BUNDLE_FIELDS = ['code', 'name', 'coins', 'bonus', 'basePriceNGN', 'prices', 'icon', 'color', 'status', 'meta'];
 const GIFT_FIELDS = ['code', 'name', 'icon', 'costCoins', 'color', 'desc', 'status'];
 const EARN_FIELDS = ['code', 'action', 'type', 'coins', 'cooldown', 'pagesRequired', 'status', 'meta'];
-const SUB_FIELDS = ['code', 'name', 'period', 'durationDays', 'basePriceNGN', 'prices', 'features', 'badge',
+const SUB_FIELDS = ['code', 'name', 'period', 'durationDays', 'basePriceNGN', 'originalPriceNGN', 'prices', 'features', 'badge',
   'icon', 'color', 'coinsPerDay', 'bonusPercent', 'status'];
 
 const packCrud = makeCrud(CoinPack, PACK_FIELDS, 'PACK');
