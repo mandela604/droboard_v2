@@ -235,8 +235,25 @@ READER_BANNERS = READER_BANNERS.filter(function (item) { return item.type !== "p
   let LIVE_BOOK = null;
   let TrackSession = null, TrackN = null;
   function htmlToParas(html) {
-    const t = String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p\s*>/gi, '\n\n').replace(/<[^>]+>/g, '');
-    return t.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+    let t = String(html == null ? '' : html);
+    // Decode before stripping so &nbsp;-only lines become blank lines.
+    t = t.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'");
+    // Rich-text editors wrap each line in a block and use <div><br></div>
+    // for an empty line. Both are paragraph breaks; a bare <br> is a soft
+    // break inside a paragraph. Older code only handled </p>, so chapters
+    // written in those editors rendered as one solid wall of text.
+    t = t.replace(/<div>\s*<br\s*\/?>\s*<\/div>/gi, '\n\n');
+    t = t.replace(/<br\s*\/?>/gi, '\n');
+    t = t.replace(/<\/(?:div|p|h[1-6]|li|blockquote|section)>/gi, '\n\n');
+    t = t.replace(/<[^>]+>/g, '');
+    t = t.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
+    let paras = t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+    // Plain-text authors press Enter once per paragraph: one newline, not two.
+    if (paras.length <= 1 && t.indexOf('\n') !== -1) {
+      paras = t.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    }
+    return paras;
   }
   async function bootLiveScroll() {
     if (!STORY_ID) throw new Error('No story ID in URL (?story=)');

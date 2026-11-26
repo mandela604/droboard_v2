@@ -262,8 +262,21 @@
   function storyIdNow() { return (LIVE_BOOK && LIVE_BOOK.id) || currentStoryId; }
   function urlStoryId() { try { return new URLSearchParams(location.search).get('story') || ''; } catch (e) { return ''; } }
   function htmlToParas(html) {
-    const t = String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p\s*>/gi, '\n\n').replace(/<[^>]+>/g, '');
-    return t.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+    let t = String(html == null ? '' : html);
+    t = t.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'");
+    // Accept the div/br output of rich-text editors as paragraph breaks as
+    // well as real <p> tags — otherwise whole chapters render as one block.
+    t = t.replace(/<div>\s*<br\s*\/?>\s*<\/div>/gi, '\n\n');
+    t = t.replace(/<br\s*\/?>/gi, '\n');
+    t = t.replace(/<\/(?:div|p|h[1-6]|li|blockquote|section)>/gi, '\n\n');
+    t = t.replace(/<[^>]+>/g, '');
+    t = t.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
+    let paras = t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+    if (paras.length <= 1 && t.indexOf('\n') !== -1) {
+      paras = t.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    }
+    return paras;
   }
   async function bootLive() {
     const sid = urlStoryId();
